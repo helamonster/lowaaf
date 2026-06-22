@@ -1,6 +1,47 @@
 local T = require "waf.types"
 
 -- ---------------------------------------------------------------------------
+-- Bitwarden client User-Agent validators (Vaultwarden-specific)
+-- ---------------------------------------------------------------------------
+
+-- Web vault and browser extensions use the browser's native UA.
+local function ua_web()
+  return T.string({
+    max       = 512,
+    match     = [[(?i)Mozilla/5\.0]],
+    not_match = [[(?i)Electron/]],   -- Electron UA also starts with Mozilla/5.0
+  })
+end
+
+-- iOS and Android mobile apps: "Bitwarden_Mobile/YYYY.M.P (...)"
+local function ua_mobile()
+  return T.string({ max = 512, match = [[(?i)^Bitwarden_Mobile/]] })
+end
+
+-- Electron desktop app: "... bitwarden/YYYY.M.P ... Electron/N ..."
+local function ua_desktop()
+  return T.string({ max = 512, match = [[(?i)bitwarden/[0-9].*Electron/]] })
+end
+
+-- Official CLI: "bitwarden-cli/YYYY.M.P"
+local function ua_cli()
+  return T.string({ max = 512, match = [[(?i)^bitwarden-cli/]] })
+end
+
+-- Accepts any official Bitwarden client (web, mobile, desktop, CLI).
+local function ua_any()
+  local clients = { ua_web(), ua_mobile(), ua_desktop(), ua_cli() }
+  return function(v, path)
+    if type(v) ~= "string" then return false, path .. " must be a string" end
+    if #v > 512 then return false, path .. " too long" end
+    for _, check in ipairs(clients) do
+      if check(v, path) then return true end
+    end
+    return false, path .. ": unrecognized Bitwarden client user-agent"
+  end
+end
+
+-- ---------------------------------------------------------------------------
 -- shared type aliases
 -- ---------------------------------------------------------------------------
 local enc     = T.string({ max = 10000 })       -- Bitwarden-encrypted ciphertext blob
@@ -95,6 +136,22 @@ return {
     max_body = 5 * 1024 * 1024,  -- 5 MB; covers attachment uploads
     allowed_methods = {
       GET = true, POST = true, PUT = true, DELETE = true, OPTIONS = true,
+    },
+
+    -- Enforce a header name whitelist on every route.
+    -- If running behind a reverse proxy, add T.common_proxy_headers():
+    --   allowed_headers = T.merge_headers(T.common_request_headers(), T.common_proxy_headers()),
+    allowed_headers = T.common_request_headers(),
+
+    -- Validate header values on every route.
+    headers = {
+      -- Restrict to web vault and browser extensions by default.
+      -- Swap or replace with another validator to permit other clients:
+      --   ua_mobile()   -- iOS / Android app
+      --   ua_desktop()  -- Electron desktop app
+      --   ua_cli()      -- bitwarden-cli
+      --   ua_any()      -- all official clients combined
+      ["User-Agent"] = ua_web(),
     },
   },
 

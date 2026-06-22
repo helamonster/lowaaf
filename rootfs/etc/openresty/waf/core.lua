@@ -104,17 +104,91 @@ local function check_ip(route)
                 " not in allowlist for route '" .. (route.name or "?") .. "'"
 end
 
-local function check_content_type(route)
-  local allowed = route.content_types or route.content_type
-  if not allowed then return true end
-  local ct = ngx.var.http_content_type or ""
-  for _, expected in ipairs(list(allowed)) do
-    -- escape regex metacharacters that appear in media-type strings
-    local escaped = ngx.re.gsub(expected, [[([.+\-])]], [[\$1]], "jo")
-    if ngx.re.find(ct, "^" .. escaped, "jo") then return true end
+-- These headers are always permitted regardless of the allowed_headers list.
+-- content-type and content-length are validated separately (via check_headers
+-- and check_body respectively) and must not be blocked at the name level.
+local ALWAYS_ALLOWED = {
+  ["host"]           = true,
+  ["content-type"]   = true,
+  ["content-length"] = true,
+}
+
+-- Build a validator function from a content_type / content_types string list.
+-- Checks that the Content-Type header value starts with one of the given types.
+local function make_ct_validator(allowed_types)
+  local types = list(allowed_types)
+  return function(v, path)
+    if type(v) ~= "string" then return false, path .. " must be a string" end
+    for _, expected in ipairs(types) do
+      local escaped = ngx.re.gsub(expected, [[([.+\-])]], [[\$1]], "jo")
+      if ngx.re.find(v, "^" .. escaped, "jo") then return true end
+    end
+    return false, path .. ": '" .. v .. "' is not an accepted content-type"
   end
-  return false, "content-type '" .. ct ..
-                "' not accepted for route '" .. (route.name or "?") .. "'"
+end
+
+-- Validate request header names against the allowlist, and header values
+-- against any registered validators.  Also handles the route-level
+-- content_type / content_types shorthand by converting it into a Content-Type
+-- header validator so the two mechanisms are unified.
+--
+-- Name allowlist is only enforced when defaults.allowed_headers is set.
+-- Value validators (defaults.headers, route.headers) always run when present.
+local function check_headers(app, route)
+  local defaults  = app.defaults or {}
+  local ct_types  = route.content_types or route.content_type
+
+  local has_policy = defaults.allowed_headers or defaults.headers
+                     or route.headers or route.extra_headers or ct_types
+  if not has_policy then return true end
+
+  local req_headers = ngx.req.get_headers(100)
+
+  -- name allowlist: only enforced when the app declares defaults.allowed_headers
+  if defaults.allowed_headers then
+    local allowed = {}
+    for _, name in ipairs(list(defaults.allowed_headers)) do
+      allowed[name:lower()] = true
+    end
+    -- headers with registered validators are implicitly allowed by name
+    for name, _ in pairs(defaults.headers  or {}) do allowed[name:lower()] = true end
+    for name, _ in pairs(route.headers     or {}) do allowed[name:lower()] = true end
+    for _, name  in ipairs(list(route.extra_headers or {})) do allowed[name:lower()] = true end
+    if ct_types then allowed["content-type"] = true end
+
+    for name, _ in pairs(req_headers) do
+      local lower = name:lower()
+      if not ALWAYS_ALLOWED[lower] and not allowed[lower] then
+        return false, "header '" .. name .. "' is not allowed"
+      end
+    end
+  end
+
+  -- value validators: defaults.headers provides the base, route.headers overrides
+  local validators = {}
+  for name, v in pairs(defaults.headers or {}) do
+    validators[name:lower()] = v
+  end
+  for name, v in pairs(route.headers or {}) do
+    validators[name:lower()] = v
+  end
+  -- content_type / content_types shorthand: auto-generate a validator unless
+  -- the app already registered one via headers = { ["Content-Type"] = ... }
+  if ct_types and not validators["content-type"] then
+    validators["content-type"] = make_ct_validator(ct_types)
+  end
+
+  for name_lower, validator in pairs(validators) do
+    local value = req_headers[name_lower]
+    if value ~= nil then
+      -- ngx.req.get_headers() returns a table when a header appears multiple times
+      if type(value) == "table" then value = value[1] end
+      local ok, err = validator(tostring(value), "header[" .. name_lower .. "]")
+      if not ok then return false, err end
+    end
+  end
+
+  return true
 end
 
 local function check_body(app, route)
@@ -187,11 +261,11 @@ function core.run(app)
   local ok, err = check_ip(route)
   if not ok then return deny(app, 403, err) end
 
-  -- 4. content-type
-  ok, err = check_content_type(route)
-  if not ok then return deny(app, 415, err) end
+  -- 4. headers (name allowlist + value validation, includes content-type)
+  ok, err = check_headers(app, route)
+  if not ok then return deny(app, 400, err) end
 
-  -- 5–8. body size, no-body, JSON schema, form schema
+  -- 5. body size, no-body, JSON schema, form schema
   ok, err = check_body(app, route)
   if not ok then return deny(app, 400, err) end
 end

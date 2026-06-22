@@ -119,4 +119,121 @@ function T.object(schema, opts)
   end
 end
 
+-- ---------------------------------------------------------------------------
+-- HTTP header helpers
+-- ---------------------------------------------------------------------------
+
+-- Headers that browsers and HTTP clients send on every request.
+-- Use as defaults.allowed_headers in an app policy to enforce a name whitelist.
+local _common_request_headers = {
+  "accept",
+  "accept-encoding",
+  "accept-language",
+  "authorization",
+  "cache-control",
+  "connection",
+  "cookie",
+  "dnt",
+  "if-match",
+  "if-modified-since",
+  "if-none-match",
+  "if-range",
+  "if-unmodified-since",
+  "origin",
+  "pragma",
+  "range",
+  "referer",
+  "sec-ch-ua",
+  "sec-ch-ua-mobile",
+  "sec-ch-ua-platform",
+  "sec-ch-ua-full-version-list",
+  "sec-ch-ua-arch",
+  "sec-ch-ua-bitness",
+  "sec-fetch-dest",
+  "sec-fetch-mode",
+  "sec-fetch-site",
+  "sec-fetch-user",
+  "te",
+  "upgrade",
+  "upgrade-insecure-requests",
+  "user-agent",
+  -- WebSocket upgrade headers
+  "sec-websocket-key",
+  "sec-websocket-version",
+  "sec-websocket-extensions",
+  "sec-websocket-protocol",
+}
+
+function T.common_request_headers()
+  return _common_request_headers
+end
+
+-- Headers added by reverse proxies (nginx, HAProxy, load balancers, CDNs).
+-- Include alongside common_request_headers() when OpenResty sits behind
+-- another proxy: T.merge_headers(T.common_request_headers(), T.common_proxy_headers())
+local _common_proxy_headers = {
+  "forwarded",              -- RFC 7239 structured forwarding
+  "via",                    -- HTTP intermediary chain
+  "x-forwarded-for",        -- client IP chain (de-facto standard)
+  "x-forwarded-host",       -- original Host header
+  "x-forwarded-port",       -- original port
+  "x-forwarded-proto",      -- original scheme (http/https)
+  "x-real-ip",              -- single client IP (nginx convention)
+  "x-request-id",           -- request tracing
+  "x-correlation-id",       -- distributed tracing
+  "x-amzn-trace-id",        -- AWS ALB / X-Ray
+  "x-cloud-trace-context",  -- GCP Cloud Trace
+  "x-b3-traceid",           -- Zipkin/Jaeger B3 tracing
+  "x-b3-spanid",
+  "x-b3-parentspanid",
+  "x-b3-sampled",
+}
+
+function T.common_proxy_headers()
+  return _common_proxy_headers
+end
+
+-- Flatten one or more header name lists into a single array.
+-- Usage: T.merge_headers(T.common_request_headers(), T.common_proxy_headers())
+function T.merge_headers(...)
+  local result = {}
+  for i = 1, select("#", ...) do
+    for _, name in ipairs(select(i, ...)) do
+      result[#result + 1] = name
+    end
+  end
+  return result
+end
+
+-- ---------------------------------------------------------------------------
+-- Content-Type validators
+-- Ordinary string validators; use them in headers = { ["Content-Type"] = ... }
+-- or rely on the route-level content_type / content_types shorthand which
+-- generates the same check internally.
+-- ---------------------------------------------------------------------------
+
+function T.content_type_json()
+  return T.string({ max = 256, match = [[^application/json]] })
+end
+
+function T.content_type_form()
+  return T.string({ max = 256, match = [[^application/x-www-form-urlencoded]] })
+end
+
+function T.content_type_multipart()
+  return T.string({ max = 512, match = [[^multipart/form-data]] })
+end
+
+function T.content_type_octet_stream()
+  return T.string({ max = 256, match = [[^application/octet-stream]] })
+end
+
+-- ---------------------------------------------------------------------------
+-- Authorization header helpers
+-- ---------------------------------------------------------------------------
+
+function T.bearer_token()
+  return T.string({ max = 2048, match = [[^Bearer [A-Za-z0-9\-._~+/]+=*$]] })
+end
+
 return T
