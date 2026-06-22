@@ -121,6 +121,41 @@ local function check_ip(route)
                 " not in allowlist for route '" .. (route.name or "?") .. "'"
 end
 
+-- Validate URI query parameters.
+-- route.no_query = true  → deny any query parameters
+-- route.query / route.query_schemas → validate args against T.object() schema(s)
+-- Repeated params (e.g. ?a=1&a=2) are flattened to the first value.
+-- Bare flags (e.g. ?foo) are normalized to "".
+local function check_query(app, route)
+  local query_schemas = route.query_schemas or route.query
+  local no_q          = route.no_query
+
+  if not no_q and not query_schemas then return true end
+
+  local args = ngx.req.get_uri_args(100)
+
+  if no_q then
+    for _ in pairs(args) do
+      return false, "route '" .. (route.name or "?") .. "' expects no query parameters"
+    end
+    return true
+  end
+
+  local flat = {}
+  for k, v in pairs(args) do
+    if type(v) == "table" then flat[k] = v[1]
+    elseif v == true      then flat[k] = ""
+    else                       flat[k] = v
+    end
+  end
+
+  local ok, err = validate_any_schema(query_schemas, flat, "?")
+  if not ok then
+    return false, "route '" .. (route.name or "?") .. "': " .. err
+  end
+  return true
+end
+
 -- These headers are always permitted regardless of the allowed_headers list.
 -- content-type and content-length are validated separately (via check_headers
 -- and check_body respectively) and must not be blocked at the name level.
@@ -209,7 +244,9 @@ local function check_headers(app, route)
 end
 
 local function check_body(app, route)
-  local max_body = route.max_body or (app.defaults and app.defaults.max_body)
+  local max_body     = route.max_body or (app.defaults and app.defaults.max_body)
+  local json_schemas = route.json_schemas or route.json
+  local form_schemas = route.form_schemas or route.form
 
   if route.no_body then
     local len = tonumber(ngx.var.http_content_length or "0") or 0
@@ -219,14 +256,15 @@ local function check_body(app, route)
     return true
   end
 
-  local json_schemas = route.json_schemas or route.json
-  local form_schemas = route.form_schemas or route.form
-
-  if json_schemas then
+  -- enforce max_body unconditionally, even when no schema is declared
+  if max_body then
     local len = tonumber(ngx.var.http_content_length or "0") or 0
-    if max_body and len > max_body then
+    if len > max_body then
       return false, "route '" .. (route.name or "?") .. "': body too large"
     end
+  end
+
+  if json_schemas then
     ngx.req.read_body()
     local body = ngx.req.get_body_data() or ""
     local obj, err = cjson.decode(body)
@@ -242,10 +280,6 @@ local function check_body(app, route)
   end
 
   if form_schemas then
-    local len = tonumber(ngx.var.http_content_length or "0") or 0
-    if max_body and len > max_body then
-      return false, "route '" .. (route.name or "?") .. "': body too large"
-    end
     ngx.req.read_body()
     local args = ngx.req.get_post_args(200)
     local ok, verr = validate_any_schema(form_schemas, args, "$")
@@ -278,11 +312,15 @@ function core.run(app)
   local ok, err = check_ip(route)
   if not ok then return deny(app, 403, err) end
 
-  -- 4. headers (name allowlist + value validation, includes content-type)
+  -- 4. query parameters (allowlist and/or value validation)
+  ok, err = check_query(app, route)
+  if not ok then return deny(app, 400, err) end
+
+  -- 5. headers (name allowlist + value validation, includes content-type)
   ok, err = check_headers(app, route)
   if not ok then return deny(app, 400, err) end
 
-  -- 5. body size, no-body, JSON schema, form schema
+  -- 6. body size, no-body, JSON schema, form schema
   ok, err = check_body(app, route)
   if not ok then return deny(app, 400, err) end
 end
