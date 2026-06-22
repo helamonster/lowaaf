@@ -63,7 +63,7 @@ function T.email()
     min       = 3,
     max       = 320,
     match     = [[^[^@\s]+@[^@\s]+\.[^@\s]+$]],
-    not_match = [[[\x00-\x1f\x7f<>"]]],
+    not_match = "[\\x00-\\x1f\\x7f<>\"]",
   })
 end
 
