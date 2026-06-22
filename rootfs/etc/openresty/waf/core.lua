@@ -1,3 +1,20 @@
+-- --------------------------------------------------------------------------------------
+-- 
+-- Lua OpenResty Web Application and API Firewall (LOWAAF)
+--
+-- Concept, Framework and Application Firewall Implementation By:
+-- Jeremy Bryan Smith <helamonster@gmail.com>
+-- <https://jeremybryansmith.com>
+--
+-- With assistance from: Claude Sonnet 4.6 <noreply@anthropic.com> 
+--
+-- --------------------------------------------------------------------------------------
+--
+-- core.lua : Core Framework Engine : Core engine of request validation
+--
+-- --------------------------------------------------------------------------------------
+
+
 local cjson = require "cjson.safe"
 local bit   = require "bit"
 

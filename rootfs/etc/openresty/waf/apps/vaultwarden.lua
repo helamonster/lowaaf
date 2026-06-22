@@ -1,3 +1,26 @@
+-- --------------------------------------------------------------------------------------
+-- 
+-- Lua OpenResty Web Application and API Firewall (LOWAAF)
+--
+-- Concept, Framework and Application Firewall Implementation by:
+-- Jeremy Bryan Smith <helamonster@gmail.com>
+-- <https://jeremybryansmith.com>
+--
+-- With assistance from: Claude Sonnet 4.6 <noreply@anthropic.com> 
+--
+-- --------------------------------------------------------------------------------------
+--
+-- vaultwarden.lua : LOWAFF for VaultWarden
+--
+-- VaultWarden: The Unofficial Bitwarden compatible server written in Rust
+-- <https://github.com/dani-garcia/vaultwarden>
+-- <https://www.vaultwarden.net/>
+--
+-- --------------------------------------------------------------------------------------
+
+
+
+
 local T = require "waf.types"
 
 -- ---------------------------------------------------------------------------

@@ -1,3 +1,20 @@
+-- --------------------------------------------------------------------------------------
+-- 
+-- Lua OpenResty Web Application and API Firewall (LOWAAF)
+--
+-- Concept, Framework and Application Firewall Implementation by:
+-- Jeremy Bryan Smith <helamonster@gmail.com>
+-- <https://jeremybryansmith.com>
+--
+-- With assistance from: Claude Sonnet 4.6 <noreply@anthropic.com> 
+--
+-- --------------------------------------------------------------------------------------
+--
+-- types.lua : Validator Factory Library : Building blocks for declaring request schemas
+--
+-- --------------------------------------------------------------------------------------
+
+
 local ngx = ngx
 local T = {}
 
