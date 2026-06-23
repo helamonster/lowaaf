@@ -171,6 +171,57 @@ local cipher_body = T.object({
 })
 
 -- ---------------------------------------------------------------------------
+-- Shared body for bulk cipher operations: archive, unarchive, bulk-delete
+-- (src/api/core/ciphers.rs: CipherIdsData)
+-- ---------------------------------------------------------------------------
+local cipher_ids_body = T.object({
+  ids = T.array(T.uuid(), { max = 2000 }),
+})
+
+-- ---------------------------------------------------------------------------
+-- Attachment upload initiation (v2)
+-- (src/api/core/ciphers.rs: AttachmentRequestData)
+-- Returns a pre-signed upload URL; the actual file goes directly to that URL.
+-- fileSize is NumberOrString in Rust but Bitwarden clients send it as a number.
+-- ---------------------------------------------------------------------------
+local attachment_init_body = T.object({
+  key          = enc,
+  fileName     = enc,
+  fileSize     = T.number({ integer=true, min=0, max=536870912 }),  -- 512 MB ceiling
+  adminRequest = nu_bool,
+})
+
+-- ---------------------------------------------------------------------------
+-- Send body: shared by send-create (POST /api/sends) and
+-- send-create-file (POST /api/sends/file/v2)
+-- (src/api/core/sends.rs: SendData)
+-- ---------------------------------------------------------------------------
+local send_body = T.object({
+  type           = T.number({ integer=true, min=0, max=1 }),  -- 0=text, 1=file
+  key            = enc,
+  name           = enc,
+  deletionDate   = T.iso8601(),
+  disabled       = T.boolean(),
+  password       = nu_enc,
+  maxAccessCount = T.nullable(T.number({ integer=true, min=0, max=1000000 })),
+  expirationDate = T.nullable(T.iso8601()),
+  hideEmail      = nu_bool,
+  notes          = nu_enc,
+  fileLength     = T.nullable(T.number({ integer=true, min=0, max=536870912 })),
+  id             = nu_uuid,
+  text = T.nullable(T.object({
+    text   = nu_enc,
+    hidden = nu_bool,
+  })),
+  file = T.nullable(T.object({
+    fileName = nu_enc,
+    id       = nu_uuid,
+    size     = T.nullable(T.string({ max=32 })),
+    sizeName = T.nullable(T.string({ max=32 })),
+  })),
+})
+
+-- ---------------------------------------------------------------------------
 -- JWT claims schema for the Vaultwarden login token (LoginJwtClaims in auth.rs)
 -- Used on the /notifications/hub?access_token=... WebSocket endpoint.
 -- Signature verification is Vaultwarden's job; we validate structure only.
@@ -327,16 +378,18 @@ return {
     { name = "cipher soft-delete", method = "PUT",    path = "^/api/ciphers/" .. U .. "/delete$",    no_body = true },
     { name = "cipher restore",     method = "PUT",    path = "^/api/ciphers/" .. U .. "/restore$",   no_body = true },
     { name = "cipher share",       method = "PUT",    path = "^/api/ciphers/" .. U .. "/share$",     content_type = "application/json" },
-    { name = "ciphers archive",    method = "PUT",    path = [[^/api/ciphers/archive$]] },
-    { name = "ciphers unarchive",  method = "PUT",    path = [[^/api/ciphers/unarchive$]] },
-    { name = "ciphers import",     method = "POST",   path = [[^/api/ciphers/import$]],              content_type = "application/json" },
-    { name = "ciphers bulk-delete",method = "DELETE", path = [[^/api/ciphers$]] },
+    { name = "ciphers archive",    method = "PUT",    path = [[^/api/ciphers/archive$]],   content_type = "application/json", json = cipher_ids_body },
+    { name = "ciphers unarchive",  method = "PUT",    path = [[^/api/ciphers/unarchive$]], content_type = "application/json", json = cipher_ids_body },
+    { name = "ciphers import",     method = "POST",   path = [[^/api/ciphers/import$]],    content_type = "application/json" },
+    { name = "ciphers bulk-delete",method = "DELETE", path = [[^/api/ciphers$]],           content_type = "application/json", json = cipher_ids_body },
 
     -- ATTACHMENTS -----------------------------------------------------------
 
-    { name = "attachment create-v2", method = "POST",   path = "^/api/ciphers/" .. U .. "/attachment/v2$" },
+    { name = "attachment create-v2", method = "POST",   path = "^/api/ciphers/" .. U .. "/attachment/v2$",
+      content_type = "application/json", json = attachment_init_body },
     { name = "attachment get",       method = "GET",    path = "^/api/ciphers/" .. U .. "/attachment/" .. FILEID .. "$", no_body = true },
-    { name = "attachment upload",    method = "POST",   path = "^/api/ciphers/" .. U .. "/attachment/" .. FILEID .. "$" },
+    { name = "attachment upload",    method = "POST",   path = "^/api/ciphers/" .. U .. "/attachment/" .. FILEID .. "$",
+      content_type = "multipart/form-data" },
     { name = "attachment delete",    method = "DELETE", path = "^/api/ciphers/" .. U .. "/attachment/" .. FILEID .. "$", no_body = true },
 
     -- FOLDERS ---------------------------------------------------------------
@@ -350,13 +403,17 @@ return {
     -- SENDS -----------------------------------------------------------------
 
     { name = "send list",        method = "GET",    path = [[^/api/sends$]],                                              no_body = true },
-    { name = "send create",      method = "POST",   path = [[^/api/sends$]],                                              content_type = "application/json" },
-    { name = "send create-file", method = "POST",   path = [[^/api/sends/file/v2$]] },
-    { name = "send get",         method = "GET",    path = "^/api/sends/" .. U .. "$",                                    no_body = true },
-    { name = "send update",      method = "PUT",    path = "^/api/sends/" .. U .. "$",                                    content_type = "application/json" },
-    { name = "send delete",      method = "DELETE", path = "^/api/sends/" .. U .. "$",                                    no_body = true },
-    { name = "send file upload", method = "POST",   path = "^/api/sends/" .. U .. "/file/" .. FILEID .. "$" },
-    { name = "send access",      method = "POST",   path = [[^/api/sends/[^/]+/access$]] },
+    { name = "send create",      method = "POST",   path = [[^/api/sends$]],
+      content_type = "application/json", json = send_body },
+    { name = "send create-file", method = "POST",   path = [[^/api/sends/file/v2$]],
+      content_type = "application/json", json = send_body },
+    { name = "send get",         method = "GET",    path = "^/api/sends/" .. U .. "$",   no_body = true },
+    { name = "send update",      method = "PUT",    path = "^/api/sends/" .. U .. "$",   content_type = "application/json" },
+    { name = "send delete",      method = "DELETE", path = "^/api/sends/" .. U .. "$",   no_body = true },
+    { name = "send file upload", method = "POST",   path = "^/api/sends/" .. U .. "/file/" .. FILEID .. "$",
+      content_type = "multipart/form-data" },
+    { name = "send access",      method = "POST",   path = [[^/api/sends/[^/]+/access$]],
+      content_type = "application/json", json = T.object({ password = nu_enc }) },
 
     -- ACCOUNT MANAGEMENT ----------------------------------------------------
 
@@ -369,9 +426,14 @@ return {
     { name = "keys update",        method = "POST",   path = [[^/api/accounts/keys$]],              content_type = "application/json" },
     { name = "security stamp",     method = "POST",   path = [[^/api/accounts/security-stamp$]],    content_type = "application/json" },
     { name = "verify password",    method = "POST",   path = [[^/api/accounts/verify-password$]],   content_type = "application/json" },
-    { name = "verify email",       method = "POST",   path = [[^/api/accounts/verify-email$]] },
-    { name = "verify email token", method = "POST",   path = [[^/api/accounts/verify-email-token$]], content_type = "application/json" },
-    { name = "delete account",     method = "DELETE", path = [[^/api/accounts$]] },
+    { name = "verify email",       method = "POST",   path = [[^/api/accounts/verify-email$]],         no_body = true },
+    { name = "verify email token", method = "POST",   path = [[^/api/accounts/verify-email-token$]],  content_type = "application/json" },
+    { name = "delete account",     method = "DELETE", path = [[^/api/accounts$]],
+      content_type = "application/json",
+      json = T.object({
+        masterPasswordHash = T.nullable(med),
+        otp                = T.nullable(T.string({ max=16 })),
+      }) },
 
     -- TWO FACTOR ------------------------------------------------------------
 
@@ -383,7 +445,15 @@ return {
     { name = "2fa get-totp",      method = "POST", path = [[^/api/two-factor/get-authenticator$]], content_type = "application/json" },
     { name = "2fa get-yubikey",   method = "POST", path = [[^/api/two-factor/get-yubikey$]],       content_type = "application/json" },
     { name = "2fa get-email",     method = "POST", path = [[^/api/two-factor/get-email$]],         content_type = "application/json" },
-    { name = "2fa send-email",    method = "POST", path = [[^/api/two-factor/send-email-login$]] },
+    { name = "2fa send-email",    method = "POST", path = [[^/api/two-factor/send-email-login$]],
+      content_type = "application/json",
+      json = T.object({
+        email                 = T.nullable(T.email()),
+        masterPasswordHash    = T.nullable(med),
+        deviceIdentifier      = nu_uuid,
+        authRequestId         = nu_uuid,
+        authRequestAccessCode = T.nullable(T.string({ max=128 })),
+      }) },
 
     -- DEVICES ---------------------------------------------------------------
 
