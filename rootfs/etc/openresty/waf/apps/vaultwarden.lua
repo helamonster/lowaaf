@@ -46,13 +46,13 @@ local function ua_desktop()
   return T.string({ max = 512, match = [[(?i)bitwarden/[0-9].*Electron/]] })
 end
 
--- Official CLI: "bitwarden-cli/YYYY.M.P"
+-- Official CLI: "Bitwarden_CLI/YYYY.M.P (PLATFORM)"
 local function ua_cli()
-  return T.string({ max = 512, match = [[(?i)^bitwarden-cli/]] })
+  return T.string({ max = 512, match = [[(?i)^bitwarden_cli/]] })
 end
 
 -- Accepts any official Bitwarden client (web, mobile, desktop, CLI).
-local function ua_any()
+local function ua_any_known()
   local clients = { ua_web(), ua_mobile(), ua_desktop(), ua_cli() }
   return function(v, path)
     if type(v) ~= "string" then return false, path .. " must be a string" end
@@ -231,13 +231,13 @@ return {
 
     -- Validate header values on every route.
     headers = {
-      -- Restrict to web vault and browser extensions by default.
-      -- Swap or replace with another validator to permit other clients:
+      -- ua_any_known() permits all official Bitwarden clients (web, mobile, desktop, CLI).
+      -- To restrict to a subset, replace with one or more of:
+      --   ua_web()      -- browser extensions only
       --   ua_mobile()   -- iOS / Android app
       --   ua_desktop()  -- Electron desktop app
       --   ua_cli()      -- bitwarden-cli
-      --   ua_any()      -- all official clients combined
-      ["User-Agent"] = ua_web(),
+      ["User-Agent"] = ua_any_known(),
       ["priority"]   = T.http_priority(),
       ["sec-gpc"]    = T.sec_gpc(),
       -- DeviceType enum (libs/common/src/enums/device-type.enum.ts): 0–26
