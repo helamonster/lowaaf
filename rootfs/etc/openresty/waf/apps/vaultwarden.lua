@@ -105,6 +105,17 @@ local cipher_body = T.object({
   folderId        = nu_uuid,
   organizationId  = nu_uuid,
   collectionIds   = T.nullable(T.array(T.uuid(), { max = 200 })),
+  encryptedFor          = nu_enc,
+  lastKnownRevisionDate = T.nullable(T.iso8601()),
+  -- deprecated: id → encrypted filename; superseded by attachments2
+  attachments  = T.nullable(T.dict(enc)),
+  attachments2 = T.nullable(T.dict(T.object({
+    fileName              = nu_enc,
+    key                   = nu_enc,
+    fileSize              = nu_num,
+    adminRequest          = nu_bool,
+    lastKnownRevisionDate = T.nullable(T.iso8601()),
+  }))),
   reprompt        = T.nullable(T.number({ integer = true, min = 0, max = 1 })),
   fields          = T.nullable(T.array(cipher_field, { max = 100 })),
   passwordHistory = T.nullable(T.array(T.object({
@@ -112,10 +123,12 @@ local cipher_body = T.object({
     password     = enc,
   }), { max = 200 })),
   login = T.nullable(T.object({
-    username = nu_enc,
-    password = nu_enc,
-    totp     = nu_enc,
-    uris     = T.nullable(T.array(cipher_uri, { max = 100 })),
+    username             = nu_enc,
+    password             = nu_enc,
+    totp                 = nu_enc,
+    uris                 = T.nullable(T.array(cipher_uri, { max = 100 })),
+    passwordRevisionDate = T.nullable(T.iso8601()),
+    response             = nu_enc,
   })),
   card = T.nullable(T.object({
     cardholderName = nu_enc,
@@ -151,9 +164,46 @@ local cipher_body = T.object({
 })
 
 -- ---------------------------------------------------------------------------
+-- JWT claims schema for the Vaultwarden login token (LoginJwtClaims in auth.rs)
+-- Used on the /notifications/hub?access_token=... WebSocket endpoint.
+-- Signature verification is Vaultwarden's job; we validate structure only.
+-- ---------------------------------------------------------------------------
+local vw_access_token = T.jwt_claims({
+  nbf            = T.number({ integer=true }),
+  exp            = T.number({ integer=true }),
+  -- iss = "https://<host>|login" — the pipe+login suffix is Vaultwarden-specific
+  iss            = T.string({ max=256, match=[[^https?://[A-Za-z0-9\-._~:/?#\[\]@!$&'()*+,;=%]+\|login$]] }),
+  sub            = T.uuid(),
+  premium        = T.boolean(),
+  name           = T.string({ max=256 }),
+  email          = T.email(),
+  email_verified = T.boolean(),
+  sstamp         = T.uuid(),
+  device         = T.uuid(),
+  devicetype     = T.string({ max=32 }),  -- human-readable DeviceType name
+  client_id      = T.string({ max=16, enum={
+    ["browser"] = true,
+    ["web"]     = true,
+    ["desktop"] = true,
+    ["mobile"]  = true,
+    ["cli"]     = true,
+  }}),
+  scope = T.array(T.string({ max=32, enum={
+    ["api"]            = true,
+    ["offline_access"] = true,
+  }}), { max=5 }),
+  amr   = T.array(T.string({ max=64 }), { max=10 }),
+}, {
+  -- JWT header: {"typ":"JWT","alg":"RS256"}
+  typ = T.string({ enum={ ["JWT"]=true } }),
+  alg = T.string({ enum={ ["RS256"]=true } }),
+})
+
+-- ---------------------------------------------------------------------------
 return {
-  name = "vaultwarden",
-  mode = "log",   -- flip to "block" after validating against real traffic
+  name    = "vaultwarden",
+  mode    = "log",   -- flip to "block" after validating against real traffic
+  verbose = 2,
 
   defaults = {
     max_body = 5 * 1024 * 1024,  -- 5 MB; covers attachment uploads
@@ -164,7 +214,13 @@ return {
     -- Enforce a header name whitelist on every route.
     -- If running behind a reverse proxy, add T.common_proxy_headers():
     --   allowed_headers = T.merge_headers(T.common_request_headers(), T.common_proxy_headers()),
-    allowed_headers = T.common_request_headers(),
+    allowed_headers = T.merge_headers(T.common_request_headers(), {
+      "bitwarden-client-name",
+      "bitwarden-client-version",
+      "bitwarden-package-type",
+      "device-type",
+      "is-prerelease",
+    }),
 
     -- Validate header values on every route.
     headers = {
@@ -175,6 +231,23 @@ return {
       --   ua_cli()      -- bitwarden-cli
       --   ua_any()      -- all official clients combined
       ["User-Agent"] = ua_web(),
+      ["priority"]   = T.http_priority(),
+      ["sec-gpc"]    = T.sec_gpc(),
+      -- DeviceType enum (libs/common/src/enums/device-type.enum.ts): 0–26
+      ["device-type"]            = T.string({ max=2,  match=[[^(?:[0-9]|1[0-9]|2[0-6])$]] }),
+      -- Version string: YYYY.M.P  (e.g. 2026.5.1)
+      ["bitwarden-client-version"] = T.string({ max=32, match=[[^\d{4}\.\d{1,2}\.\d+$]] }),
+      -- Only sent as "1" on prerelease builds; absent on stable
+      ["is-prerelease"]          = T.string({ max=1,  enum={ ["1"]=true } }),
+      ["bitwarden-package-type"] = T.string({ max=32, enum={
+        ["Chrome Extension"]         = true,
+        ["Firefox Extension"]        = true,
+        ["Opera Extension"]          = true,
+        ["Edge Extension"]           = true,
+        ["Vivaldi Extension"]        = true,
+        ["Safari Extension"]         = true,
+        ["Unknown Browser Extension"]= true,
+      }}),
     },
   },
 
@@ -346,7 +419,8 @@ return {
     -- NOTIFICATIONS (WebSocket) ---------------------------------------------
     -- nginx handles the actual upgrade; we only check that the method is GET
 
-    { name = "notifications hub", method = "GET", path = [[^/notifications/hub$]] },
+    { name = "notifications hub", method = "GET", path = [[^/notifications/hub$]],
+      query = T.object({ access_token = vw_access_token }), no_body = true },
 
     -- ADMIN (IP-restricted to private networks) -----------------------------
 

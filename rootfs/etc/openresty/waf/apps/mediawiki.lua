@@ -32,8 +32,6 @@ local T = require "waf.types"
 local _mw_extra_headers = {
   "api-user-agent",
   "x-requested-with",
-  "sec-gpc",
-  "priority",
   "amp-cache-transform",
   "from",
 }
@@ -299,6 +297,8 @@ return {
       -- To restrict to browsers only, use:
       -- ["User-Agent"] = T.string({ max=512, match=[[Mozilla/5\.0]] }),
       ["User-Agent"] = T.string({ max=512 }),
+      ["priority"]   = T.http_priority(),
+      ["sec-gpc"]    = T.sec_gpc(),
     },
   },
 

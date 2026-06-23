@@ -15,31 +15,76 @@
 -- --------------------------------------------------------------------------------------
 
 
-local ngx = ngx
+local ngx   = ngx
+local cjson = require "cjson.safe"
 local T = {}
+
+-- base64url → standard base64, then decode (JWT uses base64url with no padding)
+local function b64url_decode(s)
+  s = s:gsub("%-", "+"):gsub("_", "/")
+  local pad = #s % 4
+  if pad == 2 then s = s .. "=="
+  elseif pad == 3 then s = s .. "="
+  end
+  return ngx.decode_base64(s)
+end
 
 local function fail(msg)
   return false, msg
 end
 
+-- Compact human-readable representation of a value for deny log messages.
+-- Strings are truncated at 64 chars (encrypted blobs are very long).
+local function val_str(v)
+  local t = type(v)
+  if t == "string" then
+    if #v > 64 then return "'" .. v:sub(1, 64) .. "...'" end
+    return "'" .. v .. "'"
+  elseif t == "number" or t == "boolean" then
+    return tostring(v)
+  elseif t == "table" then
+    local n = #v
+    return n > 0 and ("[array(" .. n .. ")]") or "[object]"
+  end
+  return tostring(v)
+end
+
+-- Validators read ngx.ctx.waf_verbose (set once by core.run) to decide
+-- whether to include the failing value in the error message (verbose >= 2).
+
 function T.string(opts)
   opts = opts or {}
   return function(v, path)
-    if type(v) ~= "string" then return fail(path .. " must be a string") end
+    local verbose = ngx.ctx.waf_verbose or 0
+    if type(v) ~= "string" then
+      local msg = path .. " must be a string"
+      if verbose >= 2 then msg = msg .. " (got: " .. val_str(v) .. ")" end
+      return fail(msg)
+    end
     if opts.min and #v < opts.min then
-      return fail(path .. " too short (min " .. opts.min .. ")")
+      local msg = path .. " too short (min " .. opts.min .. ")"
+      if verbose >= 2 then msg = msg .. " (value: " .. val_str(v) .. ")" end
+      return fail(msg)
     end
     if opts.max and #v > opts.max then
-      return fail(path .. " too long (max " .. opts.max .. ")")
+      local msg = path .. " too long (max " .. opts.max .. ")"
+      if verbose >= 2 then msg = msg .. " (value: " .. val_str(v) .. ")" end
+      return fail(msg)
     end
     if opts.match and not ngx.re.find(v, opts.match, "jo") then
-      return fail(path .. " invalid format")
+      local msg = path .. " invalid format"
+      if verbose >= 2 then msg = msg .. " (value: " .. val_str(v) .. ")" end
+      return fail(msg)
     end
     if opts.not_match and ngx.re.find(v, opts.not_match, "jo") then
-      return fail(path .. " contains forbidden characters")
+      local msg = path .. " contains forbidden characters"
+      if verbose >= 2 then msg = msg .. " (value: " .. val_str(v) .. ")" end
+      return fail(msg)
     end
     if opts.enum and not opts.enum[v] then
-      return fail(path .. " invalid value")
+      local msg = path .. " invalid value"
+      if verbose >= 2 then msg = msg .. " (value: " .. val_str(v) .. ")" end
+      return fail(msg)
     end
     return true
   end
@@ -48,15 +93,26 @@ end
 function T.number(opts)
   opts = opts or {}
   return function(v, path)
-    if type(v) ~= "number" then return fail(path .. " must be a number") end
+    local verbose = ngx.ctx.waf_verbose or 0
+    if type(v) ~= "number" then
+      local msg = path .. " must be a number"
+      if verbose >= 2 then msg = msg .. " (got: " .. val_str(v) .. ")" end
+      return fail(msg)
+    end
     if opts.integer and v % 1 ~= 0 then
-      return fail(path .. " must be an integer")
+      local msg = path .. " must be an integer"
+      if verbose >= 2 then msg = msg .. " (value: " .. val_str(v) .. ")" end
+      return fail(msg)
     end
     if opts.min and v < opts.min then
-      return fail(path .. " too small (min " .. opts.min .. ")")
+      local msg = path .. " too small (min " .. opts.min .. ")"
+      if verbose >= 2 then msg = msg .. " (value: " .. val_str(v) .. ")" end
+      return fail(msg)
     end
     if opts.max and v > opts.max then
-      return fail(path .. " too large (max " .. opts.max .. ")")
+      local msg = path .. " too large (max " .. opts.max .. ")"
+      if verbose >= 2 then msg = msg .. " (value: " .. val_str(v) .. ")" end
+      return fail(msg)
     end
     return true
   end
@@ -64,7 +120,12 @@ end
 
 function T.boolean()
   return function(v, path)
-    if type(v) ~= "boolean" then return fail(path .. " must be a boolean") end
+    local verbose = ngx.ctx.waf_verbose or 0
+    if type(v) ~= "boolean" then
+      local msg = path .. " must be a boolean"
+      if verbose >= 2 then msg = msg .. " (got: " .. val_str(v) .. ")" end
+      return fail(msg)
+    end
     return true
   end
 end
@@ -103,9 +164,38 @@ function T.array(inner, opts)
     if opts.max and n > opts.max then
       return fail(path .. " array too long (max " .. opts.max .. ")")
     end
+    local log_mode = ngx.ctx.waf_log_mode
+    local errors = log_mode and {}
     for i = 1, n do
       local ok, err = inner(v[i], path .. "[" .. i .. "]")
-      if not ok then return false, err end
+      if not ok then
+        if log_mode then errors[#errors + 1] = err
+        else return false, err end
+      end
+    end
+    if log_mode and errors and #errors > 0 then
+      return false, table.concat(errors, "\n")
+    end
+    return true
+  end
+end
+
+-- Validates a table with arbitrary string keys, all mapped to the same value type.
+-- Use when keys are dynamic (e.g. IDs) and only the value shape is known.
+function T.dict(value_validator)
+  return function(v, path)
+    if type(v) ~= "table" then return fail(path .. " must be an object") end
+    local log_mode = ngx.ctx.waf_log_mode
+    local errors = log_mode and {}
+    for key, val in pairs(v) do
+      local ok, err = value_validator(val, path .. "." .. tostring(key))
+      if not ok then
+        if log_mode then errors[#errors + 1] = err
+        else return false, err end
+      end
+    end
+    if log_mode and errors and #errors > 0 then
+      return false, table.concat(errors, "\n")
     end
     return true
   end
@@ -114,26 +204,126 @@ end
 -- schema: { key = validator, ... }
 -- opts.required: { key = true, ... } for mandatory keys
 -- unknown keys are always rejected
+-- All violations are collected and returned as a newline-joined string so that
+-- callers (check_body, check_query) can log each one separately via deny().
 function T.object(schema, opts)
   opts = opts or {}
   return function(v, path)
+    local verbose = ngx.ctx.waf_verbose or 0
     if type(v) ~= "table" then return fail(path .. " must be an object") end
+    local log_mode = ngx.ctx.waf_log_mode
+    local errors = log_mode and {}
     for key, _ in pairs(v) do
       if not schema[key] then
-        return fail(path .. "." .. tostring(key) .. " is not an allowed key")
+        local msg = path .. "." .. tostring(key) .. " is not an allowed key"
+        if verbose >= 2 then msg = msg .. " (value: " .. val_str(v[key]) .. ")" end
+        if log_mode then errors[#errors + 1] = msg
+        else return fail(msg) end
       end
     end
     for key, validator in pairs(schema) do
       local value = v[key]
       if value ~= nil then
         local ok, err = validator(value, path .. "." .. key)
-        if not ok then return false, err end
+        if not ok then
+          if log_mode then errors[#errors + 1] = err
+          else return false, err end
+        end
       elseif opts.required and opts.required[key] then
-        return fail(path .. "." .. key .. " is required")
+        local msg = path .. "." .. key .. " is required"
+        if log_mode then errors[#errors + 1] = msg
+        else return fail(msg) end
       end
     end
+    if log_mode and #errors > 0 then return false, table.concat(errors, "\n") end
     return true
   end
+end
+
+-- ---------------------------------------------------------------------------
+-- Common format validators
+-- ---------------------------------------------------------------------------
+
+-- Semantic version (semver.org): MAJOR.MINOR.PATCH[-prerelease][+build]
+function T.semver()
+  return T.string({
+    max   = 128,
+    match = [[^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$]],
+  })
+end
+
+-- HTTP or HTTPS URL (RFC 3986 character set)
+-- unreserved: A-Za-z0-9 - . _ ~
+-- gen-delims: : / ? # [ ] @
+-- sub-delims: ! $ & ' ( ) * + , ; =
+-- percent-encoding: %
+function T.url()
+  return T.string({
+    max   = 2048,
+    match = [[^https?://[A-Za-z0-9\-._~:/?#\[\]@!$&'()*+,;=%]+$]],
+  })
+end
+
+-- JSON Web Token (RFC 7519): three base64url segments separated by dots.
+-- Use T.jwt_claims(schema) instead when you want to validate payload contents.
+function T.jwt()
+  return T.string({
+    max   = 8192,
+    match = [[^[A-Za-z0-9\-_]+\.[A-Za-z0-9\-_]+\.[A-Za-z0-9\-_]*$]],
+  })
+end
+
+-- Like T.jwt() but also decodes and validates the header and/or payload.
+-- T.jwt_claims(claims_schema)               -- validate payload only
+-- T.jwt_claims(claims_schema, header_schema) -- validate both
+function T.jwt_claims(claims_schema, header_schema)
+  local claims_validator = T.object(claims_schema)
+  local header_validator = header_schema and T.object(header_schema)
+  return function(v, path)
+    if type(v) ~= "string" then return false, path .. " must be a string" end
+    local dot1 = v:find(".", 1, true)
+    if not dot1 then return false, path .. ": not a valid JWT" end
+    local dot2 = v:find(".", dot1 + 1, true)
+    if not dot2 then return false, path .. ": not a valid JWT" end
+    if header_validator then
+      local header_json = b64url_decode(v:sub(1, dot1 - 1))
+      if not header_json then
+        return false, path .. ": JWT header is not valid base64url"
+      end
+      local header, err = cjson.decode(header_json)
+      if not header then
+        return false, path .. ": JWT header is not valid JSON: " .. tostring(err)
+      end
+      local ok, herr = header_validator(header, path .. "[header]")
+      if not ok then return false, herr end
+    end
+    local payload_json = b64url_decode(v:sub(dot1 + 1, dot2 - 1))
+    if not payload_json then
+      return false, path .. ": JWT payload is not valid base64url"
+    end
+    local claims, err = cjson.decode(payload_json)
+    if not claims then
+      return false, path .. ": JWT payload is not valid JSON: " .. tostring(err)
+    end
+    return claims_validator(claims, path .. "[claims]")
+  end
+end
+
+-- BCP 47 language tag: e.g. "en", "en-US", "zh-Hant", "sr-Latn-CS"
+function T.lang_tag()
+  return T.string({
+    max   = 35,
+    match = [[^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$]],
+  })
+end
+
+-- Standard base64-encoded data (RFC 4648). Pass opts.max to cap length.
+function T.base64(opts)
+  opts = opts or {}
+  return T.string({
+    max   = opts.max or 65536,
+    match = [[^[A-Za-z0-9+/]*={0,2}$]],
+  })
 end
 
 -- ---------------------------------------------------------------------------
@@ -151,6 +341,8 @@ local _common_request_headers = {
   "connection",
   "cookie",
   "dnt",
+  "priority",
+  "sec-gpc",
   "if-match",
   "if-modified-since",
   "if-none-match",
@@ -249,8 +441,36 @@ end
 -- Authorization header helpers
 -- ---------------------------------------------------------------------------
 
+-- ISO 8601 UTC datetime: YYYY-MM-DDTHH:MM:SS[.fractional]Z
+function T.iso8601()
+  return T.string({ max=32, match=[[^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$]] })
+end
+
 function T.bearer_token()
   return T.string({ max = 2048, match = [[^Bearer [A-Za-z0-9\-._~+/]+=*$]] })
+end
+
+-- ---------------------------------------------------------------------------
+-- Sec-GPC header (Global Privacy Control — https://privacycg.github.io/gpc-spec/)
+-- Browsers send this only when the user has opted in; the spec mandates value "1".
+-- ---------------------------------------------------------------------------
+function T.sec_gpc()
+  return T.string({ max=1, enum={ ["1"]=true } })
+end
+
+-- ---------------------------------------------------------------------------
+-- HTTP Priority header (RFC 9218 Extensible Prioritization Scheme)
+-- Structured Field Dictionary with two known members:
+--   u=<0-7>  urgency (integer)
+--   i        incremental flag; bare "i" means true, "i=?1"/"i=?0" explicit
+-- Either member is optional; both orders are permitted.
+-- Examples: "u=3"  "u=5, i"  "u=0, i=?1"  "i"  "i=?0, u=7"
+-- ---------------------------------------------------------------------------
+function T.http_priority()
+  return T.string({
+    max   = 32,
+    match = [[^(?:u=[0-7](?:,\s*i(?:=\?[01])?)?|i(?:=\?[01])?(?:,\s*u=[0-7])?)$]],
+  })
 end
 
 return T
