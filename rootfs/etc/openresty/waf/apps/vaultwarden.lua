@@ -76,6 +76,14 @@ local nu_bool = T.nullable(T.boolean())
 local nu_num  = T.nullable(T.number({ integer = true }))
 local nu_sml  = T.nullable(sml)
 
+-- Some Bitwarden fields send "" instead of null when unset (e.g. folderId
+-- on a cipher with no folder).  T.nullable only passes nil/ngx.null; this
+-- variant also accepts the empty string.
+local nu_uuid_or_empty = function(v, path)
+  if v == nil or v == ngx.null or v == "" then return true end
+  return T.uuid()(v, path)
+end
+
 -- UUID regex fragment reused in path patterns
 local U = "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
 
@@ -100,12 +108,31 @@ local cipher_field = T.object({
   response = nu_enc,
 })
 
+-- Passkey credential stored inside a login cipher (Bitwarden SDK: Fido2Key)
+-- All fields are encrypted blobs; none are required.
+local fido2_credential = T.object({
+  credentialId    = nu_enc,
+  keyType         = nu_enc,
+  keyAlgorithm    = nu_enc,
+  keyCurve        = nu_enc,
+  keyValue        = nu_enc,
+  rpId            = nu_enc,
+  rpName          = nu_enc,
+  counter         = nu_enc,
+  userHandle      = nu_enc,
+  userName        = nu_enc,
+  userDisplayName = nu_enc,
+  discoverable    = nu_enc,
+  creationDate    = nu_enc,
+  response        = nu_enc,
+})
+
 local cipher_body = T.object({
   type            = T.number({ integer = true, min = 1, max = 4 }),
   name            = enc,
   notes           = nu_enc,
   favorite        = nu_bool,
-  folderId        = nu_uuid,
+  folderId        = nu_uuid_or_empty,
   organizationId  = nu_uuid,
   collectionIds   = T.nullable(T.array(T.uuid(), { max = 200 })),
   key                   = nu_enc,
@@ -123,7 +150,7 @@ local cipher_body = T.object({
   reprompt        = T.nullable(T.number({ integer = true, min = 0, max = 1 })),
   fields          = T.nullable(T.array(cipher_field, { max = 100 })),
   passwordHistory = T.nullable(T.array(T.object({
-    lastUsedDate = T.string({ max = 64 }),
+    lastUsedDate = T.iso8601(),
     password     = enc,
   }), { max = 200 })),
   login = T.nullable(T.object({
@@ -132,6 +159,7 @@ local cipher_body = T.object({
     totp                 = nu_enc,
     uris                 = T.nullable(T.array(cipher_uri, { max = 100 })),
     passwordRevisionDate = T.nullable(T.iso8601()),
+    fido2Credentials     = T.nullable(T.array(fido2_credential, { max = 50 })),
     response             = nu_enc,
   })),
   card = T.nullable(T.object({
@@ -185,10 +213,11 @@ local cipher_ids_body = T.object({
 -- fileSize is NumberOrString in Rust but Bitwarden clients send it as a number.
 -- ---------------------------------------------------------------------------
 local attachment_init_body = T.object({
-  key          = enc,
-  fileName     = enc,
-  fileSize     = T.number({ integer=true, min=0, max=536870912 }),  -- 512 MB ceiling
-  adminRequest = nu_bool,
+  key                   = enc,
+  fileName              = enc,
+  fileSize              = T.number({ integer=true, min=0, max=536870912 }),  -- 512 MB ceiling
+  adminRequest          = nu_bool,
+  lastKnownRevisionDate = T.nullable(T.iso8601()),
 })
 
 -- ---------------------------------------------------------------------------
@@ -220,6 +249,31 @@ local send_body = T.object({
     sizeName = T.nullable(T.string({ max=32 })),
   })),
 })
+
+-- ---------------------------------------------------------------------------
+-- Shared auth-verification body: one of the two fields must be provided.
+-- Used by security-stamp, verify-password, and all 2fa get-* endpoints.
+-- (src/api/mod.rs: PasswordOrOtpData)
+-- ---------------------------------------------------------------------------
+local password_or_otp = T.object({
+  masterPasswordHash = T.nullable(med),
+  otp                = T.nullable(T.string({ max=16 })),
+})
+
+-- ---------------------------------------------------------------------------
+-- KDF parameters — nested inside ChangeKdfData
+-- Primary wire names are camelCase; serde aliases (kdfType, iterations, etc.)
+-- are for backwards-compat deserialization only; clients send the primary names.
+-- ---------------------------------------------------------------------------
+local kdf_data = T.object({
+  kdf            = T.number({ integer=true, min=0, max=1 }),  -- 0=PBKDF2, 1=Argon2id
+  kdfIterations  = T.number({ integer=true, min=1, max=2000000 }),
+  kdfMemory      = T.nullable(T.number({ integer=true, min=1, max=1048576 })),
+  kdfParallelism = T.nullable(T.number({ integer=true, min=1, max=16 })),
+})
+
+-- Folder body: just an encrypted name
+local folder_body = T.object({ name = enc })
 
 -- ---------------------------------------------------------------------------
 -- JWT claims schema for the Vaultwarden login token (LoginJwtClaims in auth.rs)
@@ -258,6 +312,21 @@ local vw_access_token = T.jwt_claims({
 })
 
 -- ---------------------------------------------------------------------------
+-- JWT for the attachment file-download endpoint
+-- iss = "https://<host>|file_download"
+-- ---------------------------------------------------------------------------
+local vw_file_token = T.jwt_claims({
+  nbf     = T.number({ integer=true }),
+  exp     = T.number({ integer=true }),
+  iss     = T.string({ max=256, match=[[^https?://[A-Za-z0-9\-._~:/?#\[\]@!$&'()*+,;=%]+\|file_download$]] }),
+  sub     = T.uuid(),
+  file_id = T.string({ max=64 }),
+}, {
+  typ = T.string({ enum={ ["JWT"]=true } }),
+  alg = T.string({ enum={ ["RS256"]=true } }),
+})
+
+-- ---------------------------------------------------------------------------
 return {
   name    = "vaultwarden",
   mode    = "log",   -- flip to "block" after validating against real traffic
@@ -278,6 +347,8 @@ return {
       "bitwarden-package-type",
       "device-type",
       "device-identifier",
+      "x-device-identifier",
+      "x-request-email",
       "is-prerelease",
     }),
 
@@ -298,8 +369,11 @@ return {
       ["bitwarden-client-version"] = T.string({ max=32, match=[[^\d{4}\.\d{1,2}\.\d+$]] }),
       -- Only sent as "1" on prerelease builds; absent on stable
       ["is-prerelease"]          = T.string({ max=1,  enum={ ["1"]=true } }),
-      -- Device GUID sent by all official clients to identify the registered device
+      -- Device GUIDs sent by official clients to identify the registered device
       ["device-identifier"]      = T.uuid(),
+      ["x-device-identifier"]    = T.uuid(),
+      -- Base64-encoded email address sent by the web vault on some requests
+      ["x-request-email"]        = T.base64({ max=256 }),
       ["bitwarden-package-type"] = T.string({ max=32, enum={
         ["Chrome Extension"]         = true,
         ["Firefox Extension"]        = true,
@@ -325,20 +399,28 @@ return {
         grant_type        = T.string({ enum = { password = true, refresh_token = true, client_credentials = true } }),
         username          = T.nullable(T.email()),
         password          = T.nullable(med),
-        scope             = nu_sml,
-        client_id         = nu_sml,
+        -- "api" or "api offline_access"
+        scope             = T.nullable(T.string({ max=32, match=[[^api( offline_access)?$]] })),
+        client_id         = T.nullable(T.string({ max=16, enum={
+          ["browser"]   = true,
+          ["web"]       = true,
+          ["desktop"]   = true,
+          ["mobile"]    = true,
+          ["cli"]       = true,
+          ["connector"] = true,
+        }})),
         client_secret     = nu_sml,
-        refresh_token     = T.nullable(med),
+        refresh_token     = T.nullable(T.jwt()),
         -- form-encoded: values arrive as strings, not numbers
         deviceType        = T.nullable(T.string({ max=2, match=[[^(?:[0-9]|[12][0-9]|30)$]] })),
-        deviceIdentifier  = nu_sml,
+        deviceIdentifier  = T.nullable(T.uuid()),
         deviceName        = nu_sml,
         devicePushToken   = nu_sml,
-        twoFactorToken    = nu_sml,
+        twoFactorToken    = T.nullable(T.string({ max=4096 })),  -- remember-me JWT, TOTP, WebAuthn, etc.
         twoFactorProvider = T.nullable(T.string({ max=2, match=[[^(?:[0-9]|10)$]] })),
         twoFactorRemember = T.nullable(T.string({ max=1, match=[[^[01]$]] })),
         captchaResponse   = nu_sml,
-        authRequest       = T.nullable(T.string({ max = 512 })),
+        authRequest       = T.nullable(T.uuid()),
       }),
     },
 
@@ -385,6 +467,12 @@ return {
 
     -- ATTACHMENTS -----------------------------------------------------------
 
+    -- Direct attachment download: GET /attachments/{cipher_uuid}/{file_id}?token=<jwt>
+    { name = "attachment download", method = "GET",
+      path  = "^/attachments/" .. U .. "/" .. FILEID .. "$",
+      query = T.object({ token = vw_file_token }),
+      no_body = true },
+
     { name = "attachment create-v2", method = "POST",   path = "^/api/ciphers/" .. U .. "/attachment/v2$",
       content_type = "application/json", json = attachment_init_body },
     { name = "attachment get",       method = "GET",    path = "^/api/ciphers/" .. U .. "/attachment/" .. FILEID .. "$", no_body = true },
@@ -395,9 +483,9 @@ return {
     -- FOLDERS ---------------------------------------------------------------
 
     { name = "folder list",   method = "GET",    path = [[^/api/folders$]],           no_body = true },
-    { name = "folder create", method = "POST",   path = [[^/api/folders$]],           content_type = "application/json" },
+    { name = "folder create", method = "POST",   path = [[^/api/folders$]],           content_type = "application/json", json = folder_body },
     { name = "folder get",    method = "GET",    path = "^/api/folders/" .. U .. "$", no_body = true },
-    { name = "folder update", method = "PUT",    path = "^/api/folders/" .. U .. "$", content_type = "application/json" },
+    { name = "folder update", method = "PUT",    path = "^/api/folders/" .. U .. "$", content_type = "application/json", json = folder_body },
     { name = "folder delete", method = "DELETE", path = "^/api/folders/" .. U .. "$", no_body = true },
 
     -- SENDS -----------------------------------------------------------------
@@ -408,7 +496,7 @@ return {
     { name = "send create-file", method = "POST",   path = [[^/api/sends/file/v2$]],
       content_type = "application/json", json = send_body },
     { name = "send get",         method = "GET",    path = "^/api/sends/" .. U .. "$",   no_body = true },
-    { name = "send update",      method = "PUT",    path = "^/api/sends/" .. U .. "$",   content_type = "application/json" },
+    { name = "send update",      method = "PUT",    path = "^/api/sends/" .. U .. "$",   content_type = "application/json", json = send_body },
     { name = "send delete",      method = "DELETE", path = "^/api/sends/" .. U .. "$",   no_body = true },
     { name = "send file upload", method = "POST",   path = "^/api/sends/" .. U .. "/file/" .. FILEID .. "$",
       content_type = "multipart/form-data" },
@@ -420,14 +508,50 @@ return {
     { name = "profile get",        method = "GET",    path = [[^/api/accounts/profile$]],           no_body = true },
     { name = "profile update",     method = "PUT",    path = [[^/api/accounts/profile$]],           content_type = "application/json" },
     { name = "avatar update",      method = "PUT",    path = [[^/api/accounts/avatar$]],            content_type = "application/json" },
-    { name = "password change",    method = "POST",   path = [[^/api/accounts/password$]],          content_type = "application/json" },
-    { name = "kdf change",         method = "POST",   path = [[^/api/accounts/kdf$]],               content_type = "application/json" },
-    { name = "key update",         method = "POST",   path = [[^/api/accounts/key$]],               content_type = "application/json" },
-    { name = "keys update",        method = "POST",   path = [[^/api/accounts/keys$]],              content_type = "application/json" },
-    { name = "security stamp",     method = "POST",   path = [[^/api/accounts/security-stamp$]],    content_type = "application/json" },
-    { name = "verify password",    method = "POST",   path = [[^/api/accounts/verify-password$]],   content_type = "application/json" },
+    { name = "password change", method = "POST", path = [[^/api/accounts/password$]],
+      content_type = "application/json",
+      json = T.object({
+        masterPasswordHash    = med,
+        newMasterPasswordHash = med,
+        masterPasswordHint    = T.nullable(sml),
+        key                   = enc,
+      }) },
+    { name = "kdf change", method = "POST", path = [[^/api/accounts/kdf$]],
+      content_type = "application/json",
+      json = T.object({
+        masterPasswordHash    = med,
+        newMasterPasswordHash = med,
+        key                   = enc,
+        authenticationData = T.object({
+          salt = sml,
+          kdf  = kdf_data,
+          masterPasswordAuthenticationHash = med,
+        }),
+        unlockData = T.object({
+          salt                    = sml,
+          kdf                     = kdf_data,
+          masterKeyWrappedUserKey = enc,
+        }),
+      }) },
+    { name = "key update",  method = "POST", path = [[^/api/accounts/key$]],  content_type = "application/json" },
+    { name = "keys update", method = "POST", path = [[^/api/accounts/keys$]],
+      content_type = "application/json",
+      json = T.object({
+        encryptedPrivateKey = enc,
+        publicKey           = T.string({ max=4096 }),
+      }) },
+    { name = "security stamp",  method = "POST", path = [[^/api/accounts/security-stamp$]],
+      content_type = "application/json", json = password_or_otp },
+    { name = "verify password", method = "POST", path = [[^/api/accounts/verify-password$]],
+      content_type = "application/json",
+      json = T.object({ masterPasswordHash = med }) },
     { name = "verify email",       method = "POST",   path = [[^/api/accounts/verify-email$]],         no_body = true },
-    { name = "verify email token", method = "POST",   path = [[^/api/accounts/verify-email-token$]],  content_type = "application/json" },
+    { name = "verify email token", method = "POST", path = [[^/api/accounts/verify-email-token$]],
+      content_type = "application/json",
+      json = T.object({
+        userId = T.uuid(),
+        token  = T.string({ max=1024 }),
+      }) },
     { name = "delete account",     method = "DELETE", path = [[^/api/accounts$]],
       content_type = "application/json",
       json = T.object({
@@ -437,14 +561,23 @@ return {
 
     -- TWO FACTOR ------------------------------------------------------------
 
-    { name = "2fa list",          method = "GET",  path = [[^/api/two-factor$]],                   no_body = true },
-    { name = "2fa get-recover",   method = "POST", path = [[^/api/two-factor/get-recover$]],       content_type = "application/json" },
-    { name = "2fa recover",       method = "POST", path = [[^/api/two-factor/recover$]],           content_type = "application/json" },
-    { name = "2fa get-webauthn",  method = "POST", path = [[^/api/two-factor/get-webauthn$]],      content_type = "application/json" },
-    { name = "2fa get-duo",       method = "POST", path = [[^/api/two-factor/get-duo$]],           content_type = "application/json" },
-    { name = "2fa get-totp",      method = "POST", path = [[^/api/two-factor/get-authenticator$]], content_type = "application/json" },
-    { name = "2fa get-yubikey",   method = "POST", path = [[^/api/two-factor/get-yubikey$]],       content_type = "application/json" },
-    { name = "2fa get-email",     method = "POST", path = [[^/api/two-factor/get-email$]],         content_type = "application/json" },
+    { name = "2fa list",         method = "GET",  path = [[^/api/two-factor$]], no_body = true },
+    -- All 2fa get-* endpoints require auth verification (PasswordOrOtpData)
+    { name = "2fa get-recover",  method = "POST", path = [[^/api/two-factor/get-recover$]],       content_type = "application/json", json = password_or_otp },
+    { name = "2fa get-webauthn", method = "POST", path = [[^/api/two-factor/get-webauthn$]],      content_type = "application/json", json = password_or_otp },
+    { name = "2fa get-duo",      method = "POST", path = [[^/api/two-factor/get-duo$]],           content_type = "application/json", json = password_or_otp },
+    { name = "2fa get-totp",     method = "POST", path = [[^/api/two-factor/get-authenticator$]], content_type = "application/json", json = password_or_otp },
+    { name = "2fa get-yubikey",  method = "POST", path = [[^/api/two-factor/get-yubikey$]],       content_type = "application/json", json = password_or_otp },
+    { name = "2fa get-email",    method = "POST", path = [[^/api/two-factor/get-email$]],         content_type = "application/json", json = password_or_otp },
+    -- Recovery is handled via the login form (twoFactorProvider=6); this standalone
+    -- endpoint is not implemented in Vaultwarden but exists on the official server.
+    { name = "2fa recover",      method = "POST", path = [[^/api/two-factor/recover$]],
+      content_type = "application/json",
+      json = T.object({
+        masterPasswordHash = T.nullable(med),
+        recoveryCode       = T.nullable(T.string({ max=32 })),
+        email              = T.nullable(T.email()),
+      }) },
     { name = "2fa send-email",    method = "POST", path = [[^/api/two-factor/send-email-login$]],
       content_type = "application/json",
       json = T.object({
