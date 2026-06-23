@@ -86,8 +86,10 @@ local FILEID = "[a-zA-Z0-9_-]{1,64}"
 -- JSON schemas for high-value endpoints
 -- ---------------------------------------------------------------------------
 local cipher_uri = T.object({
-  uri   = nu_enc,
-  match = T.nullable(T.number({ integer = true, min = 0, max = 5 })),
+  uri         = nu_enc,
+  match       = T.nullable(T.number({ integer = true, min = 0, max = 5 })),
+  uriChecksum = nu_enc,
+  response    = nu_enc,
 })
 
 local cipher_field = T.object({
@@ -95,6 +97,7 @@ local cipher_field = T.object({
   name     = nu_enc,
   value    = nu_enc,
   linkedId = nu_num,
+  response = nu_enc,
 })
 
 local cipher_body = T.object({
@@ -105,6 +108,7 @@ local cipher_body = T.object({
   folderId        = nu_uuid,
   organizationId  = nu_uuid,
   collectionIds   = T.nullable(T.array(T.uuid(), { max = 200 })),
+  key                   = nu_enc,
   encryptedFor          = nu_enc,
   lastKnownRevisionDate = T.nullable(T.iso8601()),
   -- deprecated: id → encrypted filename; superseded by attachments2
@@ -137,6 +141,7 @@ local cipher_body = T.object({
     expMonth       = nu_enc,
     expYear        = nu_enc,
     code           = nu_enc,
+    response       = nu_enc,
   })),
   identity = T.nullable(T.object({
     title          = nu_enc,
@@ -157,9 +162,11 @@ local cipher_body = T.object({
     username       = nu_enc,
     passportNumber = nu_enc,
     licenseNumber  = nu_enc,
+    response       = nu_enc,
   })),
   secureNote = T.nullable(T.object({
-    type = T.number({ integer = true, min = 0, max = 0 }),
+    type     = T.number({ integer = true, min = 0, max = 0 }),
+    response = nu_enc,
   })),
 })
 
@@ -291,7 +298,9 @@ return {
     -- VAULT SYNC ------------------------------------------------------------
 
     { name = "sync",          method = "GET", path = [[^/api/sync$]],                   no_body = true },
-    { name = "config",        method = "GET", path = [[^/api/config$]],                 no_body = true },
+    { name = "config",        method = "GET", path = [[^/api/config$]],                 no_body = true,
+      extra_headers = { "device-identifier" },
+      headers       = { ["device-identifier"] = T.uuid() } },
     { name = "revision-date", method = "GET", path = [[^/api/accounts/revision-date$]], no_body = true },
 
     -- CIPHERS ---------------------------------------------------------------
