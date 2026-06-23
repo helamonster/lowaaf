@@ -226,6 +226,7 @@ return {
       "bitwarden-client-version",
       "bitwarden-package-type",
       "device-type",
+      "device-identifier",
       "is-prerelease",
     }),
 
@@ -246,6 +247,8 @@ return {
       ["bitwarden-client-version"] = T.string({ max=32, match=[[^\d{4}\.\d{1,2}\.\d+$]] }),
       -- Only sent as "1" on prerelease builds; absent on stable
       ["is-prerelease"]          = T.string({ max=1,  enum={ ["1"]=true } }),
+      -- Device GUID sent by all official clients to identify the registered device
+      ["device-identifier"]      = T.uuid(),
       ["bitwarden-package-type"] = T.string({ max=32, enum={
         ["Chrome Extension"]         = true,
         ["Firefox Extension"]        = true,
@@ -275,13 +278,14 @@ return {
         client_id         = nu_sml,
         client_secret     = nu_sml,
         refresh_token     = T.nullable(med),
-        deviceType        = T.nullable(T.number({ integer = true, min = 0, max = 30 })),
+        -- form-encoded: values arrive as strings, not numbers
+        deviceType        = T.nullable(T.string({ max=2, match=[[^(?:[0-9]|[12][0-9]|30)$]] })),
         deviceIdentifier  = nu_sml,
         deviceName        = nu_sml,
         devicePushToken   = nu_sml,
         twoFactorToken    = nu_sml,
-        twoFactorProvider = T.nullable(T.number({ integer = true, min = 0, max = 10 })),
-        twoFactorRemember = T.nullable(T.number({ integer = true, min = 0, max = 1 })),
+        twoFactorProvider = T.nullable(T.string({ max=2, match=[[^(?:[0-9]|10)$]] })),
+        twoFactorRemember = T.nullable(T.string({ max=1, match=[[^[01]$]] })),
         captchaResponse   = nu_sml,
         authRequest       = T.nullable(T.string({ max = 512 })),
       }),
@@ -298,9 +302,7 @@ return {
     -- VAULT SYNC ------------------------------------------------------------
 
     { name = "sync",          method = "GET", path = [[^/api/sync$]],                   no_body = true },
-    { name = "config",        method = "GET", path = [[^/api/config$]],                 no_body = true,
-      extra_headers = { "device-identifier" },
-      headers       = { ["device-identifier"] = T.uuid() } },
+    { name = "config",        method = "GET", path = [[^/api/config$]],                 no_body = true },
     { name = "revision-date", method = "GET", path = [[^/api/accounts/revision-date$]], no_body = true },
 
     -- CIPHERS ---------------------------------------------------------------
