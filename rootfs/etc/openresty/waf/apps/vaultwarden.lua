@@ -128,7 +128,10 @@ local fido2_credential = T.object({
 })
 
 local cipher_body = T.object({
-  type            = T.number({ integer = true, min = 1, max = 4 }),
+  -- type 5 = SshKey (added in Bitwarden SDK ~2024)
+  type            = T.number({ integer = true, min = 1, max = 5 }),
+  -- id is present in share/import contexts (the cipher's existing UUID)
+  id              = nu_uuid,
   name            = enc,
   notes           = nu_enc,
   favorite        = nu_bool,
@@ -159,6 +162,7 @@ local cipher_body = T.object({
     totp                 = nu_enc,
     uris                 = T.nullable(T.array(cipher_uri, { max = 100 })),
     passwordRevisionDate = T.nullable(T.iso8601()),
+    autofillOnPageLoad   = nu_bool,
     fido2Credentials     = T.nullable(T.array(fido2_credential, { max = 50 })),
     response             = nu_enc,
   })),
@@ -196,6 +200,13 @@ local cipher_body = T.object({
     type     = T.number({ integer = true, min = 0, max = 0 }),
     response = nu_enc,
   })),
+  sshKey = T.nullable(T.object({
+    privateKey     = nu_enc,
+    publicKey      = nu_enc,
+    keyFingerprint = nu_enc,
+    response       = nu_enc,
+  })),
+  archivedDate = T.nullable(T.iso8601()),
 })
 
 -- ---------------------------------------------------------------------------
@@ -396,7 +407,7 @@ return {
       path         = [[^/identity/connect/token$]],
       content_type = "application/x-www-form-urlencoded",
       form = T.object({
-        grant_type        = T.string({ enum = { password = true, refresh_token = true, client_credentials = true } }),
+        grant_type        = T.string({ enum = { password = true, refresh_token = true, client_credentials = true, authorization_code = true } }),
         username          = T.nullable(T.email()),
         password          = T.nullable(med),
         -- "api" or "api offline_access"
@@ -421,6 +432,9 @@ return {
         twoFactorRemember = T.nullable(T.string({ max=1, match=[[^[01]$]] })),
         captchaResponse   = nu_sml,
         authRequest       = T.nullable(T.uuid()),
+        -- SSO / OIDC fields (grant_type="authorization_code")
+        code              = T.nullable(T.string({ max=1024 })),
+        code_verifier     = T.nullable(T.string({ max=256 })),
       }),
     },
 
@@ -434,7 +448,9 @@ return {
 
     -- VAULT SYNC ------------------------------------------------------------
 
-    { name = "sync",          method = "GET", path = [[^/api/sync$]],                   no_body = true },
+    { name = "tasks",         method = "GET", path = [[^/api/tasks$]],                  no_body = true },
+    { name = "sync", method = "GET", path = [[^/api/sync$]], no_body = true,
+      query = T.object({ excludeDomains = T.nullable(T.string({ max=5, match=[[^(?:true|false)?$]] })) }) },
     { name = "config",        method = "GET", path = [[^/api/config$]],                 no_body = true },
     { name = "revision-date", method = "GET", path = [[^/api/accounts/revision-date$]], no_body = true },
 
@@ -456,14 +472,42 @@ return {
       json         = cipher_body,
     },
     { name = "cipher get",         method = "GET",    path = "^/api/ciphers/" .. U .. "$",           no_body = true },
+    { name = "cipher admin get",   method = "GET",    path = "^/api/ciphers/" .. U .. "/admin$",     no_body = true },
     { name = "cipher delete",      method = "DELETE", path = "^/api/ciphers/" .. U .. "$",           no_body = true },
     { name = "cipher soft-delete", method = "PUT",    path = "^/api/ciphers/" .. U .. "/delete$",    no_body = true },
     { name = "cipher restore",     method = "PUT",    path = "^/api/ciphers/" .. U .. "/restore$",   no_body = true },
-    { name = "cipher share",       method = "PUT",    path = "^/api/ciphers/" .. U .. "/share$",     content_type = "application/json" },
-    { name = "ciphers archive",    method = "PUT",    path = [[^/api/ciphers/archive$]],   content_type = "application/json", json = cipher_ids_body },
-    { name = "ciphers unarchive",  method = "PUT",    path = [[^/api/ciphers/unarchive$]], content_type = "application/json", json = cipher_ids_body },
-    { name = "ciphers import",     method = "POST",   path = [[^/api/ciphers/import$]],    content_type = "application/json" },
+    { name = "cipher share", method = "PUT", path = "^/api/ciphers/" .. U .. "/share$",
+      content_type = "application/json",
+      json = T.object({
+        cipher        = cipher_body,
+        collectionIds = T.array(T.uuid(), { max = 200 }),
+      }) },
+    { name = "ciphers archive",   method = "PUT",  path = [[^/api/ciphers/archive$]],   content_type = "application/json", json = cipher_ids_body },
+    { name = "ciphers unarchive", method = "PUT",  path = [[^/api/ciphers/unarchive$]], content_type = "application/json", json = cipher_ids_body },
+    { name = "ciphers import",    method = "POST", path = [[^/api/ciphers/import$]],
+      content_type = "application/json",
+      json = T.object({
+        ciphers = T.array(cipher_body, { max = 5000 }),
+        folders = T.array(T.object({
+          id   = nu_uuid,
+          name = enc,
+        }), { max = 1000 }),
+        folderRelationships = T.array(T.object({
+          key   = T.number({ integer=true, min=0 }),
+          value = T.number({ integer=true, min=0 }),
+        }), { max = 5000 }),
+      }) },
     { name = "ciphers bulk-delete",method = "DELETE", path = [[^/api/ciphers$]],           content_type = "application/json", json = cipher_ids_body },
+    -- Org-admin cipher create: same body shape as cipher share
+    { name = "cipher admin create", method = "POST", path = [[^/api/ciphers/admin$]],
+      content_type = "application/json",
+      json = T.object({
+        cipher        = cipher_body,
+        collectionIds = T.array(T.uuid(), { max = 200 }),
+      }) },
+    -- Org cipher list: query param only, no body
+    { name = "org cipher details", method = "GET", path = [[^/api/ciphers/organization-details$]],
+      query = T.object({ organizationId = T.uuid() }), no_body = true },
 
     -- ATTACHMENTS -----------------------------------------------------------
 
@@ -506,8 +550,12 @@ return {
     -- ACCOUNT MANAGEMENT ----------------------------------------------------
 
     { name = "profile get",        method = "GET",    path = [[^/api/accounts/profile$]],           no_body = true },
-    { name = "profile update",     method = "PUT",    path = [[^/api/accounts/profile$]],           content_type = "application/json" },
-    { name = "avatar update",      method = "PUT",    path = [[^/api/accounts/avatar$]],            content_type = "application/json" },
+    { name = "profile update", method = "PUT", path = [[^/api/accounts/profile$]],
+      content_type = "application/json",
+      json = T.object({ name = T.string({ max=50 }) }) },
+    { name = "avatar update", method = "PUT", path = [[^/api/accounts/avatar$]],
+      content_type = "application/json",
+      json = T.object({ avatarColor = T.nullable(T.string({ max=7, match=[[^#[0-9a-fA-F]{6}$]] })) }) },
     { name = "password change", method = "POST", path = [[^/api/accounts/password$]],
       content_type = "application/json",
       json = T.object({
@@ -533,6 +581,7 @@ return {
           masterKeyWrappedUserKey = enc,
         }),
       }) },
+    -- /accounts/key does not exist in Vaultwarden; kept to avoid 404-before-proxy on old clients
     { name = "key update",  method = "POST", path = [[^/api/accounts/key$]],  content_type = "application/json" },
     { name = "keys update", method = "POST", path = [[^/api/accounts/keys$]],
       content_type = "application/json",
@@ -597,16 +646,58 @@ return {
 
     -- WEBAUTHN --------------------------------------------------------------
 
-    { name = "webauthn list",    method = "GET",    path = [[^/api/webauthn$]],           no_body = true },
-    { name = "webauthn create",  method = "POST",   path = [[^/api/webauthn$]],           content_type = "application/json" },
-    { name = "webauthn delete",  method = "DELETE", path = "^/api/webauthn/" .. U .. "$", no_body = true },
+    -- WebAuthn routes are under /api/two-factor/webauthn, not /api/webauthn
+    { name = "webauthn list",   method = "GET",    path = [[^/api/two-factor/webauthn$]], no_body = true },
+    { name = "webauthn create", methods = { "POST", "PUT" }, path = [[^/api/two-factor/webauthn$]],
+      content_type = "application/json",
+      json = T.object({
+        id   = T.number({ integer=true, min=1, max=5 }),
+        name = T.string({ max=256 }),
+        deviceResponse = T.object({
+          id     = T.string({ max=512 }),
+          rawId  = T.string({ max=512 }),
+          type   = T.string({ max=32 }),
+          response = T.object({
+            attestationObject = T.string({ max=65536 }),
+            clientDataJson    = T.string({ max=65536 }),
+          }),
+        }),
+        masterPasswordHash = T.nullable(med),
+        otp                = T.nullable(T.string({ max=16 })),
+      }) },
+    { name = "webauthn delete", method = "DELETE", path = [[^/api/two-factor/webauthn$]],
+      content_type = "application/json",
+      json = T.object({
+        id                 = T.number({ integer=true, min=1, max=5 }),
+        masterPasswordHash = T.nullable(med),
+        otp                = T.nullable(T.string({ max=16 })),
+      }) },
 
     -- ORGANIZATIONS & COLLECTIONS -------------------------------------------
 
-    { name = "org list",          method = "GET", path = [[^/api/organizations$]],                       no_body = true },
-    { name = "collection list",   method = "GET", path = [[^/api/collections$]],                        no_body = true },
-    { name = "org collections",   method = "GET", path = "^/api/organizations/" .. U .. "/collections$", no_body = true },
-    { name = "org users",         method = "GET", path = "^/api/organizations/" .. U .. "/users$",       no_body = true },
+    { name = "org list",   method = "GET",  path = [[^/api/organizations$]], no_body = true },
+    { name = "org create", method = "POST", path = [[^/api/organizations$]],
+      content_type = "application/json",
+      json = T.object({
+        billingEmail   = T.email(),
+        collectionName = enc,
+        key            = enc,
+        name           = T.string({ max=256 }),
+        planType       = T.nullable(T.number({ integer=true, min=0, max=100 })),
+        keys = T.nullable(T.object({
+          encryptedPrivateKey = enc,
+          publicKey           = T.string({ max=4096 }),
+        })),
+      }) },
+    { name = "collection list",        method = "GET", path = [[^/api/collections$]],                              no_body = true },
+    { name = "org collections",        method = "GET", path = "^/api/organizations/" .. U .. "/collections$",      no_body = true },
+    { name = "org collections details",method = "GET", path = "^/api/organizations/" .. U .. "/collections/details$", no_body = true },
+    { name = "org groups",             method = "GET", path = "^/api/organizations/" .. U .. "/groups$",            no_body = true },
+    { name = "org users", method = "GET", path = "^/api/organizations/" .. U .. "/users$", no_body = true,
+      query = T.object({
+        includeCollections = T.nullable(T.string({ max=5, match=[[^(?:true|false)?$]] })),
+        includeGroups      = T.nullable(T.string({ max=5, match=[[^(?:true|false)?$]] })),
+      }) },
 
     -- EMERGENCY ACCESS ------------------------------------------------------
 
@@ -616,14 +707,33 @@ return {
     -- SETTINGS --------------------------------------------------------------
 
     { name = "domains get",    method = "GET", path = [[^/api/settings/domains$]], no_body = true },
-    { name = "domains update", method = "PUT", path = [[^/api/settings/domains$]], content_type = "application/json" },
+    { name = "domains update", method = "PUT", path = [[^/api/settings/domains$]],
+      content_type = "application/json",
+      json = T.object({
+        excludedGlobalEquivalentDomains = T.nullable(T.array(T.number({ integer=true, min=0 }), { max=100 })),
+        equivalentDomains               = T.nullable(T.array(T.array(T.string({ max=256 }), { max=50 }), { max=100 })),
+      }) },
 
     -- PASSWORDLESS / AUTH REQUESTS ------------------------------------------
 
     { name = "auth-request list",   method = "GET",  path = [[^/api/auth-requests/pending$]],  no_body = true },
-    { name = "auth-request create", method = "POST", path = [[^/api/auth-requests$]],          content_type = "application/json" },
+    { name = "auth-request create", method = "POST", path = [[^/api/auth-requests$]],
+      content_type = "application/json",
+      json = T.object({
+        accessCode       = T.string({ max=25 }),
+        deviceIdentifier = T.uuid(),
+        email            = T.email(),
+        publicKey        = T.string({ max=4096 }),
+      }) },
     { name = "auth-request get",    method = "GET",  path = "^/api/auth-requests/" .. U .. "$", no_body = true },
-    { name = "auth-request update", method = "PUT",  path = "^/api/auth-requests/" .. U .. "$", content_type = "application/json" },
+    { name = "auth-request update", method = "PUT",  path = "^/api/auth-requests/" .. U .. "$",
+      content_type = "application/json",
+      json = T.object({
+        deviceIdentifier   = T.uuid(),
+        key                = enc,
+        masterPasswordHash = T.nullable(med),
+        requestApproved    = T.boolean(),
+      }) },
 
     -- ICONS -----------------------------------------------------------------
 
