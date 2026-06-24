@@ -286,6 +286,29 @@ local kdf_data = T.object({
 -- Folder body: just an encrypted name
 local folder_body = T.object({ name = enc })
 
+-- Access-control entry shared by collection groups and collection members
+-- (CollectionGroupData / CollectionMembershipData have the same wire shape)
+local collection_access_entry = T.object({
+  id            = T.uuid(),
+  readOnly      = T.boolean(),
+  hidePasswords = T.boolean(),
+  manage        = T.boolean(),
+})
+
+-- Full collection body: used for collection create and update
+-- (src/api/core/organizations.rs: FullCollectionData)
+local full_collection_body = T.object({
+  name       = enc,
+  groups     = T.array(collection_access_entry, { max=500 }),
+  users      = T.array(collection_access_entry, { max=500 }),
+  id         = nu_uuid,
+  externalId = T.nullable(T.string({ max=256 })),
+})
+
+-- Bulk UUID IDs body: shared by several bulk-operation endpoints
+-- (BulkMembershipIds, BulkCollectionIds, etc.)
+local bulk_uuid_ids = T.object({ ids = T.array(T.uuid(), { max=2000 }) })
+
 -- ---------------------------------------------------------------------------
 -- JWT claims schema for the Vaultwarden login token (LoginJwtClaims in auth.rs)
 -- Used on the /notifications/hub?access_token=... WebSocket endpoint.
@@ -550,7 +573,7 @@ return {
     -- ACCOUNT MANAGEMENT ----------------------------------------------------
 
     { name = "profile get",        method = "GET",    path = [[^/api/accounts/profile$]],           no_body = true },
-    { name = "profile update", method = "PUT", path = [[^/api/accounts/profile$]],
+    { name = "profile update", methods = { "PUT", "POST" }, path = [[^/api/accounts/profile$]],
       content_type = "application/json",
       json = T.object({ name = T.string({ max=50 }) }) },
     { name = "avatar update", method = "PUT", path = [[^/api/accounts/avatar$]],
@@ -601,12 +624,76 @@ return {
         userId = T.uuid(),
         token  = T.string({ max=1024 }),
       }) },
-    { name = "delete account",     method = "DELETE", path = [[^/api/accounts$]],
+    { name = "delete account",     methods = { "DELETE", "POST" }, path = [[^/api/accounts(/delete)?$]],
       content_type = "application/json",
       json = T.object({
         masterPasswordHash = T.nullable(med),
         otp                = T.nullable(T.string({ max=16 })),
       }) },
+    -- Account email-change: step 1 sends token, step 2 completes the change
+    { name = "email-token", method = "POST", path = [[^/api/accounts/email-token$]],
+      content_type = "application/json",
+      json = T.object({
+        masterPasswordHash = med,
+        newEmail           = T.email(),
+      }) },
+    { name = "email change", method = "POST", path = [[^/api/accounts/email$]],
+      content_type = "application/json",
+      json = T.object({
+        masterPasswordHash    = med,
+        newEmail              = T.email(),
+        key                   = enc,
+        newMasterPasswordHash = med,
+        token                 = T.string({ max=16 }),
+      }) },
+    -- Set password: used after SSO registration / invite with no prior password
+    -- kdf fields are top-level (flattened from KDFData struct)
+    { name = "set-password", method = "POST", path = [[^/api/accounts/set-password$]],
+      content_type = "application/json",
+      json = T.object({
+        kdf             = T.number({ integer=true, min=0, max=1 }),
+        kdfIterations   = T.number({ integer=true, min=1, max=2000000 }),
+        kdfMemory       = T.nullable(T.number({ integer=true, min=1, max=1048576 })),
+        kdfParallelism  = T.nullable(T.number({ integer=true, min=1, max=16 })),
+        key             = enc,
+        keys = T.nullable(T.object({
+          encryptedPrivateKey = enc,
+          publicKey           = T.string({ max=4096 }),
+        })),
+        masterPasswordHash = med,
+        masterPasswordHint = T.nullable(sml),
+        orgIdentifier      = T.nullable(T.string({ max=256 })),
+      }) },
+    -- Account key rotation: replaces all ciphers/folders with re-encrypted versions
+    { name = "rotate-keys", method = "POST", path = [[^/api/accounts/key-management/rotate-user-account-keys$]],
+      content_type = "application/json" },
+    -- Delete recover: request and confirm account deletion by email
+    { name = "delete-recover",       method = "POST", path = [[^/api/accounts/delete-recover$]],
+      content_type = "application/json",
+      json = T.object({ email = T.email() }) },
+    { name = "delete-recover-token", method = "POST", path = [[^/api/accounts/delete-recover-token$]],
+      content_type = "application/json",
+      json = T.object({
+        userId = T.uuid(),
+        token  = T.string({ max=1024 }),
+      }) },
+    -- Password hint: unauthenticated endpoint
+    { name = "password-hint", method = "POST", path = [[^/api/accounts/password-hint$]],
+      content_type = "application/json",
+      json = T.object({ email = T.email() }) },
+    -- API key management: retrieve or rotate the user's CLI API key
+    { name = "api-key",        method = "POST", path = [[^/api/accounts/api-key$]],        content_type = "application/json", json = password_or_otp },
+    { name = "rotate-api-key", method = "POST", path = [[^/api/accounts/rotate-api-key$]], content_type = "application/json", json = password_or_otp },
+    -- OTP-based protected actions (email OTP, distinct from 2FA)
+    { name = "request-otp", method = "POST", path = [[^/api/accounts/request-otp$]], no_body = true },
+    { name = "verify-otp",  method = "POST", path = [[^/api/accounts/verify-otp$]],
+      content_type = "application/json",
+      json_schemas = {
+        T.object({ OTP = T.string({ max=16 }) }),
+        T.object({ otp = T.string({ max=16 }) }),
+      } },
+    -- User public-key lookup (used by emergency-access, org confirm, etc.)
+    { name = "user public-key", method = "GET", path = "^/api/users/" .. U .. "/public-key$", no_body = true },
 
     -- TWO FACTOR ------------------------------------------------------------
 
@@ -627,6 +714,69 @@ return {
         recoveryCode       = T.nullable(T.string({ max=32 })),
         email              = T.nullable(T.email()),
       }) },
+    { name = "2fa disable",       methods = { "POST", "PUT" }, path = [[^/api/two-factor/disable$]],
+      content_type = "application/json",
+      json = T.object({
+        masterPasswordHash = T.nullable(med),
+        otp                = T.nullable(T.string({ max=16 })),
+        type               = T.number({ integer=true, min=0, max=255 }),
+      }) },
+    { name = "2fa device-verification-settings", method = "GET", path = [[^/api/two-factor/get-device-verification-settings$]], no_body = true },
+    -- TOTP (authenticator app)
+    { name = "2fa totp activate", methods = { "POST", "PUT" }, path = [[^/api/two-factor/authenticator$]],
+      content_type = "application/json",
+      json = T.object({
+        key                = T.string({ max=256 }),
+        token              = T.string({ max=16 }),
+        masterPasswordHash = T.nullable(med),
+        otp                = T.nullable(T.string({ max=16 })),
+      }) },
+    { name = "2fa totp delete",   method = "DELETE", path = [[^/api/two-factor/authenticator$]],
+      content_type = "application/json",
+      json = T.object({
+        key                = T.string({ max=256 }),
+        masterPasswordHash = med,
+        type               = T.number({ integer=true, min=0, max=255 }),
+      }) },
+    -- YubiKey (hardware OTP key)
+    { name = "2fa yubikey activate", methods = { "POST", "PUT" }, path = [[^/api/two-factor/yubikey$]],
+      content_type = "application/json",
+      json = T.object({
+        key1 = T.nullable(T.string({ max=64 })),
+        key2 = T.nullable(T.string({ max=64 })),
+        key3 = T.nullable(T.string({ max=64 })),
+        key4 = T.nullable(T.string({ max=64 })),
+        key5 = T.nullable(T.string({ max=64 })),
+        nfc  = T.boolean(),
+        masterPasswordHash = T.nullable(med),
+        otp                = T.nullable(T.string({ max=16 })),
+      }) },
+    -- Duo
+    { name = "2fa duo activate", methods = { "POST", "PUT" }, path = [[^/api/two-factor/duo$]],
+      content_type = "application/json",
+      json = T.object({
+        host               = T.string({ max=256 }),
+        clientSecret       = T.string({ max=256 }),
+        clientId           = T.string({ max=128 }),
+        masterPasswordHash = T.nullable(med),
+        otp                = T.nullable(T.string({ max=16 })),
+      }) },
+    -- Email 2FA: step 1 sends a code to the new address, step 2 activates it
+    { name = "2fa send-email-setup", method = "POST", path = [[^/api/two-factor/send-email$]],
+      content_type = "application/json",
+      json = T.object({
+        email              = T.email(),
+        masterPasswordHash = T.nullable(med),
+        otp                = T.nullable(T.string({ max=16 })),
+      }) },
+    { name = "2fa email activate", method = "PUT", path = [[^/api/two-factor/email$]],
+      content_type = "application/json",
+      json = T.object({
+        email              = T.email(),
+        token              = T.string({ max=16 }),
+        masterPasswordHash = T.nullable(med),
+        otp                = T.nullable(T.string({ max=16 })),
+      }) },
     { name = "2fa send-email",    method = "POST", path = [[^/api/two-factor/send-email-login$]],
       content_type = "application/json",
       json = T.object({
@@ -643,6 +793,13 @@ return {
     { name = "device by-id",       method = "GET",    path = "^/api/devices/identifier/" .. U .. "$",     no_body = true },
     { name = "device knowndevice", method = "GET",    path = [[^/api/devices/knowndevice$]],              no_body = true },
     { name = "device delete",      method = "DELETE", path = "^/api/devices/" .. U .. "$",                no_body = true },
+    -- Device push token: register or update the push notification token for a device
+    { name = "device push-token",  methods = { "POST", "PUT" }, path = "^/api/devices/identifier/" .. U .. "/token$",
+      content_type = "application/json",
+      json = T.object({ pushToken = T.string({ max=512 }) }) },
+    -- Device clear-token: remove push token (PUT and POST are both supported upstream)
+    { name = "device clear-token", methods = { "PUT", "POST" }, path = "^/api/devices/identifier/" .. U .. "/clear-token$",
+      no_body = true },
 
     -- WEBAUTHN --------------------------------------------------------------
 
@@ -676,6 +833,22 @@ return {
     -- ORGANIZATIONS & COLLECTIONS -------------------------------------------
 
     { name = "org list",   method = "GET",  path = [[^/api/organizations$]], no_body = true },
+    { name = "org get",    method = "GET",  path = "^/api/organizations/" .. U .. "$", no_body = true },
+    { name = "org update", methods = { "PUT", "POST" }, path = "^/api/organizations/" .. U .. "$",
+      content_type = "application/json",
+      json = T.object({ billingEmail = T.email(), name = T.string({ max=256 }) }) },
+    { name = "org delete", method = "DELETE", path = "^/api/organizations/" .. U .. "$",
+      content_type = "application/json", json = password_or_otp },
+    { name = "org delete-post", method = "POST", path = "^/api/organizations/" .. U .. "/delete$",
+      content_type = "application/json", json = password_or_otp },
+    { name = "org leave", method = "POST", path = "^/api/organizations/" .. U .. "/leave$", no_body = true },
+    -- Auto-enroll status: identifier may be a UUID or a special SSO string
+    { name = "org auto-enroll-status", method = "GET", path = [[^/api/organizations/[^/]+/auto-enroll-status$]], no_body = true },
+    { name = "org keys", method = "POST", path = "^/api/organizations/" .. U .. "/keys$",
+      content_type = "application/json",
+      json = T.object({ encryptedPrivateKey = enc, publicKey = T.string({ max=4096 }) }) },
+    -- SSO domain stub: always returns a dummy value
+    { name = "org sso-verified", method = "POST", path = [[^/api/organizations/domain/sso/verified$]], no_body = true },
     { name = "org create", method = "POST", path = [[^/api/organizations$]],
       content_type = "application/json",
       json = T.object({
@@ -692,17 +865,120 @@ return {
     { name = "collection list",        method = "GET", path = [[^/api/collections$]],                              no_body = true },
     { name = "org collections",        method = "GET", path = "^/api/organizations/" .. U .. "/collections$",      no_body = true },
     { name = "org collections details",method = "GET", path = "^/api/organizations/" .. U .. "/collections/details$", no_body = true },
+    -- Collection CRUD
+    { name = "org collection create", method = "POST", path = "^/api/organizations/" .. U .. "/collections$",
+      content_type = "application/json", json = full_collection_body },
+    { name = "org collection bulk-access", method = "POST", path = "^/api/organizations/" .. U .. "/collections/bulk-access$",
+      content_type = "application/json",
+      json = T.object({
+        collectionIds = T.array(T.uuid(), { max=500 }),
+        groups        = T.array(collection_access_entry, { max=500 }),
+        users         = T.array(collection_access_entry, { max=500 }),
+      }) },
+    { name = "org collection update",  methods = { "PUT", "POST" }, path = "^/api/organizations/" .. U .. "/collections/" .. U .. "$",
+      content_type = "application/json", json = full_collection_body },
+    { name = "org collection delete",  method = "DELETE", path = "^/api/organizations/" .. U .. "/collections/" .. U .. "$",  no_body = true },
+    { name = "org collection delete-post", method = "POST", path = "^/api/organizations/" .. U .. "/collections/" .. U .. "/delete$", no_body = true },
+    { name = "org collections bulk-delete", method = "DELETE", path = "^/api/organizations/" .. U .. "/collections$",
+      content_type = "application/json", json = bulk_uuid_ids },
+    { name = "org collection details", method = "GET",  path = "^/api/organizations/" .. U .. "/collections/" .. U .. "/details$", no_body = true },
+    { name = "org collection users",   method = "GET",  path = "^/api/organizations/" .. U .. "/collections/" .. U .. "/users$",   no_body = true },
     { name = "org groups",             method = "GET", path = "^/api/organizations/" .. U .. "/groups$",            no_body = true },
+    -- Org user management
     { name = "org users", method = "GET", path = "^/api/organizations/" .. U .. "/users$", no_body = true,
       query = T.object({
         includeCollections = T.nullable(T.string({ max=5, match=[[^(?:true|false)?$]] })),
         includeGroups      = T.nullable(T.string({ max=5, match=[[^(?:true|false)?$]] })),
       }) },
+    { name = "org user mini-details", method = "GET", path = "^/api/organizations/" .. U .. "/users/mini-details$", no_body = true },
+    { name = "org user get",     method = "GET", path = "^/api/organizations/" .. U .. "/users/" .. U .. "$", no_body = true,
+      query = T.object({
+        includeCollections = T.nullable(T.string({ max=5, match=[[^(?:true|false)?$]] })),
+        includeGroups      = T.nullable(T.string({ max=5, match=[[^(?:true|false)?$]] })),
+      }) },
+    { name = "org user update",  methods = { "PUT", "POST" }, path = "^/api/organizations/" .. U .. "/users/" .. U .. "$",
+      content_type = "application/json",
+      json = T.object({
+        type        = T.number({ integer=true, min=0, max=4 }),
+        collections = T.nullable(T.array(collection_access_entry, { max=500 })),
+        groups      = T.nullable(T.array(T.uuid(), { max=500 })),
+        permissions = T.nullable(T.dict(T.nullable(T.boolean()))),
+      }) },
+    { name = "org user delete",  method = "DELETE", path = "^/api/organizations/" .. U .. "/users/" .. U .. "$", no_body = true },
+    { name = "org users invite",  method = "POST", path = "^/api/organizations/" .. U .. "/users/invite$",
+      content_type = "application/json",
+      json = T.object({
+        emails      = T.array(T.email(), { max=200 }),
+        groups      = T.array(T.uuid(), { max=200 }),
+        type        = T.number({ integer=true, min=0, max=4 }),
+        collections = T.nullable(T.array(collection_access_entry, { max=500 })),
+        permissions = T.nullable(T.dict(T.nullable(T.boolean()))),
+      }) },
+    { name = "org users reinvite-bulk", method = "POST", path = "^/api/organizations/" .. U .. "/users/reinvite$",
+      content_type = "application/json", json = bulk_uuid_ids },
+    { name = "org user reinvite", method = "POST", path = "^/api/organizations/" .. U .. "/users/" .. U .. "/reinvite$", no_body = true },
+    { name = "org user accept",  method = "POST", path = "^/api/organizations/" .. U .. "/users/" .. U .. "/accept$",
+      content_type = "application/json",
+      json = T.object({
+        token            = T.string({ max=4096 }),
+        resetPasswordKey = T.nullable(enc),
+      }) },
+    { name = "org users confirm-bulk", method = "POST", path = "^/api/organizations/" .. U .. "/users/confirm$",
+      content_type = "application/json",
+      json = T.object({
+        keys = T.nullable(T.array(T.object({
+          id  = nu_uuid,
+          key = T.nullable(enc),
+        }), { max=500 })),
+      }) },
+    { name = "org user confirm",  method = "POST", path = "^/api/organizations/" .. U .. "/users/" .. U .. "/confirm$",
+      content_type = "application/json",
+      json = T.object({ id = nu_uuid, key = T.nullable(enc) }) },
+    { name = "org users bulk-delete", method = "DELETE", path = "^/api/organizations/" .. U .. "/users$",
+      content_type = "application/json", json = bulk_uuid_ids },
+    { name = "org users public-keys", method = "POST", path = "^/api/organizations/" .. U .. "/users/public-keys$",
+      content_type = "application/json", json = bulk_uuid_ids },
 
     -- EMERGENCY ACCESS ------------------------------------------------------
 
     { name = "emergency trusted", method = "GET", path = [[^/api/emergency-access/trusted$]], no_body = true },
     { name = "emergency granted", method = "GET", path = [[^/api/emergency-access/granted$]], no_body = true },
+    { name = "emergency invite",  method = "POST", path = [[^/api/emergency-access/invite$]],
+      content_type = "application/json",
+      json = T.object({
+        email        = T.email(),
+        type         = T.number({ integer=true, min=0, max=1 }),
+        waitTimeDays = T.number({ integer=true, min=1, max=90 }),
+      }) },
+    { name = "emergency get",     method = "GET",    path = "^/api/emergency-access/" .. U .. "$",                no_body = true },
+    { name = "emergency update",  methods = { "PUT", "POST" }, path = "^/api/emergency-access/" .. U .. "$",
+      content_type = "application/json",
+      json = T.object({
+        type         = T.number({ integer=true, min=0, max=1 }),
+        waitTimeDays = T.number({ integer=true, min=1, max=90 }),
+        keyEncrypted = nu_enc,
+      }) },
+    { name = "emergency delete",  methods = { "DELETE" }, path = "^/api/emergency-access/" .. U .. "$",           no_body = true },
+    { name = "emergency delete-post", method = "POST", path = "^/api/emergency-access/" .. U .. "/delete$",       no_body = true },
+    { name = "emergency reinvite",    method = "POST", path = "^/api/emergency-access/" .. U .. "/reinvite$",     no_body = true },
+    { name = "emergency accept",      method = "POST", path = "^/api/emergency-access/" .. U .. "/accept$",
+      content_type = "application/json",
+      json = T.object({ token = T.string({ max=4096 }) }) },
+    { name = "emergency confirm",     method = "POST", path = "^/api/emergency-access/" .. U .. "/confirm$",
+      content_type = "application/json",
+      json = T.object({ key = enc }) },
+    { name = "emergency initiate",    method = "POST", path = "^/api/emergency-access/" .. U .. "/initiate$",     no_body = true },
+    { name = "emergency approve",     method = "POST", path = "^/api/emergency-access/" .. U .. "/approve$",      no_body = true },
+    { name = "emergency reject",      method = "POST", path = "^/api/emergency-access/" .. U .. "/reject$",       no_body = true },
+    { name = "emergency view",        method = "POST", path = "^/api/emergency-access/" .. U .. "/view$",         no_body = true },
+    { name = "emergency takeover",    method = "POST", path = "^/api/emergency-access/" .. U .. "/takeover$",     no_body = true },
+    { name = "emergency password",    method = "POST", path = "^/api/emergency-access/" .. U .. "/password$",
+      content_type = "application/json",
+      json = T.object({
+        newMasterPasswordHash = med,
+        key                   = enc,
+      }) },
+    { name = "emergency policies",    method = "GET",  path = "^/api/emergency-access/" .. U .. "/policies$",     no_body = true },
 
     -- SETTINGS --------------------------------------------------------------
 
@@ -716,7 +992,12 @@ return {
 
     -- PASSWORDLESS / AUTH REQUESTS ------------------------------------------
 
+    -- Legacy alias for /pending; still sent by some older clients
+    { name = "auth-request list-all", method = "GET", path = [[^/api/auth-requests$]], no_body = true },
     { name = "auth-request list",   method = "GET",  path = [[^/api/auth-requests/pending$]],  no_body = true },
+    -- Auth-request response poll: the initiating device polls this to get the approval
+    { name = "auth-request response", method = "GET", path = "^/api/auth-requests/" .. U .. "/response$",
+      query = T.object({ code = T.string({ max=64 }) }), no_body = true },
     { name = "auth-request create", method = "POST", path = [[^/api/auth-requests$]],
       content_type = "application/json",
       json = T.object({
