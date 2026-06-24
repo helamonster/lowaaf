@@ -1027,14 +1027,73 @@ return {
     { name = "notifications hub", method = "GET", path = [[^/notifications/hub$]],
       query = T.object({ access_token = vw_access_token }), no_body = true },
 
-    -- ADMIN (IP-restricted to private networks) -----------------------------
+    -- ADMIN PANEL -----------------------------------------------------------
+    -- Routes are listed most-specific-first so the parameterized catch-all
+    -- for /admin/users/<uuid> does not shadow the named sub-paths.
 
-    {
-      name      = "admin",
-      methods   = { "GET", "POST" },
-      path      = [[^/admin(/|$)]],
-      allow_ips = { "10.0.0.0/8", "192.168.0.0/16", "172.16.0.0/12" },
+    -- Landing page (GET) and form login (POST)
+    { name = "admin page",  method = "GET",  path = [[^/admin/?$]], no_body = true },
+    { name = "admin login", method = "POST", path = [[^/admin/?$]],
+      content_types = { "application/x-www-form-urlencoded" },
+      form_schemas  = { T.object({
+        token    = T.string({ max = 1024 }),
+        redirect = T.nullable(T.string({ max = 1024 })),
+      }) },
     },
+
+    { name = "admin logout", method = "GET", path = [[^/admin/logout$]], no_body = true },
+
+    { name = "admin invite",    method = "POST", path = [[^/admin/invite$]],
+      content_types = { "application/json" },
+      json_schemas  = { T.object({ email = T.email() }) },
+    },
+    { name = "admin test smtp", method = "POST", path = [[^/admin/test/smtp$]],
+      content_types = { "application/json" },
+      json_schemas  = { T.object({ email = T.email() }) },
+    },
+
+    -- User management — specific named paths before the parameterized /<uuid> route
+    { name = "admin users list",            method = "GET",  path = [[^/admin/users$]],                  no_body = true },
+    { name = "admin users overview",        method = "GET",  path = [[^/admin/users/overview$]],         no_body = true },
+    { name = "admin users org-type",        method = "POST", path = [[^/admin/users/org_type$]],
+      content_types = { "application/json" },
+      json_schemas  = { T.object({
+        user_type = T.number({ integer = true, min = 0, max = 255 }),
+        user_uuid = T.uuid(),
+        org_uuid  = T.uuid(),
+      }) },
+    },
+    { name = "admin users update-revision", method = "POST", path = [[^/admin/users/update_revision$]],  no_body = true },
+    { name = "admin users by-mail",         method = "GET",  path = [[^/admin/users/by-mail/[^/]+$]],   no_body = true },
+
+    -- Per-user actions — sub-paths before the bare /<uuid> route
+    { name = "admin user invite resend", method = "POST",   path = "^/admin/users/" .. U .. "/invite/resend$", no_body = true },
+    { name = "admin user delete",        method = "POST",   path = "^/admin/users/" .. U .. "/delete$",        no_body = true },
+    { name = "admin user sso delete",    method = "DELETE", path = "^/admin/users/" .. U .. "/sso$",           no_body = true },
+    { name = "admin user deauth",        method = "POST",   path = "^/admin/users/" .. U .. "/deauth$",        no_body = true },
+    { name = "admin user disable",       method = "POST",   path = "^/admin/users/" .. U .. "/disable$",       no_body = true },
+    { name = "admin user enable",        method = "POST",   path = "^/admin/users/" .. U .. "/enable$",        no_body = true },
+    { name = "admin user remove-2fa",    method = "POST",   path = "^/admin/users/" .. U .. "/remove-2fa$",    no_body = true },
+    { name = "admin user get",           method = "GET",    path = "^/admin/users/" .. U .. "$",               no_body = true },
+
+    -- Organizations
+    { name = "admin orgs overview", method = "GET",  path = [[^/admin/organizations/overview$]],          no_body = true },
+    { name = "admin org delete",    method = "POST", path = "^/admin/organizations/" .. U .. "/delete$",  no_body = true },
+
+    -- Diagnostics
+    { name = "admin diagnostics",        method = "GET", path = [[^/admin/diagnostics$]],        no_body = true },
+    { name = "admin diagnostics config", method = "GET", path = [[^/admin/diagnostics/config$]], no_body = true },
+    { name = "admin diagnostics http",   method = "GET", path = [[^/admin/diagnostics/http$]],
+      no_body = true,
+      query   = T.object({ code = T.string({ max = 5, match = [[^\d+$]] }) }),
+    },
+
+    -- Config management
+    { name = "admin config post",      method = "POST", path = [[^/admin/config$]],
+      content_types = { "application/json" }, max_body = 1024 * 1024,
+    },
+    { name = "admin config delete",    method = "POST", path = [[^/admin/config/delete$]],    no_body = true },
+    { name = "admin config backup-db", method = "POST", path = [[^/admin/config/backup_db$]], no_body = true },
 
     -- STATIC WEB VAULT ASSETS -----------------------------------------------
     -- Filenames embed content hashes that change every release, so we use
