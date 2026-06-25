@@ -10,16 +10,13 @@
 --
 -- --------------------------------------------------------------------------------------
 --
--- vaultwarden.lua : LOWAFF for VaultWarden
+-- vaultwarden.lua : LOWAAF for Vaultwarden
 --
--- VaultWarden: The Unofficial Bitwarden compatible server written in Rust
+-- Vaultwarden: The Unofficial Bitwarden compatible server written in Rust
 -- <https://github.com/dani-garcia/vaultwarden>
 -- <https://www.vaultwarden.net/>
 --
 -- --------------------------------------------------------------------------------------
-
-
-
 
 local T = require "waf.types"
 
@@ -67,14 +64,14 @@ end
 -- ---------------------------------------------------------------------------
 -- shared type aliases
 -- ---------------------------------------------------------------------------
-local enc     = T.string({ max = 10000 })       -- Bitwarden-encrypted ciphertext blob
-local sml     = T.string({ max = 256 })
-local med     = T.string({ max = 2048 })
-local nu_enc  = T.nullable(enc)
-local nu_uuid = T.nullable(T.uuid())
-local nu_bool = T.nullable(T.boolean())
-local nu_num  = T.nullable(T.number({ integer = true }))
-local nu_sml  = T.nullable(sml)
+local enc     = T.string({ max = 10000 })  -- Bitwarden-encrypted ciphertext blob (2.<iv>|<data>|<mac>)
+local sml     = T.string({ max = 256 })    -- short freetext: names, labels, hints, short hashes
+local med     = T.string({ max = 2048 })   -- medium freetext: password hashes, JWT-sized tokens
+local nu_enc  = T.nullable(enc)            -- nullable encrypted blob
+local nu_uuid = T.nullable(T.uuid())       -- nullable UUID
+local nu_bool = T.nullable(T.boolean())    -- nullable boolean
+local nu_num  = T.nullable(T.number({ integer = true }))  -- nullable integer
+local nu_sml  = T.nullable(sml)            -- nullable short string
 
 -- Some Bitwarden fields send "" instead of null when unset (e.g. folderId
 -- on a cipher with no folder).  T.nullable only passes nil/ngx.null; this
@@ -84,11 +81,9 @@ local nu_uuid_or_empty = function(v, path)
   return T.uuid()(v, path)
 end
 
--- UUID regex fragment reused in path patterns
-local U = "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
-
--- attachment/send file IDs: arbitrary base64url up to 64 chars
-local FILEID = "[a-zA-Z0-9_-]{1,64}"
+-- Path-pattern regex fragments (sourced from types.lua for single-source-of-truth)
+local U      = T.uuid_re    -- UUID segment in route paths
+local FILEID = T.fileid_re  -- base64url file ID segment (attachments, Send files)
 
 -- ---------------------------------------------------------------------------
 -- JSON schemas for high-value endpoints
@@ -272,9 +267,11 @@ local password_or_otp = T.object({
 })
 
 -- ---------------------------------------------------------------------------
--- KDF parameters — nested inside ChangeKdfData
+-- KDF parameters — nested inside ChangeKdfData (used by kdf-change via kdf = kdf_data).
 -- Primary wire names are camelCase; serde aliases (kdfType, iterations, etc.)
 -- are for backwards-compat deserialization only; clients send the primary names.
+-- NOTE: set-password has the same four fields but flattened at the top level of
+-- its request body — the nesting differs, so kdf_data cannot be reused there.
 -- ---------------------------------------------------------------------------
 local kdf_data = T.object({
   kdf            = T.number({ integer=true, min=0, max=1 }),  -- 0=PBKDF2, 1=Argon2id
@@ -310,6 +307,20 @@ local full_collection_body = T.object({
 local bulk_uuid_ids = T.object({ ids = T.array(T.uuid(), { max=2000 }) })
 
 -- ---------------------------------------------------------------------------
+-- Validates the Vaultwarden JWT "iss" claim against the current server's hostname.
+-- Vaultwarden sets iss = "https://<configured-base-url>|<suffix>".
+-- ngx.var.server_name is evaluated at request time (access phase), not at
+-- module-load time, so the closure picks up the live nginx server_name value.
+local function vw_iss(suffix)
+  return function(v, path)
+    if type(v) ~= "string" then return false, path .. " must be a string" end
+    local expected = "https://" .. (ngx.var.server_name or "") .. "|" .. suffix
+    if v ~= expected then return false, path .. ": unexpected iss" end
+    return true
+  end
+end
+
+-- ---------------------------------------------------------------------------
 -- JWT claims schema for the Vaultwarden login token (LoginJwtClaims in auth.rs)
 -- Used on the /notifications/hub?access_token=... WebSocket endpoint.
 -- Signature verification is Vaultwarden's job; we validate structure only.
@@ -317,8 +328,7 @@ local bulk_uuid_ids = T.object({ ids = T.array(T.uuid(), { max=2000 }) })
 local vw_access_token = T.jwt_claims({
   nbf            = T.number({ integer=true }),
   exp            = T.number({ integer=true }),
-  -- iss = "https://<host>|login" — the pipe+login suffix is Vaultwarden-specific
-  iss            = T.string({ max=256, match=[[^https?://[A-Za-z0-9\-._~:/?#\[\]@!$&'()*+,;=%]+\|login$]] }),
+  iss            = vw_iss("login"),
   sub            = T.uuid(),
   premium        = T.boolean(),
   name           = T.string({ max=256 }),
@@ -352,7 +362,7 @@ local vw_access_token = T.jwt_claims({
 local vw_file_token = T.jwt_claims({
   nbf     = T.number({ integer=true }),
   exp     = T.number({ integer=true }),
-  iss     = T.string({ max=256, match=[[^https?://[A-Za-z0-9\-._~:/?#\[\]@!$&'()*+,;=%]+\|file_download$]] }),
+  iss     = vw_iss("file_download"),
   sub     = T.uuid(),
   file_id = T.string({ max=64 }),
 }, {
@@ -420,6 +430,11 @@ return {
     },
   },
 
+  -- Route matching: first match wins, so put more-specific paths before parameterized ones.
+  -- Each section name corresponds to a Vaultwarden source file (api/core/ciphers.rs, etc.).
+  -- no_body = true  → reject any request body (GET/DELETE endpoints).
+  -- json = T.object({...})  → parse and validate JSON body; unknown keys are rejected.
+  -- Schema fields are validated when present; add to opts.required = {...} to enforce them.
   routes = {
 
     -- AUTHENTICATION --------------------------------------------------------
@@ -473,7 +488,7 @@ return {
 
     { name = "tasks",         method = "GET", path = [[^/api/tasks$]],                  no_body = true },
     { name = "sync", method = "GET", path = [[^/api/sync$]], no_body = true,
-      query = T.object({ excludeDomains = T.nullable(T.string({ max=5, match=[[^(?:true|false)?$]] })) }) },
+      query = T.object({ excludeDomains = T.bool_query() }) },
     { name = "config",        method = "GET", path = [[^/api/config$]],                 no_body = true },
     { name = "revision-date", method = "GET", path = [[^/api/accounts/revision-date$]], no_body = true },
 
@@ -567,11 +582,13 @@ return {
     { name = "send delete",      method = "DELETE", path = "^/api/sends/" .. U .. "$",   no_body = true },
     { name = "send file upload", method = "POST",   path = "^/api/sends/" .. U .. "/file/" .. FILEID .. "$",
       content_type = "multipart/form-data" },
+    -- Send access IDs are short random strings, not UUIDs — [^/]+ is intentional here.
     { name = "send access",      method = "POST",   path = [[^/api/sends/[^/]+/access$]],
       content_type = "application/json", json = T.object({ password = nu_enc }) },
 
     -- ACCOUNT MANAGEMENT ----------------------------------------------------
 
+    -- Profile & avatar
     { name = "profile get",        method = "GET",    path = [[^/api/accounts/profile$]],           no_body = true },
     { name = "profile update", methods = { "PUT", "POST" }, path = [[^/api/accounts/profile$]],
       content_type = "application/json",
@@ -579,6 +596,8 @@ return {
     { name = "avatar update", method = "PUT", path = [[^/api/accounts/avatar$]],
       content_type = "application/json",
       json = T.object({ avatarColor = T.nullable(T.string({ max=7, match=[[^#[0-9a-fA-F]{6}$]] })) }) },
+
+    -- Password & KDF
     { name = "password change", method = "POST", path = [[^/api/accounts/password$]],
       content_type = "application/json",
       json = T.object({
@@ -604,6 +623,7 @@ return {
           masterKeyWrappedUserKey = enc,
         }),
       }) },
+    -- Keys
     -- /accounts/key does not exist in Vaultwarden; kept to avoid 404-before-proxy on old clients
     { name = "key update",  method = "POST", path = [[^/api/accounts/key$]],  content_type = "application/json" },
     { name = "keys update", method = "POST", path = [[^/api/accounts/keys$]],
@@ -612,6 +632,8 @@ return {
         encryptedPrivateKey = enc,
         publicKey           = T.string({ max=4096 }),
       }) },
+
+    -- Verification
     { name = "security stamp",  method = "POST", path = [[^/api/accounts/security-stamp$]],
       content_type = "application/json", json = password_or_otp },
     { name = "verify password", method = "POST", path = [[^/api/accounts/verify-password$]],
@@ -624,6 +646,8 @@ return {
         userId = T.uuid(),
         token  = T.string({ max=1024 }),
       }) },
+
+    -- Email & account lifecycle
     { name = "delete account",     methods = { "DELETE", "POST" }, path = [[^/api/accounts(/delete)?$]],
       content_type = "application/json",
       json = T.object({
@@ -664,6 +688,10 @@ return {
         masterPasswordHint = T.nullable(sml),
         orgIdentifier      = T.nullable(T.string({ max=256 })),
       }) },
+
+    -- ---------------------------------------------------------------------------
+    -- Key rotation (heavyweight — re-encrypts all vault data)
+    -- ---------------------------------------------------------------------------
     -- Account key rotation: replaces all ciphers/folders/sends with re-encrypted versions.
     -- Schema covers both the Vaultwarden 1.36.0 fields and the newer client fields that
     -- the server silently ignores (passkeyUnlockData, deviceKeyUnlockData, publicKeyEncryptionKeyPair,
@@ -743,6 +771,7 @@ return {
           sends = T.array(send_body, { max=5000 }),
         }),
       }) },
+    -- Account deletion recovery & password hint
     -- Delete recover: request and confirm account deletion by email
     { name = "delete-recover",       method = "POST", path = [[^/api/accounts/delete-recover$]],
       content_type = "application/json",
@@ -757,6 +786,7 @@ return {
     { name = "password-hint", method = "POST", path = [[^/api/accounts/password-hint$]],
       content_type = "application/json",
       json = T.object({ email = T.email() }) },
+    -- API key & OTP
     -- API key management: retrieve or rotate the user's CLI API key
     { name = "api-key",        method = "POST", path = [[^/api/accounts/api-key$]],        content_type = "application/json", json = password_or_otp },
     { name = "rotate-api-key", method = "POST", path = [[^/api/accounts/rotate-api-key$]], content_type = "application/json", json = password_or_otp },
@@ -963,14 +993,14 @@ return {
     -- Org user management
     { name = "org users", method = "GET", path = "^/api/organizations/" .. U .. "/users$", no_body = true,
       query = T.object({
-        includeCollections = T.nullable(T.string({ max=5, match=[[^(?:true|false)?$]] })),
-        includeGroups      = T.nullable(T.string({ max=5, match=[[^(?:true|false)?$]] })),
+        includeCollections = T.bool_query(),
+        includeGroups      = T.bool_query(),
       }) },
     { name = "org user mini-details", method = "GET", path = "^/api/organizations/" .. U .. "/users/mini-details$", no_body = true },
     { name = "org user get",     method = "GET", path = "^/api/organizations/" .. U .. "/users/" .. U .. "$", no_body = true,
       query = T.object({
-        includeCollections = T.nullable(T.string({ max=5, match=[[^(?:true|false)?$]] })),
-        includeGroups      = T.nullable(T.string({ max=5, match=[[^(?:true|false)?$]] })),
+        includeCollections = T.bool_query(),
+        includeGroups      = T.bool_query(),
       }) },
     { name = "org user update",  methods = { "PUT", "POST" }, path = "^/api/organizations/" .. U .. "/users/" .. U .. "$",
       content_type = "application/json",
@@ -1110,34 +1140,34 @@ return {
     -- Landing page (GET) and form login (POST)
     { name = "admin page",  method = "GET",  path = [[^/admin/?$]], no_body = true },
     { name = "admin login", method = "POST", path = [[^/admin/?$]],
-      content_types = { "application/x-www-form-urlencoded" },
-      form_schemas  = { T.object({
+      content_type = "application/x-www-form-urlencoded",
+      form = T.object({
         token    = T.string({ max = 1024 }),
         redirect = T.nullable(T.string({ max = 1024 })),
-      }) },
+      }),
     },
 
     { name = "admin logout", method = "GET", path = [[^/admin/logout$]], no_body = true },
 
     { name = "admin invite",    method = "POST", path = [[^/admin/invite$]],
-      content_types = { "application/json" },
-      json_schemas  = { T.object({ email = T.email() }) },
+      content_type = "application/json",
+      json = T.object({ email = T.email() }),
     },
     { name = "admin test smtp", method = "POST", path = [[^/admin/test/smtp$]],
-      content_types = { "application/json" },
-      json_schemas  = { T.object({ email = T.email() }) },
+      content_type = "application/json",
+      json = T.object({ email = T.email() }),
     },
 
     -- User management — specific named paths before the parameterized /<uuid> route
     { name = "admin users list",            method = "GET",  path = [[^/admin/users$]],                  no_body = true },
     { name = "admin users overview",        method = "GET",  path = [[^/admin/users/overview$]],         no_body = true },
     { name = "admin users org-type",        method = "POST", path = [[^/admin/users/org_type$]],
-      content_types = { "application/json" },
-      json_schemas  = { T.object({
+      content_type = "application/json",
+      json = T.object({
         user_type = T.number({ integer = true, min = 0, max = 255 }),
         user_uuid = T.uuid(),
         org_uuid  = T.uuid(),
-      }) },
+      }),
     },
     { name = "admin users update-revision", method = "POST", path = [[^/admin/users/update_revision$]],  no_body = true },
     { name = "admin users by-mail",         method = "GET",  path = [[^/admin/users/by-mail/[^/]+$]],   no_body = true },
@@ -1166,7 +1196,7 @@ return {
 
     -- Config management
     { name = "admin config post",      method = "POST", path = [[^/admin/config$]],
-      content_types = { "application/json" }, max_body = 1024 * 1024,
+      content_type = "application/json", max_body = 1024 * 1024,
     },
     { name = "admin config delete",    method = "POST", path = [[^/admin/config/delete$]],    no_body = true },
     { name = "admin config backup-db", method = "POST", path = [[^/admin/config/backup_db$]], no_body = true },

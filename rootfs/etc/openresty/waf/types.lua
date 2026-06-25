@@ -473,4 +473,27 @@ function T.http_priority()
   })
 end
 
+-- ---------------------------------------------------------------------------
+-- Query-parameter helpers
+-- ---------------------------------------------------------------------------
+
+-- Boolean query param: browsers send the strings "true" or "false"; a bare
+-- ?param with no value arrives as an empty string. Wraps T.nullable because
+-- an absent optional param arrives as nil from ngx.req.get_uri_args().
+function T.bool_query()
+  return T.nullable(T.string({ max=5, match=[[^(?:true|false)?$]] }))
+end
+
+-- ---------------------------------------------------------------------------
+-- Path-pattern regex fragments
+-- These are plain strings, not validator functions.  Concatenate them into
+-- route path patterns:  "^/api/ciphers/" .. T.uuid_re .. "$"
+-- ---------------------------------------------------------------------------
+
+-- Standard UUID (8-4-4-4-12 hex, any variant/version)
+T.uuid_re = "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+
+-- Base64url file ID up to 64 characters (used for attachment and Send file IDs)
+T.fileid_re = "[a-zA-Z0-9_-]{1,64}"
+
 return T
