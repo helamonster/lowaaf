@@ -664,9 +664,85 @@ return {
         masterPasswordHint = T.nullable(sml),
         orgIdentifier      = T.nullable(T.string({ max=256 })),
       }) },
-    -- Account key rotation: replaces all ciphers/folders with re-encrypted versions
+    -- Account key rotation: replaces all ciphers/folders/sends with re-encrypted versions.
+    -- Schema covers both the Vaultwarden 1.36.0 fields and the newer client fields that
+    -- the server silently ignores (passkeyUnlockData, deviceKeyUnlockData, publicKeyEncryptionKeyPair,
+    -- signatureKeyPair, securityState). T.object rejects unknown keys, so we must include them.
     { name = "rotate-keys", method = "POST", path = [[^/api/accounts/key-management/rotate-user-account-keys$]],
-      content_type = "application/json" },
+      content_type = "application/json",
+      json = T.object({
+        -- Hash of the current master key used to authenticate the rotation
+        oldMasterKeyAuthenticationHash = sml,
+
+        accountUnlockData = T.object({
+          masterPasswordUnlockData = T.object({
+            kdfType                     = T.number({ integer=true, min=0, max=1 }),
+            kdfIterations               = T.number({ integer=true, min=1, max=2000000 }),
+            kdfMemory                   = T.nullable(T.number({ integer=true, min=1, max=1048576 })),
+            kdfParallelism              = T.nullable(T.number({ integer=true, min=1, max=16 })),
+            email                       = T.email(),
+            masterKeyAuthenticationHash = sml,
+            masterKeyEncryptedUserKey   = enc,
+            masterPasswordHint          = T.nullable(sml),  -- client sends; server 1.36.0 ignores
+          }),
+          emergencyAccessUnlockData = T.array(T.object({
+            id           = T.uuid(),
+            type         = T.number({ integer=true, min=0, max=1 }),
+            waitTimeDays = T.number({ integer=true, min=1, max=90 }),
+            keyEncrypted = nu_enc,
+          }), { max=200 }),
+          organizationAccountRecoveryUnlockData = T.array(T.object({
+            organizationId        = T.uuid(),
+            resetPasswordKey      = nu_enc,
+            masterPasswordHash    = T.nullable(med),
+            otp                   = T.nullable(T.string({ max=16 })),
+            authRequestAccessCode = T.nullable(T.string({ max=128 })),
+          }), { max=200 }),
+          -- Newer fields the client sends; Vaultwarden 1.36.0 ignores both
+          passkeyUnlockData = T.nullable(T.array(T.object({
+            id                 = T.string({ max=512 }),
+            encryptedPublicKey = enc,
+            encryptedUserKey   = enc,
+          }), { max=50 })),
+          deviceKeyUnlockData = T.nullable(T.array(T.object({
+            encryptedPublicKey = nu_enc,
+            encryptedUserKey   = nu_enc,
+          }), { max=50 })),
+        }),
+
+        accountKeys = T.object({
+          -- Deprecated in newer clients but still included in every request
+          userKeyEncryptedAccountPrivateKey = nu_enc,
+          accountPublicKey                  = T.nullable(T.string({ max=4096 })),
+          -- Newer key-pair fields; Vaultwarden 1.36.0 ignores all three
+          publicKeyEncryptionKeyPair = T.nullable(T.object({
+            wrappedPrivateKey = enc,
+            publicKey         = T.string({ max=4096 }),
+            signedPublicKey   = T.nullable(T.string({ max=8192 })),
+          })),
+          signatureKeyPair = T.nullable(T.object({
+            signatureAlgorithm = T.string({ max=64 }),
+            wrappedSigningKey  = enc,
+            verifyingKey       = T.string({ max=512 }),
+          })),
+          securityState = T.nullable(T.object({
+            securityState   = T.string({ max=8192 }),
+            securityVersion = T.number({ integer=true, min=0 }),
+          })),
+        }),
+
+        accountData = T.object({
+          -- cipher_body already contains id as nu_uuid; rotation always populates it
+          ciphers = T.array(cipher_body, { max=5000 }),
+          -- Bitwarden bug #8453 can inject null items; Vaultwarden skips them
+          folders = T.array(T.nullable(T.object({
+            id   = nu_uuid,
+            name = enc,
+          })), { max=1000 }),
+          -- send_body already contains id as nu_uuid
+          sends = T.array(send_body, { max=5000 }),
+        }),
+      }) },
     -- Delete recover: request and confirm account deletion by email
     { name = "delete-recover",       method = "POST", path = [[^/api/accounts/delete-recover$]],
       content_type = "application/json",
