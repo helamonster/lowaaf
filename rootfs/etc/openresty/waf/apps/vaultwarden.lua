@@ -306,6 +306,27 @@ local full_collection_body = T.object({
 -- (BulkMembershipIds, BulkCollectionIds, etc.)
 local bulk_uuid_ids = T.object({ ids = T.array(T.uuid(), { max=2000 }) })
 
+-- Partial cipher update: folderId and favorite only (src/api/core/ciphers.rs: PartialCipherData)
+local cipher_partial_body = T.object({
+  folderId = nu_uuid_or_empty,
+  favorite = T.boolean(),
+})
+
+-- Collection-assignment body: used by /collections, /collections_v2, /collections-admin
+-- (CollectionsAdminData — primary field collectionIds, alias CollectionIds)
+local cipher_collections_body = T.object({
+  collectionIds = T.array(T.uuid(), { max=200 }),
+})
+
+-- Organization group create/update body (src/api/core/organizations.rs: GroupRequest)
+local group_body = T.object({
+  name        = T.string({ max=256 }),
+  accessAll   = T.boolean(),
+  externalId  = T.nullable(T.string({ max=256 })),
+  collections = T.array(collection_access_entry, { max=500 }),
+  users       = T.array(T.uuid(), { max=5000 }),
+})
+
 -- ---------------------------------------------------------------------------
 -- Validates the Vaultwarden JWT "iss" claim against the current server's hostname.
 -- Vaultwarden sets iss = "https://<configured-base-url>|<suffix>".
@@ -520,6 +541,29 @@ return {
         cipher        = cipher_body,
         collectionIds = T.array(T.uuid(), { max = 200 }),
       }) },
+    -- Details endpoint: includes org collection membership alongside the cipher
+    { name = "cipher details",           method = "GET",    path = "^/api/ciphers/" .. U .. "/details$",         no_body = true },
+    -- POST alias for PUT cipher update
+    { name = "cipher update-post",       method = "POST",   path = "^/api/ciphers/" .. U .. "$",                 content_type = "application/json", json = cipher_body },
+    -- Admin update: org owner/admin may edit any cipher in the org
+    { name = "cipher admin update",     methods = { "PUT", "POST" }, path = "^/api/ciphers/" .. U .. "/admin$",  content_type = "application/json", json = cipher_body },
+    -- Partial update: folderId + favorite only (does not touch encrypted data)
+    { name = "cipher partial update",   methods = { "PUT", "POST" }, path = "^/api/ciphers/" .. U .. "/partial$", content_type = "application/json", json = cipher_partial_body },
+    -- Collection assignment variants (v2 returns the updated cipher body; v1 does not)
+    { name = "cipher collections-v2",   methods = { "PUT", "POST" }, path = "^/api/ciphers/" .. U .. "/collections_v2$",     content_type = "application/json", json = cipher_collections_body },
+    { name = "cipher collections",      methods = { "PUT", "POST" }, path = "^/api/ciphers/" .. U .. "/collections$",        content_type = "application/json", json = cipher_collections_body },
+    { name = "cipher collections-admin",methods = { "PUT", "POST" }, path = "^/api/ciphers/" .. U .. "/collections-admin$",  content_type = "application/json", json = cipher_collections_body },
+    -- Soft-delete POST alias (clients may use POST or PUT for idempotency)
+    { name = "cipher soft-delete-post",      method = "POST",   path = "^/api/ciphers/" .. U .. "/delete$",         no_body = true },
+    -- Admin soft-delete (org admin can trash any cipher)
+    { name = "cipher admin soft-delete",    methods = { "PUT", "POST" }, path = "^/api/ciphers/" .. U .. "/delete-admin$", no_body = true },
+    -- Admin hard-delete
+    { name = "cipher admin delete",          method = "DELETE", path = "^/api/ciphers/" .. U .. "/admin$",           no_body = true },
+    -- Admin restore single cipher from trash
+    { name = "cipher admin restore",         method = "PUT",    path = "^/api/ciphers/" .. U .. "/restore-admin$",   no_body = true },
+    -- Individual archive / unarchive (separate from the bulk PUT /ciphers/archive)
+    { name = "cipher archive",               method = "PUT",    path = "^/api/ciphers/" .. U .. "/archive$",         no_body = true },
+    { name = "cipher unarchive",             method = "PUT",    path = "^/api/ciphers/" .. U .. "/unarchive$",       no_body = true },
     { name = "ciphers archive",   method = "PUT",  path = [[^/api/ciphers/archive$]],   content_type = "application/json", json = cipher_ids_body },
     { name = "ciphers unarchive", method = "PUT",  path = [[^/api/ciphers/unarchive$]], content_type = "application/json", json = cipher_ids_body },
     { name = "ciphers import",    method = "POST", path = [[^/api/ciphers/import$]],
@@ -546,6 +590,36 @@ return {
     -- Org cipher list: query param only, no body
     { name = "org cipher details", method = "GET", path = [[^/api/ciphers/organization-details$]],
       query = T.object({ organizationId = T.uuid() }), no_body = true },
+    -- POST alias for cipher create (some older clients use /ciphers/create)
+    { name = "cipher create-post",   method = "POST", path = [[^/api/ciphers/create$]], content_type = "application/json", json = cipher_body },
+    -- Bulk share: re-encrypts and moves multiple ciphers into org collections at once
+    { name = "ciphers share-bulk",   method = "PUT",  path = [[^/api/ciphers/share$]],
+      content_type = "application/json",
+      json = T.object({
+        ciphers       = T.array(cipher_body, { max=2000 }),
+        collectionIds = T.array(T.uuid(), { max=200 }),
+      }) },
+    -- Bulk soft-delete aliases
+    { name = "ciphers soft-delete-post",      method = "POST",   path = [[^/api/ciphers/delete$]],         content_type = "application/json", json = cipher_ids_body },
+    { name = "ciphers soft-delete-put",       method = "PUT",    path = [[^/api/ciphers/delete$]],         content_type = "application/json", json = cipher_ids_body },
+    -- Admin bulk hard-delete (DELETE /ciphers/admin and its POST/PUT aliases)
+    { name = "ciphers admin bulk-delete",     method = "DELETE", path = [[^/api/ciphers/admin$]],          content_type = "application/json", json = cipher_ids_body },
+    { name = "ciphers admin bulk-delete-post",method = "POST",   path = [[^/api/ciphers/delete-admin$]],   content_type = "application/json", json = cipher_ids_body },
+    { name = "ciphers admin bulk-delete-put", method = "PUT",    path = [[^/api/ciphers/delete-admin$]],   content_type = "application/json", json = cipher_ids_body },
+    -- Bulk restore from trash
+    { name = "ciphers restore-bulk",       method = "PUT", path = [[^/api/ciphers/restore$]],       content_type = "application/json", json = cipher_ids_body },
+    { name = "ciphers admin restore-bulk", method = "PUT", path = [[^/api/ciphers/restore-admin$]], content_type = "application/json", json = cipher_ids_body },
+    -- Move ciphers to a folder (POST and PUT both supported)
+    { name = "ciphers move", methods = { "POST", "PUT" }, path = [[^/api/ciphers/move$]],
+      content_type = "application/json",
+      json = T.object({
+        folderId = nu_uuid_or_empty,
+        ids      = T.array(T.uuid(), { max=2000 }),
+      }) },
+    -- Purge vault: body authenticates the action; optional ?organizationId=<uuid> for org vault
+    { name = "ciphers purge", method = "POST", path = [[^/api/ciphers/purge$]],
+      content_type = "application/json", json = password_or_otp,
+      query = T.object({ organizationId = T.nullable(T.uuid()) }) },
 
     -- ATTACHMENTS -----------------------------------------------------------
 
@@ -561,6 +635,16 @@ return {
     { name = "attachment upload",    method = "POST",   path = "^/api/ciphers/" .. U .. "/attachment/" .. FILEID .. "$",
       content_type = "multipart/form-data" },
     { name = "attachment delete",    method = "DELETE", path = "^/api/ciphers/" .. U .. "/attachment/" .. FILEID .. "$", no_body = true },
+    -- Legacy v1 upload: single multipart POST without a pre-signed URL step
+    { name = "attachment create-v1",         method = "POST",   path = "^/api/ciphers/" .. U .. "/attachment$",                              content_type = "multipart/form-data" },
+    -- Admin upload: org admin attaches a file to any cipher in the org
+    { name = "attachment create-admin",      method = "POST",   path = "^/api/ciphers/" .. U .. "/attachment-admin$",                        content_type = "multipart/form-data" },
+    -- Re-encrypt an attachment when sharing a cipher into an org collection
+    { name = "attachment share",             method = "POST",   path = "^/api/ciphers/" .. U .. "/attachment/" .. FILEID .. "/share$",        content_type = "multipart/form-data" },
+    -- Soft-delete POST alias and admin variants
+    { name = "attachment delete-post",       method = "POST",   path = "^/api/ciphers/" .. U .. "/attachment/" .. FILEID .. "/delete$",       no_body = true },
+    { name = "attachment delete-admin-post", method = "POST",   path = "^/api/ciphers/" .. U .. "/attachment/" .. FILEID .. "/delete-admin$", no_body = true },
+    { name = "attachment admin-delete",      method = "DELETE", path = "^/api/ciphers/" .. U .. "/attachment/" .. FILEID .. "/admin$",        no_body = true },
 
     -- FOLDERS ---------------------------------------------------------------
 
@@ -582,9 +666,20 @@ return {
     { name = "send delete",      method = "DELETE", path = "^/api/sends/" .. U .. "$",   no_body = true },
     { name = "send file upload", method = "POST",   path = "^/api/sends/" .. U .. "/file/" .. FILEID .. "$",
       content_type = "multipart/form-data" },
-    -- Send access IDs are short random strings, not UUIDs — [^/]+ is intentional here.
-    { name = "send access",      method = "POST",   path = [[^/api/sends/[^/]+/access$]],
+    -- Send access IDs are base64url-encoded UUID bytes (22 chars), not standard UUIDs.
+    { name = "send access",          method = "POST",   path = [[^/api/sends/access/[^/]{1,32}$]],
       content_type = "application/json", json = T.object({ password = nu_enc }) },
+    -- Legacy v1 file send: single multipart POST (no pre-signed URL step)
+    { name = "send create-file-v1",  method = "POST",   path = [[^/api/sends/file$]],
+      content_type = "multipart/form-data" },
+    -- File access: retrieve a file attachment from a Send (same password body as send access)
+    { name = "send access-file",     method = "POST",   path = "^/api/sends/" .. U .. "/access/file/" .. FILEID .. "$",
+      content_type = "application/json", json = T.object({ password = nu_enc }) },
+    -- Token-authenticated file download (token is a short-lived signed JWT)
+    { name = "send file-download",   method = "GET",    path = "^/api/sends/" .. U .. "/" .. FILEID .. "$",
+      query = T.object({ t = T.string({ max=4096 }) }), no_body = true },
+    -- Remove password protection from a Send
+    { name = "send remove-password", method = "PUT",    path = "^/api/sends/" .. U .. "/remove-password$", no_body = true },
 
     -- ACCOUNT MANAGEMENT ----------------------------------------------------
 
@@ -989,7 +1084,26 @@ return {
       content_type = "application/json", json = bulk_uuid_ids },
     { name = "org collection details", method = "GET",  path = "^/api/organizations/" .. U .. "/collections/" .. U .. "/details$", no_body = true },
     { name = "org collection users",   method = "GET",  path = "^/api/organizations/" .. U .. "/collections/" .. U .. "/users$",   no_body = true },
-    { name = "org groups",             method = "GET", path = "^/api/organizations/" .. U .. "/groups$",            no_body = true },
+    { name = "org groups",              method = "GET",    path = "^/api/organizations/" .. U .. "/groups$",                no_body = true },
+    -- Groups list with full collection-access detail
+    { name = "org groups details",      method = "GET",    path = "^/api/organizations/" .. U .. "/groups/details$",         no_body = true },
+    -- Group create
+    { name = "org group create",        method = "POST",   path = "^/api/organizations/" .. U .. "/groups$",                 content_type = "application/json", json = group_body },
+    -- Group update: both PUT and POST are supported
+    { name = "org group update",       methods = { "PUT", "POST" }, path = "^/api/organizations/" .. U .. "/groups/" .. U .. "$", content_type = "application/json", json = group_body },
+    -- Single group GET variants
+    { name = "org group get",           method = "GET",    path = "^/api/organizations/" .. U .. "/groups/" .. U .. "$",          no_body = true },
+    { name = "org group get-details",   method = "GET",    path = "^/api/organizations/" .. U .. "/groups/" .. U .. "/details$",   no_body = true },
+    -- Group delete (DELETE and POST alias)
+    { name = "org group delete",        method = "DELETE", path = "^/api/organizations/" .. U .. "/groups/" .. U .. "$",          no_body = true },
+    { name = "org group delete-post",   method = "POST",   path = "^/api/organizations/" .. U .. "/groups/" .. U .. "/delete$",   no_body = true },
+    -- Bulk group delete
+    { name = "org groups bulk-delete",  method = "DELETE", path = "^/api/organizations/" .. U .. "/groups$",                 content_type = "application/json", json = bulk_uuid_ids },
+    -- Group member management: body is a raw JSON array of membership UUIDs
+    { name = "org group members get",   method = "GET",    path = "^/api/organizations/" .. U .. "/groups/" .. U .. "/users$",    no_body = true },
+    { name = "org group members set",   method = "PUT",    path = "^/api/organizations/" .. U .. "/groups/" .. U .. "/users$",    content_type = "application/json", json = T.array(T.uuid(), { max=5000 }) },
+    -- Remove a single member from a group
+    { name = "org group remove-member", method = "POST",   path = "^/api/organizations/" .. U .. "/groups/" .. U .. "/delete-user/" .. U .. "$", no_body = true },
     -- Org user management
     { name = "org users", method = "GET", path = "^/api/organizations/" .. U .. "/users$", no_body = true,
       query = T.object({
@@ -1045,6 +1159,78 @@ return {
     { name = "org users public-keys", method = "POST", path = "^/api/organizations/" .. U .. "/users/public-keys$",
       content_type = "application/json", json = bulk_uuid_ids },
 
+    -- Revoke / restore org membership
+    { name = "org user revoke",        method = "PUT", path = "^/api/organizations/" .. U .. "/users/" .. U .. "/revoke$",  no_body = true },
+    -- Bulk revoke: ids=null means all confirmed members
+    { name = "org users revoke-bulk",  method = "PUT", path = "^/api/organizations/" .. U .. "/users/revoke$",
+      content_type = "application/json",
+      json = T.object({ ids = T.nullable(T.array(T.uuid(), { max=2000 })) }) },
+    { name = "org user restore",       method = "PUT", path = "^/api/organizations/" .. U .. "/users/" .. U .. "/restore$", no_body = true },
+    { name = "org users restore-bulk", method = "PUT", path = "^/api/organizations/" .. U .. "/users/restore$",
+      content_type = "application/json", json = bulk_uuid_ids },
+
+    -- Account recovery / reset-password
+    { name = "org user reset-pw-details", method = "GET",
+      path = "^/api/organizations/" .. U .. "/users/" .. U .. "/reset-password-details$", no_body = true },
+    { name = "org user reset-password", method = "PUT",
+      path = "^/api/organizations/" .. U .. "/users/" .. U .. "/reset-password$",
+      content_type = "application/json",
+      json = T.object({
+        newMasterPasswordHash = med,
+        key                   = enc,
+      }) },
+    -- Member enrolls in or withdraws from admin account recovery
+    { name = "org user reset-pw-enrollment", method = "PUT",
+      path = "^/api/organizations/" .. U .. "/users/" .. U .. "/reset-password-enrollment$",
+      content_type = "application/json",
+      json = T.object({
+        resetPasswordKey   = nu_enc,
+        masterPasswordHash = T.nullable(med),
+        otp                = T.nullable(T.string({ max=16 })),
+      }) },
+
+    -- Org policies
+    { name = "org policies list",  method = "GET", path = "^/api/organizations/" .. U .. "/policies$",        no_body = true },
+    -- Token-based lookup: used during invite acceptance (unauthenticated)
+    { name = "org policies token", method = "GET", path = "^/api/organizations/" .. U .. "/policies/token$",
+      query = T.object({ token = T.string({ max=4096 }) }), no_body = true },
+    -- Vaultwarden uses a fixed dummy UUID for the SSO org master-password policy
+    { name = "org policy master-pw-sso", method = "GET",
+      path = [[^/api/organizations/00000000-01dc-01dc-01dc-000000000000/policies/master-password$]], no_body = true },
+    { name = "org policy master-pw", method = "GET",
+      path = "^/api/organizations/" .. U .. "/policies/master-password$", no_body = true },
+    -- Policy GET/PUT by integer type (0–11 in current Vaultwarden; [0-9]{1,3} gives headroom)
+    { name = "org policy get",     method = "GET", path = "^/api/organizations/" .. U .. "/policies/[0-9]{1,3}$", no_body = true },
+    { name = "org policy update",  method = "PUT", path = "^/api/organizations/" .. U .. "/policies/[0-9]{1,3}$",
+      content_type = "application/json",
+      json = T.object({
+        enabled = T.boolean(),
+        data    = T.nullable(T.any()),  -- shape varies by policy type
+      }) },
+    { name = "org policy update-vnext", method = "PUT", path = "^/api/organizations/" .. U .. "/policies/[0-9]{1,3}/vnext$",
+      content_type = "application/json",
+      json = T.object({
+        policy = T.object({
+          enabled = T.boolean(),
+          data    = T.nullable(T.any()),
+        }),
+      }) },
+
+    -- Billing stubs (Vaultwarden always returns empty/dummy data for self-hosted)
+    { name = "org billing metadata",       method = "GET", path = "^/api/organizations/" .. U .. "/billing/metadata$",                no_body = true },
+    { name = "org billing warnings",       method = "GET", path = "^/api/organizations/" .. U .. "/billing/vnext/warnings$",          no_body = true },
+    { name = "org billing self-host-meta", method = "GET", path = "^/api/organizations/" .. U .. "/billing/vnext/self-host/metadata$", no_body = true },
+
+    -- Org public key (GET /public-key and backward-compat GET /keys alias)
+    { name = "org public-key", method = "GET", path = "^/api/organizations/" .. U .. "/public-key$", no_body = true },
+    { name = "org keys-get",   method = "GET", path = "^/api/organizations/" .. U .. "/keys$",       no_body = true },
+
+    -- Vault export
+    { name = "org export", method = "GET", path = "^/api/organizations/" .. U .. "/export$", no_body = true },
+
+    -- Plans stub (self-hosted Vaultwarden returns free-plan data)
+    { name = "plans", method = "GET", path = [[^/api/plans$]], no_body = true },
+
     -- EMERGENCY ACCESS ------------------------------------------------------
 
     { name = "emergency trusted", method = "GET", path = [[^/api/emergency-access/trusted$]], no_body = true },
@@ -1095,6 +1281,13 @@ return {
         excludedGlobalEquivalentDomains = T.nullable(T.array(T.number({ integer=true, min=0 }), { max=100 })),
         equivalentDomains               = T.nullable(T.array(T.array(T.string({ max=256 }), { max=50 }), { max=100 })),
       }) },
+    -- POST alias (same handler as PUT)
+    { name = "domains post", method = "POST", path = [[^/api/settings/domains$]],
+      content_type = "application/json",
+      json = T.object({
+        excludedGlobalEquivalentDomains = T.nullable(T.array(T.number({ integer=true, min=0 }), { max=100 })),
+        equivalentDomains               = T.nullable(T.array(T.array(T.string({ max=256 }), { max=50 }), { max=100 })),
+      }) },
 
     -- PASSWORDLESS / AUTH REQUESTS ------------------------------------------
 
@@ -1132,6 +1325,15 @@ return {
 
     { name = "notifications hub", method = "GET", path = [[^/notifications/hub$]],
       query = T.object({ access_token = vw_access_token }), no_body = true },
+
+    -- MISCELLANEOUS ---------------------------------------------------------
+
+    { name = "alive",       method = "GET", path = [[^/api/alive$]],   no_body = true },
+    { name = "now",         method = "GET", path = [[^/api/now$]],     no_body = true },
+    { name = "version",     method = "GET", path = [[^/api/version$]], no_body = true },
+    -- HIBP proxied breach lookup: username is an email address (max 320 chars per RFC 5321)
+    { name = "hibp-breach", method = "GET", path = [[^/api/hibp/breach$]],
+      query = T.object({ username = T.string({ max=320 }) }), no_body = true },
 
     -- ADMIN PANEL -----------------------------------------------------------
     -- Routes are listed most-specific-first so the parameterized catch-all

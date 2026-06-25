@@ -484,6 +484,11 @@ function T.bool_query()
   return T.nullable(T.string({ max=5, match=[[^(?:true|false)?$]] }))
 end
 
+-- Accepts any value; use T.nullable(T.any()) to also accept null.
+function T.any()
+  return function(v, path) return true end
+end
+
 -- ---------------------------------------------------------------------------
 -- Path-pattern regex fragments
 -- These are plain strings, not validator functions.  Concatenate them into
