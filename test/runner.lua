@@ -359,10 +359,30 @@ local function test_route(route)
   end
 
   -- ── 9. JSON body invalids ───────────────────────────────────────────────────
+  -- For multi-schema routes: only test values that fail EVERY schema.
+  -- A body valid for any one schema is correctly allowed by the WAF.
 
   if json_schema then
-    local invalids = gen.invalid_values(json_schema)
-    for _, pair in ipairs(invalids) do
+    local all_schemas = route.json_schemas or { json_schema }
+
+    -- Collect candidates from every schema, keep those that fail all of them.
+    local seen           = {}
+    local cross_invalids = {}
+    for _, schema in ipairs(all_schemas) do
+      for _, pair in ipairs(gen.invalid_values(schema)) do
+        if not seen[pair.label] then
+          seen[pair.label] = true
+          local fails_all = true
+          for _, other in ipairs(all_schemas) do
+            ngx.ctx = { waf_verbose = 0, waf_log_mode = false }
+            if other(pair.value, "$") then fails_all = false; break end
+          end
+          if fails_all then cross_invalids[#cross_invalids+1] = pair end
+        end
+      end
+    end
+
+    for _, pair in ipairs(cross_invalids) do
       local body_str = encode_body(pair.value)
       if body_str then
         local denied = not run_request({
