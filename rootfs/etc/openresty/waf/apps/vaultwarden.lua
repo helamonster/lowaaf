@@ -202,7 +202,7 @@ local cipher_body = T.object({
     response       = nu_enc,
   })),
   archivedDate = T.nullable(T.iso8601()),
-})
+}, { required = { type=true, name=true } })
 
 -- ---------------------------------------------------------------------------
 -- Registration body: shared by the legacy /identity/accounts/register and
@@ -214,7 +214,7 @@ local cipher_body = T.object({
 local keys_data = T.nullable(T.object({
   encryptedPrivateKey = enc,
   publicKey           = T.string({ max=4096 }),
-}))
+}, { required = { encryptedPrivateKey=true, publicKey=true } }))
 
 local register_body = T.object({
   email              = T.email(),
@@ -236,7 +236,7 @@ local register_body = T.object({
   acceptEmergencyAccessInviteToken = T.nullable(T.string({ max=4096 })),
   orgInviteToken     = T.nullable(T.string({ max=4096 })),  -- serde primary name
   token              = T.nullable(T.string({ max=4096 })),  -- serde alias
-})
+}, { required = { email=true, kdf=true, kdfIterations=true, masterPasswordHash=true } })
 
 -- ---------------------------------------------------------------------------
 -- Shared body for bulk cipher operations: archive, unarchive, bulk-delete
@@ -244,7 +244,7 @@ local register_body = T.object({
 -- ---------------------------------------------------------------------------
 local cipher_ids_body = T.object({
   ids = T.array(T.uuid(), { max = 2000 }),
-})
+}, { required = { ids=true } })
 
 -- ---------------------------------------------------------------------------
 -- Attachment upload initiation (v2)
@@ -258,7 +258,7 @@ local attachment_init_body = T.object({
   fileSize              = T.number({ integer=true, min=0, max=536870912 }),  -- 512 MB ceiling
   adminRequest          = nu_bool,
   lastKnownRevisionDate = T.nullable(T.iso8601()),
-})
+}, { required = { key=true, fileName=true, fileSize=true } })
 
 -- ---------------------------------------------------------------------------
 -- Send body: shared by send-create (POST /api/sends) and
@@ -271,7 +271,7 @@ local send_body = T.object({
   name           = enc,
   deletionDate   = T.iso8601(),
   disabled       = T.boolean(),
-  password       = nu_enc,
+  password       = T.nullable(sml),   -- PBKDF2-derived 44-char base64 key; sml (256) gives headroom
   maxAccessCount = T.nullable(T.number({ integer=true, min=0, max=1000000 })),
   expirationDate = T.nullable(T.iso8601()),
   hideEmail      = nu_bool,
@@ -288,7 +288,7 @@ local send_body = T.object({
     size     = T.nullable(T.string({ max=32 })),
     sizeName = T.nullable(T.string({ max=32 })),
   })),
-})
+}, { required = { type=true, key=true, name=true, deletionDate=true, disabled=true } })
 
 -- ---------------------------------------------------------------------------
 -- Shared auth-verification body: one of the two fields must be provided.
@@ -312,10 +312,10 @@ local kdf_data = T.object({
   kdfIterations  = T.number({ integer=true, min=1, max=2000000 }),
   kdfMemory      = T.nullable(T.number({ integer=true, min=1, max=1048576 })),
   kdfParallelism = T.nullable(T.number({ integer=true, min=1, max=16 })),
-})
+}, { required = { kdf=true, kdfIterations=true } })
 
 -- Folder body: just an encrypted name
-local folder_body = T.object({ name = enc })
+local folder_body = T.object({ name = enc }, { required = { name=true } })
 
 -- Access-control entry shared by collection groups and collection members
 -- (CollectionGroupData / CollectionMembershipData have the same wire shape)
@@ -324,7 +324,7 @@ local collection_access_entry = T.object({
   readOnly      = T.boolean(),
   hidePasswords = T.boolean(),
   manage        = T.boolean(),
-})
+}, { required = { id=true, readOnly=true, hidePasswords=true, manage=true } })
 
 -- Full collection body: used for collection create and update
 -- (src/api/core/organizations.rs: FullCollectionData)
@@ -334,23 +334,23 @@ local full_collection_body = T.object({
   users      = T.array(collection_access_entry, { max=500 }),
   id         = nu_uuid,
   externalId = T.nullable(T.string({ max=256 })),
-})
+}, { required = { name=true, groups=true, users=true } })
 
 -- Bulk UUID IDs body: shared by several bulk-operation endpoints
 -- (BulkMembershipIds, BulkCollectionIds, etc.)
-local bulk_uuid_ids = T.object({ ids = T.array(T.uuid(), { max=2000 }) })
+local bulk_uuid_ids = T.object({ ids = T.array(T.uuid(), { max=2000 }) }, { required = { ids=true } })
 
 -- Partial cipher update: folderId and favorite only (src/api/core/ciphers.rs: PartialCipherData)
 local cipher_partial_body = T.object({
   folderId = nu_uuid_or_empty,
   favorite = T.boolean(),
-})
+}, { required = { favorite=true } })
 
 -- Collection-assignment body: used by /collections, /collections_v2, /collections-admin
 -- (CollectionsAdminData — primary field collectionIds, alias CollectionIds)
 local cipher_collections_body = T.object({
   collectionIds = T.array(T.uuid(), { max=200 }),
-})
+}, { required = { collectionIds=true } })
 
 -- Organization group create/update body (src/api/core/organizations.rs: GroupRequest)
 local group_body = T.object({
@@ -359,7 +359,7 @@ local group_body = T.object({
   externalId  = T.nullable(T.string({ max=256 })),
   collections = T.array(collection_access_entry, { max=500 }),
   users       = T.array(T.uuid(), { max=5000 }),
-})
+}, { required = { name=true, accessAll=true, collections=true, users=true } })
 
 -- ---------------------------------------------------------------------------
 -- Validates the Vaultwarden JWT "iss" claim against the current server's hostname.
@@ -528,7 +528,7 @@ return {
         -- SSO / OIDC fields (grant_type="authorization_code")
         code              = T.nullable(T.string({ max=1024 })),
         code_verifier     = T.nullable(T.string({ max=256 })),
-      }),
+      }, { required = { grant_type=true } }),
     },
 
     {
@@ -536,7 +536,7 @@ return {
       method       = "POST",
       paths        = { [[^/identity/accounts/prelogin$]], [[^/identity/accounts/prelogin/password$]] },
       content_type = "application/json",
-      json = T.object({ email = T.email() }),
+      json = T.object({ email = T.email() }, { required = { email=true } }),
     },
 
     -- Registration: new two-step flow (send-verification-email → finish)
@@ -548,7 +548,7 @@ return {
       json = T.object({
         email = T.email(),
         name  = nu_sml,
-      }) },
+      }, { required = { email=true } }) },
     { name = "register finish", method = "POST",
       path         = [[^/identity/accounts/register/finish$]],
       content_type = "application/json",
@@ -721,13 +721,13 @@ return {
       content_type = "multipart/form-data" },
     -- Send access IDs are base64url-encoded UUID bytes (22 chars), not standard UUIDs.
     { name = "send access",          method = "POST",   path = [[^/api/sends/access/[^/]{1,32}$]],
-      content_type = "application/json", json = T.object({ password = nu_enc }) },
+      content_type = "application/json", json = T.object({ password = T.nullable(sml) }) },
     -- Legacy v1 file send: single multipart POST (no pre-signed URL step)
     { name = "send create-file-v1",  method = "POST",   path = [[^/api/sends/file$]],
       content_type = "multipart/form-data" },
     -- File access: retrieve a file attachment from a Send (same password body as send access)
     { name = "send access-file",     method = "POST",   path = "^/api/sends/" .. U .. "/access/file/" .. FILEID .. "$",
-      content_type = "application/json", json = T.object({ password = nu_enc }) },
+      content_type = "application/json", json = T.object({ password = T.nullable(sml) }) },
     -- Token-authenticated file download (token is a short-lived signed JWT)
     { name = "send file-download",   method = "GET",    path = "^/api/sends/" .. U .. "/" .. FILEID .. "$",
       query = T.object({ t = T.string({ max=4096 }) }), no_body = true },
@@ -1090,7 +1090,7 @@ return {
     { name = "org get",    method = "GET",  path = "^/api/organizations/" .. U .. "$", no_body = true },
     { name = "org update", methods = { "PUT", "POST" }, path = "^/api/organizations/" .. U .. "$",
       content_type = "application/json",
-      json = T.object({ billingEmail = T.email(), name = T.string({ max=256 }) }) },
+      json = T.object({ billingEmail = T.email(), name = T.string({ max=256 }) }, { required = { billingEmail=true, name=true } }) },
     { name = "org delete", method = "DELETE", path = "^/api/organizations/" .. U .. "$",
       content_type = "application/json", json = password_or_otp },
     { name = "org delete-post", method = "POST", path = "^/api/organizations/" .. U .. "/delete$",
@@ -1114,8 +1114,8 @@ return {
         keys = T.nullable(T.object({
           encryptedPrivateKey = enc,
           publicKey           = T.string({ max=4096 }),
-        })),
-      }) },
+        }, { required = { encryptedPrivateKey=true, publicKey=true } })),
+      }, { required = { billingEmail=true, collectionName=true, key=true, name=true } }) },
     { name = "collection list",        method = "GET", path = [[^/api/collections$]],                              no_body = true },
     { name = "org collections",        method = "GET", path = "^/api/organizations/" .. U .. "/collections$",      no_body = true },
     { name = "org collections details",method = "GET", path = "^/api/organizations/" .. U .. "/collections/details$", no_body = true },
@@ -1294,7 +1294,7 @@ return {
         email        = T.email(),
         type         = T.number({ integer=true, min=0, max=1 }),
         waitTimeDays = T.number({ integer=true, min=1, max=90 }),
-      }) },
+      }, { required = { email=true, type=true, waitTimeDays=true } }) },
     { name = "emergency get",     method = "GET",    path = "^/api/emergency-access/" .. U .. "$",                no_body = true },
     { name = "emergency update",  methods = { "PUT", "POST" }, path = "^/api/emergency-access/" .. U .. "$",
       content_type = "application/json",
@@ -1302,7 +1302,7 @@ return {
         type         = T.number({ integer=true, min=0, max=1 }),
         waitTimeDays = T.number({ integer=true, min=1, max=90 }),
         keyEncrypted = nu_enc,
-      }) },
+      }, { required = { type=true, waitTimeDays=true } }) },
     { name = "emergency delete",  methods = { "DELETE" }, path = "^/api/emergency-access/" .. U .. "$",           no_body = true },
     { name = "emergency delete-post", method = "POST", path = "^/api/emergency-access/" .. U .. "/delete$",       no_body = true },
     { name = "emergency reinvite",    method = "POST", path = "^/api/emergency-access/" .. U .. "/reinvite$",     no_body = true },
@@ -1399,7 +1399,7 @@ return {
       form = T.object({
         token    = T.string({ max = 1024 }),
         redirect = T.nullable(T.string({ max = 1024 })),
-      }),
+      }, { required = { token=true } }),
     },
 
     { name = "admin logout", method = "GET", path = [[^/admin/logout$]], no_body = true },
