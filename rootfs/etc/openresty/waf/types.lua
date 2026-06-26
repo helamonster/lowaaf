@@ -18,6 +18,7 @@
 local ngx   = ngx
 local cjson = require "cjson.safe"
 local T = {}
+T._registry = setmetatable({}, { __mode = "k" })  -- maps validator fn → meta table
 
 -- base64url → standard base64, then decode (JWT uses base64url with no padding)
 local function b64url_decode(s)
@@ -54,7 +55,7 @@ end
 
 function T.string(opts)
   opts = opts or {}
-  return function(v, path)
+  local fn = function(v, path)
     local verbose = ngx.ctx.waf_verbose or 0
     if type(v) ~= "string" then
       local msg = path .. " must be a string"
@@ -88,11 +89,13 @@ function T.string(opts)
     end
     return true
   end
+  T._registry[fn] = { type = "string", opts = opts }
+  return fn
 end
 
 function T.number(opts)
   opts = opts or {}
-  return function(v, path)
+  local fn = function(v, path)
     local verbose = ngx.ctx.waf_verbose or 0
     if type(v) ~= "number" then
       local msg = path .. " must be a number"
@@ -116,10 +119,12 @@ function T.number(opts)
     end
     return true
   end
+  T._registry[fn] = { type = "number", opts = opts }
+  return fn
 end
 
 function T.boolean()
-  return function(v, path)
+  local fn = function(v, path)
     local verbose = ngx.ctx.waf_verbose or 0
     if type(v) ~= "boolean" then
       local msg = path .. " must be a boolean"
@@ -128,34 +133,42 @@ function T.boolean()
     end
     return true
   end
+  T._registry[fn] = { type = "boolean" }
+  return fn
 end
 
 function T.uuid()
-  return T.string({
+  local fn = T.string({
     match = [[^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$]]
   })
+  T._registry[fn] = { type = "uuid" }
+  return fn
 end
 
 function T.email()
-  return T.string({
+  local fn = T.string({
     min       = 3,
     max       = 320,
     match     = [[^[^@\s]+@[^@\s]+\.[^@\s]+$]],
     not_match = "[\\x00-\\x1f\\x7f<>\"]",
   })
+  T._registry[fn] = { type = "email" }
+  return fn
 end
 
 -- passes if value is JSON null or Lua nil, otherwise delegates to inner
 function T.nullable(inner)
-  return function(v, path)
+  local fn = function(v, path)
     if v == ngx.null or v == nil then return true end
     return inner(v, path)
   end
+  T._registry[fn] = { type = "nullable", inner = inner }
+  return fn
 end
 
 function T.array(inner, opts)
   opts = opts or {}
-  return function(v, path)
+  local fn = function(v, path)
     if type(v) ~= "table" then return fail(path .. " must be an array") end
     local n = #v
     if opts.min and n < opts.min then
@@ -178,12 +191,14 @@ function T.array(inner, opts)
     end
     return true
   end
+  T._registry[fn] = { type = "array", inner = inner, opts = opts }
+  return fn
 end
 
 -- Validates a table with arbitrary string keys, all mapped to the same value type.
 -- Use when keys are dynamic (e.g. IDs) and only the value shape is known.
 function T.dict(value_validator)
-  return function(v, path)
+  local fn = function(v, path)
     if type(v) ~= "table" then return fail(path .. " must be an object") end
     local log_mode = ngx.ctx.waf_log_mode
     local errors = log_mode and {}
@@ -199,6 +214,8 @@ function T.dict(value_validator)
     end
     return true
   end
+  T._registry[fn] = { type = "dict", inner = value_validator }
+  return fn
 end
 
 -- schema: { key = validator, ... }
@@ -208,7 +225,7 @@ end
 -- callers (check_body, check_query) can log each one separately via deny().
 function T.object(schema, opts)
   opts = opts or {}
-  return function(v, path)
+  local fn = function(v, path)
     local verbose = ngx.ctx.waf_verbose or 0
     if type(v) ~= "table" then return fail(path .. " must be an object") end
     local log_mode = ngx.ctx.waf_log_mode
@@ -238,6 +255,8 @@ function T.object(schema, opts)
     if log_mode and #errors > 0 then return false, table.concat(errors, "\n") end
     return true
   end
+  T._registry[fn] = { type = "object", schema = schema, opts = opts }
+  return fn
 end
 
 -- ---------------------------------------------------------------------------
@@ -246,10 +265,12 @@ end
 
 -- Semantic version (semver.org): MAJOR.MINOR.PATCH[-prerelease][+build]
 function T.semver()
-  return T.string({
+  local fn = T.string({
     max   = 128,
     match = [[^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$]],
   })
+  T._registry[fn] = { type = "semver" }
+  return fn
 end
 
 -- HTTP or HTTPS URL (RFC 3986 character set)
@@ -258,19 +279,23 @@ end
 -- sub-delims: ! $ & ' ( ) * + , ; =
 -- percent-encoding: %
 function T.url()
-  return T.string({
+  local fn = T.string({
     max   = 2048,
     match = [[^https?://[A-Za-z0-9\-._~:/?#\[\]@!$&'()*+,;=%]+$]],
   })
+  T._registry[fn] = { type = "url" }
+  return fn
 end
 
 -- JSON Web Token (RFC 7519): three base64url segments separated by dots.
 -- Use T.jwt_claims(schema) instead when you want to validate payload contents.
 function T.jwt()
-  return T.string({
+  local fn = T.string({
     max   = 8192,
     match = [[^[A-Za-z0-9\-_]+\.[A-Za-z0-9\-_]+\.[A-Za-z0-9\-_]*$]],
   })
+  T._registry[fn] = { type = "jwt" }
+  return fn
 end
 
 -- Like T.jwt() but also decodes and validates the header and/or payload.
@@ -279,7 +304,7 @@ end
 function T.jwt_claims(claims_schema, header_schema)
   local claims_validator = T.object(claims_schema)
   local header_validator = header_schema and T.object(header_schema)
-  return function(v, path)
+  local fn = function(v, path)
     if type(v) ~= "string" then return false, path .. " must be a string" end
     local dot1 = v:find(".", 1, true)
     if not dot1 then return false, path .. ": not a valid JWT" end
@@ -307,23 +332,29 @@ function T.jwt_claims(claims_schema, header_schema)
     end
     return claims_validator(claims, path .. "[claims]")
   end
+  T._registry[fn] = { type = "jwt_claims", claims_validator = claims_validator, header_validator = header_validator }
+  return fn
 end
 
 -- BCP 47 language tag: e.g. "en", "en-US", "zh-Hant", "sr-Latn-CS"
 function T.lang_tag()
-  return T.string({
+  local fn = T.string({
     max   = 35,
     match = [[^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$]],
   })
+  T._registry[fn] = { type = "lang_tag" }
+  return fn
 end
 
 -- Standard base64-encoded data (RFC 4648). Pass opts.max to cap length.
 function T.base64(opts)
   opts = opts or {}
-  return T.string({
+  local fn = T.string({
     max   = opts.max or 65536,
     match = [[^[A-Za-z0-9+/]*={0,2}$]],
   })
+  T._registry[fn] = { type = "base64", opts = opts }
+  return fn
 end
 
 -- ---------------------------------------------------------------------------
@@ -443,11 +474,15 @@ end
 
 -- ISO 8601 UTC datetime: YYYY-MM-DDTHH:MM:SS[.fractional]Z
 function T.iso8601()
-  return T.string({ max=32, match=[[^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$]] })
+  local fn = T.string({ max=32, match=[[^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$]] })
+  T._registry[fn] = { type = "iso8601" }
+  return fn
 end
 
 function T.bearer_token()
-  return T.string({ max = 2048, match = [[^Bearer [A-Za-z0-9\-._~+/]+=*$]] })
+  local fn = T.string({ max = 2048, match = [[^Bearer [A-Za-z0-9\-._~+/]+=*$]] })
+  T._registry[fn] = { type = "bearer_token" }
+  return fn
 end
 
 -- ---------------------------------------------------------------------------
@@ -455,7 +490,9 @@ end
 -- Browsers send this only when the user has opted in; the spec mandates value "1".
 -- ---------------------------------------------------------------------------
 function T.sec_gpc()
-  return T.string({ max=1, enum={ ["1"]=true } })
+  local fn = T.string({ max=1, enum={ ["1"]=true } })
+  T._registry[fn] = { type = "sec_gpc" }
+  return fn
 end
 
 -- ---------------------------------------------------------------------------
@@ -467,10 +504,12 @@ end
 -- Examples: "u=3"  "u=5, i"  "u=0, i=?1"  "i"  "i=?0, u=7"
 -- ---------------------------------------------------------------------------
 function T.http_priority()
-  return T.string({
+  local fn = T.string({
     max   = 32,
     match = [[^(?:u=[0-7](?:,\s*i(?:=\?[01])?)?|i(?:=\?[01])?(?:,\s*u=[0-7])?)$]],
   })
+  T._registry[fn] = { type = "http_priority" }
+  return fn
 end
 
 -- ---------------------------------------------------------------------------
@@ -481,12 +520,16 @@ end
 -- ?param with no value arrives as an empty string. Wraps T.nullable because
 -- an absent optional param arrives as nil from ngx.req.get_uri_args().
 function T.bool_query()
-  return T.nullable(T.string({ max=5, match=[[^(?:true|false)?$]] }))
+  local fn = T.nullable(T.string({ max=5, match=[[^(?:true|false)?$]] }))
+  T._registry[fn] = { type = "bool_query" }
+  return fn
 end
 
 -- Accepts any value; use T.nullable(T.any()) to also accept null.
 function T.any()
-  return function(v, path) return true end
+  local fn = function(v, path) return true end
+  T._registry[fn] = { type = "any" }
+  return fn
 end
 
 -- ---------------------------------------------------------------------------
