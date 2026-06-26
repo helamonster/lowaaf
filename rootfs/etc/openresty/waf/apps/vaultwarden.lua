@@ -122,7 +122,20 @@ local fido2_credential = T.object({
   response        = nu_enc,
 })
 
-local cipher_body = T.object({
+-- Enforces that each cipher type includes its mandatory sub-object.
+-- Bitwarden: 1=Login, 2=SecureNote, 3=Card, 4=Identity, 5=SshKey
+local function cipher_type_check(v, path)
+  if type(v) ~= "table" then return true end
+  local required = { [1]="login", [2]="secureNote", [3]="card", [4]="identity", [5]="sshKey" }
+  local sub = required[v.type]
+  if sub and (v[sub] == nil or v[sub] == ngx.null) then
+    return false, path .. ": cipher type=" .. tostring(v.type)
+                       .. " requires sub-object '" .. sub .. "'"
+  end
+  return true
+end
+
+local cipher_body = T.with_check(T.object({
   -- type 5 = SshKey (added in Bitwarden SDK ~2024)
   type            = T.number({ integer = true, min = 1, max = 5 }),
   -- id is present in share/import contexts (the cipher's existing UUID)
@@ -202,7 +215,13 @@ local cipher_body = T.object({
     response       = nu_enc,
   })),
   archivedDate = T.nullable(T.iso8601()),
-}, { required = { type=true, name=true } })
+}, { required = { type=true, name=true } }), cipher_type_check, {
+  { value = { type=1, name="a" }, label = "type=1 without login sub-object"      },
+  { value = { type=2, name="a" }, label = "type=2 without secureNote sub-object" },
+  { value = { type=3, name="a" }, label = "type=3 without card sub-object"       },
+  { value = { type=4, name="a" }, label = "type=4 without identity sub-object"   },
+  { value = { type=5, name="a" }, label = "type=5 without sshKey sub-object"     },
+})
 
 -- ---------------------------------------------------------------------------
 -- Registration body: shared by the legacy /identity/accounts/register and

@@ -260,6 +260,28 @@ function T.object(schema, opts)
 end
 
 -- ---------------------------------------------------------------------------
+-- Combinators
+-- ---------------------------------------------------------------------------
+
+-- Wraps a base validator with an additional cross-field check function.
+-- check_fn(v, path) → ok, err runs only when base passes.
+-- invalid_hints: optional array of { value, label } pairs — known-bad inputs
+-- that pass base but fail check_fn; included in gen.invalid_values output.
+function T.with_check(base, check_fn, invalid_hints)
+  local fn = function(v, path)
+    local ok, err = base(v, path)
+    if not ok then return false, err end
+    return check_fn(v, path)
+  end
+  T._registry[fn] = {
+    type          = "with_check",
+    base_meta     = T._registry[base],
+    invalid_hints = invalid_hints or {},
+  }
+  return fn
+end
+
+-- ---------------------------------------------------------------------------
 -- Common format validators
 -- ---------------------------------------------------------------------------
 

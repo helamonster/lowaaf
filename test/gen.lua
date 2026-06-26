@@ -82,7 +82,14 @@ local function raw_valid(meta)
     return b64url(header_json) .. "." .. b64url(claims_json) .. ".fakesig"
 
   elseif t == "nullable" then
-    return nil   -- nil always passes nullable; caller omits the key
+    -- Prefer a concrete inner value so cross-field consistency rules (e.g.
+    -- cipher type/sub-object check) receive a fully-populated body.
+    local inner_meta = meta.inner and REG[meta.inner]
+    if inner_meta then return raw_valid(inner_meta) end
+    return nil
+
+  elseif t == "with_check" then
+    return meta.base_meta and raw_valid(meta.base_meta) or nil
 
   elseif t == "array" then
     if opts.min and opts.min > 0 then
@@ -256,6 +263,16 @@ local function raw_invalids(meta)
   elseif t == "dict" then
     add("notadict", "string instead of object")
     add(123,        "number instead of object")
+
+  elseif t == "with_check" then
+    if meta.base_meta then
+      for _, pair in ipairs(raw_invalids(meta.base_meta)) do
+        add(pair.value, pair.label)
+      end
+    end
+    for _, hint in ipairs(meta.invalid_hints or {}) do
+      add(hint.value, hint.label)
+    end
 
   elseif t == "jwt" or t == "jwt_claims" then
     add("not.a.jwt",  "invalid JWT (bad chars)")
