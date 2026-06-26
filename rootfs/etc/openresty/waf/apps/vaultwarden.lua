@@ -99,7 +99,7 @@ local cipher_field = T.object({
   type     = T.nullable(T.number({ integer = true, min = 0, max = 3 })),
   name     = nu_enc,
   value    = nu_enc,
-  linkedId = nu_num,
+  linkedId = T.nullable(T.number({ integer=true, min=0, max=500 })),
   response = nu_enc,
 })
 
@@ -141,7 +141,7 @@ local cipher_body = T.object({
   attachments2 = T.nullable(T.dict(T.object({
     fileName              = nu_enc,
     key                   = nu_enc,
-    fileSize              = nu_num,
+    fileSize              = T.nullable(T.number({ integer=true, min=0, max=536870912 })),
     adminRequest          = nu_bool,
     lastKnownRevisionDate = T.nullable(T.iso8601()),
   }))),
@@ -628,8 +628,8 @@ return {
           name = enc,
         }), { max = 1000 }),
         folderRelationships = T.array(T.object({
-          key   = T.number({ integer=true, min=0 }),
-          value = T.number({ integer=true, min=0 }),
+          key   = T.number({ integer=true, min=0, max=4999 }),
+          value = T.number({ integer=true, min=0, max=999 }),
         }), { max = 5000 }),
       }) },
     { name = "ciphers bulk-delete",method = "DELETE", path = [[^/api/ciphers$]],           content_type = "application/json", json = cipher_ids_body },
@@ -903,7 +903,7 @@ return {
           })),
           securityState = T.nullable(T.object({
             securityState   = T.string({ max=8192 }),
-            securityVersion = T.number({ integer=true, min=0 }),
+            securityVersion = T.number({ integer=true, min=0, max=9999 }),
           })),
         }),
 
@@ -1331,14 +1331,14 @@ return {
     { name = "domains update", method = "PUT", path = [[^/api/settings/domains$]],
       content_type = "application/json",
       json = T.object({
-        excludedGlobalEquivalentDomains = T.nullable(T.array(T.number({ integer=true, min=0 }), { max=100 })),
+        excludedGlobalEquivalentDomains = T.nullable(T.array(T.number({ integer=true, min=0, max=100 }), { max=100 })),
         equivalentDomains               = T.nullable(T.array(T.array(T.string({ max=256 }), { max=50 }), { max=100 })),
       }) },
     -- POST alias (same handler as PUT)
     { name = "domains post", method = "POST", path = [[^/api/settings/domains$]],
       content_type = "application/json",
       json = T.object({
-        excludedGlobalEquivalentDomains = T.nullable(T.array(T.number({ integer=true, min=0 }), { max=100 })),
+        excludedGlobalEquivalentDomains = T.nullable(T.array(T.number({ integer=true, min=0, max=100 }), { max=100 })),
         equivalentDomains               = T.nullable(T.array(T.array(T.string({ max=256 }), { max=50 }), { max=100 })),
       }) },
 
