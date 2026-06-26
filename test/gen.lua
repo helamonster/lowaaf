@@ -29,6 +29,21 @@ local function set_ctx()
   ngx.ctx = { waf_verbose = 0, waf_log_mode = false }
 end
 
+-- ── JWT test helpers ──────────────────────────────────────────────────────────
+
+local function b64url(s)
+  return ngx.encode_base64(s):gsub("+", "-"):gsub("/", "_"):gsub("=+$", "")
+end
+
+-- Returns a synthetic unsigned JWT string from two plain-Lua tables.
+local function make_jwt(claims_obj, header_obj)
+  local hdr = header_obj or { alg = "RS256", typ = "JWT" }
+  local claims_json = cjson.encode(claims_obj)
+  local header_json = cjson.encode(hdr)
+  if not claims_json or not header_json then return nil end
+  return b64url(header_json) .. "." .. b64url(claims_json) .. ".fakesig"
+end
+
 -- ── Raw valid value (unverified) ──────────────────────────────────────────────
 
 local function raw_valid(meta)
@@ -67,19 +82,22 @@ local function raw_valid(meta)
   elseif t == "jwt"   then return nil   -- opaque; can't auto-gen
 
   elseif t == "jwt_claims" then
-    -- Build synthetic unsigned JWT: base64url(header).base64url(claims).fakesig
-    -- The WAF validates structure and claims schema only, not the signature.
-    local function b64url(s)
-      return ngx.encode_base64(s):gsub("+", "-"):gsub("/", "_"):gsub("=+$", "")
-    end
     local claims_meta = meta.claims_validator and REG[meta.claims_validator]
     local header_meta = meta.header_validator and REG[meta.header_validator]
     local claims_obj = (claims_meta and raw_valid(claims_meta)) or {}
-    local header_obj = (header_meta and raw_valid(header_meta)) or { alg = "RS256", typ = "JWT" }
-    local claims_json = cjson.encode(claims_obj)
-    local header_json = cjson.encode(header_obj)
-    if not claims_json or not header_json then return nil end
-    return b64url(header_json) .. "." .. b64url(claims_json) .. ".fakesig"
+    local header_obj = (header_meta and raw_valid(header_meta))
+    -- If the schema declares exp, set it to an hour from now so the exp check passes.
+    if claims_obj.exp ~= nil then claims_obj.exp = ngx.time() + 3600 end
+    return make_jwt(claims_obj, header_obj)
+
+  elseif t == "bearer_jwt" then
+    local claims_meta = meta.claims_validator and REG[meta.claims_validator]
+    local header_meta = meta.header_validator and REG[meta.header_validator]
+    local claims_obj = (claims_meta and raw_valid(claims_meta)) or {}
+    local header_obj = (header_meta and raw_valid(header_meta))
+    if claims_obj.exp ~= nil then claims_obj.exp = ngx.time() + 3600 end
+    local jwt = make_jwt(claims_obj, header_obj)
+    return jwt and ("Bearer " .. jwt) or nil
 
   elseif t == "nullable" then
     -- Prefer a concrete inner value so cross-field consistency rules (e.g.
@@ -274,11 +292,27 @@ local function raw_invalids(meta)
       add(hint.value, hint.label)
     end
 
-  elseif t == "jwt" or t == "jwt_claims" then
+  elseif t == "jwt" then
     add("not.a.jwt",  "invalid JWT (bad chars)")
     add("a.b",        "JWT with only two segments")
     add("",           "empty string")
     add(123,          "number instead of JWT")
+
+  elseif t == "jwt_claims" then
+    add("not.a.jwt",  "invalid JWT (bad chars)")
+    add("a.b",        "JWT with only two segments")
+    add("",           "empty string")
+    add(123,          "number instead of JWT")
+    local expired = make_jwt({ exp = ngx.time() - 3600 })
+    if expired then add(expired, "expired JWT (exp one hour ago)") end
+
+  elseif t == "bearer_jwt" then
+    add("notabearer",    "missing 'Bearer ' prefix")
+    add("bearer token",  "lowercase 'bearer' prefix")
+    add("",              "empty string")
+    add(123,             "number instead of string")
+    local expired_jwt = make_jwt({ exp = ngx.time() - 3600 })
+    if expired_jwt then add("Bearer " .. expired_jwt, "Bearer with expired JWT") end
 
   elseif t == "base64" then
     add("not!valid==", "invalid base64 characters")

@@ -395,11 +395,13 @@ local function vw_iss(suffix)
 end
 
 -- ---------------------------------------------------------------------------
--- JWT claims schema for the Vaultwarden login token (LoginJwtClaims in auth.rs)
--- Used on the /notifications/hub?access_token=... WebSocket endpoint.
--- Signature verification is Vaultwarden's job; we validate structure only.
+-- Vaultwarden login token (LoginJwtClaims in auth.rs).
+-- Shared by:
+--   vw_access_token  — query-param JWT on the WebSocket endpoint
+--   vw_auth_header   — Authorization: Bearer header on all authenticated routes
+-- Signature verification is Vaultwarden's job; we validate structure + exp.
 -- ---------------------------------------------------------------------------
-local vw_access_token = T.jwt_claims({
+local vw_login_claims = {
   nbf            = T.number({ integer=true }),
   exp            = T.number({ integer=true }),
   iss            = vw_iss("login"),
@@ -423,11 +425,16 @@ local vw_access_token = T.jwt_claims({
     ["offline_access"] = true,
   }}), { max=5 }),
   amr   = T.array(T.string({ max=64 }), { max=10 }),
-}, {
-  -- JWT header: {"typ":"JWT","alg":"RS256"}
+}
+
+-- JWT header: {"typ":"JWT","alg":"RS256"}
+local vw_jwt_header = {
   typ = T.string({ enum={ ["JWT"]=true } }),
   alg = T.string({ enum={ ["RS256"]=true } }),
-})
+}
+
+local vw_access_token = T.jwt_claims(vw_login_claims, vw_jwt_header)
+local vw_auth_header  = T.bearer_jwt(vw_login_claims, vw_jwt_header)
 
 -- ---------------------------------------------------------------------------
 -- JWT for the attachment file-download endpoint
@@ -501,6 +508,10 @@ return {
         ["Safari Extension"]         = true,
         ["Unknown Browser Extension"]= true,
       }}),
+      -- When an Authorization header is present it must be a valid, non-expired
+      -- Vaultwarden bearer JWT.  Unauthenticated routes that omit the header
+      -- are unaffected; the validator only fires when the header is present.
+      ["authorization"] = vw_auth_header,
     },
   },
 

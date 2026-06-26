@@ -34,6 +34,39 @@ local function fail(msg)
   return false, msg
 end
 
+-- Decodes one base64url segment and JSON-parses it.
+local function decode_jwt_segment(b64, path)
+  local raw = b64url_decode(b64)
+  if not raw then return false, path .. ": invalid base64url" end
+  local obj, err = cjson.decode(raw)
+  if not obj then return false, path .. ": invalid JSON (" .. tostring(err) .. ")" end
+  return obj
+end
+
+-- Seconds of clock-skew tolerance when checking JWT exp.
+local JWT_EXP_GRACE = 60
+
+-- Decodes a raw JWT string, checks exp, and validates header/claims schemas.
+-- Shared by T.jwt_claims() and T.bearer_jwt().
+local function validate_jwt(token, path, claims_validator, header_validator)
+  local dot1 = token:find(".", 1, true)
+  if not dot1 then return false, path .. ": not a valid JWT" end
+  local dot2 = token:find(".", dot1 + 1, true)
+  if not dot2 then return false, path .. ": not a valid JWT" end
+  if header_validator then
+    local header, err = decode_jwt_segment(token:sub(1, dot1 - 1), path .. "[header]")
+    if not header then return false, err end
+    local ok, herr = header_validator(header, path .. "[header]")
+    if not ok then return false, herr end
+  end
+  local claims, err = decode_jwt_segment(token:sub(dot1 + 1, dot2 - 1), path .. "[claims]")
+  if not claims then return false, err end
+  if type(claims.exp) == "number" and claims.exp < ngx.time() - JWT_EXP_GRACE then
+    return false, path .. ": JWT expired (exp=" .. tostring(claims.exp) .. ")"
+  end
+  return claims_validator(claims, path .. "[claims]")
+end
+
 -- Compact human-readable representation of a value for deny log messages.
 -- Strings are truncated at 64 chars (encrypted blobs are very long).
 local function val_str(v)
@@ -320,7 +353,7 @@ function T.jwt()
   return fn
 end
 
--- Like T.jwt() but also decodes and validates the header and/or payload.
+-- Like T.jwt() but also decodes, validates header/payload schemas, and checks exp.
 -- T.jwt_claims(claims_schema)               -- validate payload only
 -- T.jwt_claims(claims_schema, header_schema) -- validate both
 function T.jwt_claims(claims_schema, header_schema)
@@ -328,33 +361,26 @@ function T.jwt_claims(claims_schema, header_schema)
   local header_validator = header_schema and T.object(header_schema)
   local fn = function(v, path)
     if type(v) ~= "string" then return false, path .. " must be a string" end
-    local dot1 = v:find(".", 1, true)
-    if not dot1 then return false, path .. ": not a valid JWT" end
-    local dot2 = v:find(".", dot1 + 1, true)
-    if not dot2 then return false, path .. ": not a valid JWT" end
-    if header_validator then
-      local header_json = b64url_decode(v:sub(1, dot1 - 1))
-      if not header_json then
-        return false, path .. ": JWT header is not valid base64url"
-      end
-      local header, err = cjson.decode(header_json)
-      if not header then
-        return false, path .. ": JWT header is not valid JSON: " .. tostring(err)
-      end
-      local ok, herr = header_validator(header, path .. "[header]")
-      if not ok then return false, herr end
-    end
-    local payload_json = b64url_decode(v:sub(dot1 + 1, dot2 - 1))
-    if not payload_json then
-      return false, path .. ": JWT payload is not valid base64url"
-    end
-    local claims, err = cjson.decode(payload_json)
-    if not claims then
-      return false, path .. ": JWT payload is not valid JSON: " .. tostring(err)
-    end
-    return claims_validator(claims, path .. "[claims]")
+    return validate_jwt(v, path, claims_validator, header_validator)
   end
   T._registry[fn] = { type = "jwt_claims", claims_validator = claims_validator, header_validator = header_validator }
+  return fn
+end
+
+-- Validates an "Authorization: Bearer <jwt>" header value.
+-- Strips the "Bearer " prefix, then applies the same decode + exp + schema checks
+-- as T.jwt_claims().
+function T.bearer_jwt(claims_schema, header_schema)
+  local claims_validator = T.object(claims_schema)
+  local header_validator = header_schema and T.object(header_schema)
+  local fn = function(v, path)
+    if type(v) ~= "string" then return false, path .. " must be a string" end
+    if v:sub(1, 7) ~= "Bearer " then
+      return false, path .. ": must start with 'Bearer '"
+    end
+    return validate_jwt(v:sub(8), path, claims_validator, header_validator)
+  end
+  T._registry[fn] = { type = "bearer_jwt", claims_validator = claims_validator, header_validator = header_validator }
   return fn
 end
 

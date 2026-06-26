@@ -258,6 +258,43 @@ local function test_route(route)
     end
   end
 
+  -- ── 3b. Header value invalids ──────────────────────────────────────────────
+  -- Merge app defaults + route headers, then send requests with each invalid value.
+
+  do
+    local merged = {}
+    if app.defaults and app.defaults.headers then
+      for k, v in pairs(app.defaults.headers) do merged[k] = v end
+    end
+    if route.headers then
+      for k, v in pairs(route.headers) do merged[k] = v end
+    end
+    for header_name, validator in pairs(merged) do
+      if type(validator) == "function" then
+        for _, pair in ipairs(gen.invalid_values(validator)) do
+          -- HTTP headers are always strings; non-string invalids become valid
+          -- after core.lua's tostring() conversion, so skip them here.
+          if type(pair.value) ~= "string" then goto continue end
+          local bad_hdrs = {}
+          for k, v in pairs(base_headers) do bad_hdrs[k] = v end
+          bad_hdrs[header_name] = pair.value
+          local denied = not run_request({
+            method  = method,
+            uri     = uri,
+            headers = bad_hdrs,
+          })
+          local label = "header " .. header_name .. " invalid: " .. pair.label
+          if denied then
+            record(name, label, "PASS")
+          else
+            record(name, label, "FAIL", "expected deny for invalid header value")
+          end
+          ::continue::
+        end
+      end
+    end
+  end
+
   -- ── 4. IP allowlist ────────────────────────────────────────────────────────
 
   if route.allow_ips then

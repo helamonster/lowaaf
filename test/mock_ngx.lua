@@ -29,6 +29,7 @@ local mock_ngx = {
   encode_base64 = real_encode_base64,
   WARN          = real_WARN,
   INFO          = real_INFO,
+  time          = function() return os.time() end,
 
   -- Per-request context; reset by set_request()
   ctx    = { waf_verbose = 0, waf_log_mode = true },
