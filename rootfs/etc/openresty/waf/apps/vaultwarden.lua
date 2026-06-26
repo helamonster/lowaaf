@@ -205,6 +205,40 @@ local cipher_body = T.object({
 })
 
 -- ---------------------------------------------------------------------------
+-- Registration body: shared by the legacy /identity/accounts/register and
+-- the new two-step /identity/accounts/register/finish.
+-- (src/api/core/accounts.rs: RegisterData)
+-- Serde aliases mean clients send either "key" or "userSymmetricKey" and
+-- either "keys" or "userAsymmetricKeys"; both names are allowed here.
+-- ---------------------------------------------------------------------------
+local keys_data = T.nullable(T.object({
+  encryptedPrivateKey = enc,
+  publicKey           = T.string({ max=4096 }),
+}))
+
+local register_body = T.object({
+  email              = T.email(),
+  kdf                = T.number({ integer=true, min=0, max=1 }),
+  kdfIterations      = T.number({ integer=true, min=1, max=2000000 }),
+  kdfMemory          = T.nullable(T.number({ integer=true, min=1, max=1048576 })),
+  kdfParallelism     = T.nullable(T.number({ integer=true, min=1, max=16 })),
+  key                = T.nullable(enc),   -- serde primary name
+  userSymmetricKey   = T.nullable(enc),   -- serde alias sent by newer clients
+  keys               = keys_data,         -- serde primary name
+  userAsymmetricKeys = keys_data,         -- serde alias sent by newer clients
+  masterPasswordHash = med,
+  masterPasswordHint = nu_sml,
+  name               = nu_sml,
+  organizationUserId = nu_uuid,
+  -- register/finish only: verification token returned by send-verification-email
+  emailVerificationToken           = T.nullable(T.string({ max=4096 })),
+  acceptEmergencyAccessId          = nu_uuid,
+  acceptEmergencyAccessInviteToken = T.nullable(T.string({ max=4096 })),
+  orgInviteToken     = T.nullable(T.string({ max=4096 })),  -- serde primary name
+  token              = T.nullable(T.string({ max=4096 })),  -- serde alias
+})
+
+-- ---------------------------------------------------------------------------
 -- Shared body for bulk cipher operations: archive, unarchive, bulk-delete
 -- (src/api/core/ciphers.rs: CipherIdsData)
 -- ---------------------------------------------------------------------------
@@ -504,6 +538,25 @@ return {
       content_type = "application/json",
       json = T.object({ email = T.email() }),
     },
+
+    -- Registration: new two-step flow (send-verification-email → finish)
+    -- and legacy single-step register.  All three share the identity service.
+    -- (src/api/identity.rs: register_verification_email, register_finish, identity_register)
+    { name = "register send-email", method = "POST",
+      path         = [[^/identity/accounts/register/send-verification-email$]],
+      content_type = "application/json",
+      json = T.object({
+        email = T.email(),
+        name  = nu_sml,
+      }) },
+    { name = "register finish", method = "POST",
+      path         = [[^/identity/accounts/register/finish$]],
+      content_type = "application/json",
+      json         = register_body },
+    { name = "register legacy", method = "POST",
+      path         = [[^/identity/accounts/register$]],
+      content_type = "application/json",
+      json         = register_body },
 
     -- VAULT SYNC ------------------------------------------------------------
 
@@ -1402,6 +1455,10 @@ return {
     },
     { name = "admin config delete",    method = "POST", path = [[^/admin/config/delete$]],    no_body = true },
     { name = "admin config backup-db", method = "POST", path = [[^/admin/config/backup_db$]], no_body = true },
+
+    -- Admin panel static assets (icons, CSS, JS bundled into the binary)
+    -- (src/api/web.rs: GET /vw_static/<filename>)
+    { name = "admin static", method = "GET", path = [[^/vw_static/[^/]+$]], no_body = true },
 
     -- STATIC WEB VAULT ASSETS -----------------------------------------------
     -- Filenames embed content hashes that change every release, so we use
