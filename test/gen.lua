@@ -154,6 +154,9 @@ local function raw_invalids(meta)
     if opts.match and not opts.enum then
       add("!@#$%^&*()", "string failing match pattern")
     end
+    add("\0",       "null byte")
+    add("a\r\nb",   "CRLF injection")
+    add("a\x1bb",   "ESC char")
 
   elseif t == "number" then
     add("notanumber", "string instead of number")

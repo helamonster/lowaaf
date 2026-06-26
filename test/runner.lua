@@ -358,6 +358,33 @@ local function test_route(route)
     end
   end
 
+  -- ── 8b. Malformed / wrong-type form body ──────────────────────────────────
+  -- core.lua passes get_post_args() directly to validate_any_schema; if it
+  -- returns a non-table the schema rejects it.  Section 10 skips non-table
+  -- invalids, so test the structural cases here explicitly.
+
+  if form_schema and not route.no_body then
+    local bad_forms = {
+      { form = "not a table", label = "string instead of form data" },
+      { form = 123,           label = "number instead of form data" },
+      { form = true,          label = "boolean instead of form data" },
+    }
+    for _, case in ipairs(bad_forms) do
+      local denied = not run_request({
+        method  = method,
+        uri     = uri,
+        headers = base_headers,
+        form    = case.form,
+      })
+      if denied then
+        record(name, "malformed form: " .. case.label, "PASS")
+      else
+        record(name, "malformed form: " .. case.label, "FAIL",
+               "expected deny, got allow")
+      end
+    end
+  end
+
   -- ── 9. JSON body invalids ───────────────────────────────────────────────────
   -- For multi-schema routes: only test values that fail EVERY schema.
   -- A body valid for any one schema is correctly allowed by the WAF.
