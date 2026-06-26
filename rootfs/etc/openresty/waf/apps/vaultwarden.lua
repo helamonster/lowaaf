@@ -64,9 +64,9 @@ end
 -- ---------------------------------------------------------------------------
 -- shared type aliases
 -- ---------------------------------------------------------------------------
-local enc     = T.string({ max = 10000 })  -- Bitwarden-encrypted ciphertext blob (2.<iv>|<data>|<mac>)
-local sml     = T.string({ max = 256 })    -- short freetext: names, labels, hints, short hashes
-local med     = T.string({ max = 2048 })   -- medium freetext: password hashes, JWT-sized tokens
+local enc     = T.string({ max = 10000, not_match = "[\\x00-\\x1f]" })  -- Bitwarden-encrypted ciphertext blob (2.<iv>|<data>|<mac>)
+local sml     = T.string({ max = 256,   not_match = "[\\x00-\\x1f]" })  -- short freetext: names, labels, hints, short hashes
+local med     = T.string({ max = 2048,  not_match = "[\\x00-\\x1f]" })  -- medium freetext: password hashes, JWT-sized tokens
 local nu_enc  = T.nullable(enc)            -- nullable encrypted blob
 local nu_uuid = T.nullable(T.uuid())       -- nullable UUID
 local nu_bool = T.nullable(T.boolean())    -- nullable boolean
