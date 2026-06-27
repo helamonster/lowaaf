@@ -53,7 +53,7 @@ local function validate_any_schema(schemas, obj, path)
   return false, last_err
 end
 
--- IPv4 only; returns nil for IPv6 or malformed addresses
+-- Returns nil for IPv6 or malformed addresses.
 local function ip_to_num(ip)
   local a, b, c, d = ip:match("^(%d+)%.(%d+)%.(%d+)%.(%d+)$")
   if not a then return nil end
@@ -65,8 +65,85 @@ local function ip_to_num(ip)
   )
 end
 
+-- Parses a colon-separated IPv6 group string into an array of 16-bit integers.
+-- Returns an empty table for "" (the part absorbed by "::").
+-- Returns nil on any parse error (empty segment from embedded "::", bad hex, group > 4 chars).
+local function parse_ipv6_groups(s)
+  if s == "" then return {} end
+  local groups = {}
+  for g in (s .. ":"):gmatch("([^:]*):") do
+    if #g == 0 or #g > 4 then return nil end
+    local n = tonumber(g, 16)
+    if not n then return nil end
+    groups[#groups + 1] = n
+  end
+  return groups
+end
+
+-- Expands a compressed or full IPv6 address to 16 bytes, or returns nil on error.
+local function ipv6_to_bytes(ip)
+  local before_dc, after_dc = ip:match("^(.*)::(.*)$")
+  local groups
+
+  if before_dc then
+    local lg = parse_ipv6_groups(before_dc)
+    local rg = parse_ipv6_groups(after_dc)
+    if not lg or not rg then return nil end
+    local zeros = 8 - #lg - #rg
+    if zeros < 1 then return nil end   -- "::" must replace at least one group
+    groups = {}
+    for _, v in ipairs(lg)   do groups[#groups + 1] = v end
+    for _     = 1, zeros     do groups[#groups + 1] = 0 end
+    for _, v in ipairs(rg)   do groups[#groups + 1] = v end
+  else
+    groups = parse_ipv6_groups(ip)
+    if not groups then return nil end
+  end
+
+  if #groups ~= 8 then return nil end
+
+  local bytes = {}
+  for _, g in ipairs(groups) do
+    bytes[#bytes + 1] = math.floor(g / 256)
+    bytes[#bytes + 1] = g % 256
+  end
+  return bytes
+end
+
 local function cidr_match(ip, cidr)
   local net, prefix = cidr:match("^(.+)/(%d+)$")
+
+  if ip:find(":", 1, true) then
+    -- IPv6
+    local ip_bytes  = ipv6_to_bytes(ip)
+    local net_bytes = ipv6_to_bytes(net or cidr)
+    if not ip_bytes or not net_bytes then return false end
+    if not net then
+      -- Bare IPv6 address: compare all 16 bytes (handles compressed vs full forms)
+      for i = 1, 16 do
+        if ip_bytes[i] ~= net_bytes[i] then return false end
+      end
+      return true
+    end
+    local bits = tonumber(prefix)
+    if not bits or bits < 0 or bits > 128 then return false end
+    if bits == 0 then return true end
+    local full = math.floor(bits / 8)
+    local rem  = bits % 8
+    for i = 1, full do
+      if ip_bytes[i] ~= net_bytes[i] then return false end
+    end
+    if rem > 0 then
+      local mask = bit.band(bit.bnot(bit.lshift(1, 8 - rem) - 1), 0xff)
+      if bit.band(ip_bytes[full + 1], mask) ~=
+         bit.band(net_bytes[full + 1], mask) then
+        return false
+      end
+    end
+    return true
+  end
+
+  -- IPv4
   if not net then return ip == cidr end          -- bare IP: exact match
   local ip_num  = ip_to_num(ip)
   local net_num = ip_to_num(net)

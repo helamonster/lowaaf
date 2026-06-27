@@ -78,8 +78,9 @@ local function raw_valid(meta)
   elseif t == "http_priority" then return "u=3"
   elseif t == "bool_query"    then return "true"
   elseif t == "any"           then return "x"
-  elseif t == "dict"  then return {}
-  elseif t == "jwt"   then return nil   -- opaque; can't auto-gen
+  elseif t == "dict"          then return {}
+  elseif t == "uuid_or_empty" then return ""
+  elseif t == "jwt"           then return nil   -- opaque; can't auto-gen
 
   elseif t == "jwt_claims" then
     local claims_meta = meta.claims_validator and REG[meta.claims_validator]
@@ -102,8 +103,17 @@ local function raw_valid(meta)
   elseif t == "nullable" then
     -- Prefer a concrete inner value so cross-field consistency rules (e.g.
     -- cipher type/sub-object check) receive a fully-populated body.
+    -- Verify the candidate passes the inner validator before returning it;
+    -- match-pattern fields produce a candidate that fails their own pattern,
+    -- in which case nil (field absent) is the correct fallback for a nullable.
     local inner_meta = meta.inner and REG[meta.inner]
-    if inner_meta then return raw_valid(inner_meta) end
+    if inner_meta and meta.inner then
+      local v = raw_valid(inner_meta)
+      if v ~= nil then
+        set_ctx()
+        if meta.inner(v, "$") then return v end
+      end
+    end
     return nil
 
   elseif t == "with_check" then
@@ -208,6 +218,14 @@ local function raw_invalids(meta)
     add(123,                                        "number instead of UUID")
     add("00000000-0000-0000-0000-000000000000",     "UUID version 0 (invalid)")
 
+  elseif t == "uuid_or_empty" then
+    -- empty string and nil/ngx.null are VALID for this type; only test non-empty non-UUIDs
+    add("not-a-uuid",                               "invalid UUID format (non-empty)")
+    add("00000000-0000-0000-0000-000000000000",     "UUID version 0 (invalid)")
+    add(123,                                        "number instead of UUID/empty")
+    add(false,                                      "boolean instead of UUID/empty")
+    add("\0",                                       "null byte")
+
   elseif t == "email" then
     add("notanemail",                               "no @ sign")
     add("@nodomain.com",                            "no local part")
@@ -281,6 +299,14 @@ local function raw_invalids(meta)
   elseif t == "dict" then
     add("notadict", "string instead of object")
     add(123,        "number instead of object")
+    local inner_meta = meta.inner and REG[meta.inner]
+    if inner_meta then
+      local elem_invalids = raw_invalids(inner_meta)
+      if #elem_invalids > 0 then
+        add({ testkey = elem_invalids[1].value },
+            "invalid dict value: " .. elem_invalids[1].label)
+      end
+    end
 
   elseif t == "with_check" then
     if meta.base_meta then
@@ -317,37 +343,63 @@ local function raw_invalids(meta)
   elseif t == "base64" then
     add("not!valid==", "invalid base64 characters")
     add(123,           "number instead of base64")
+    add(false,         "boolean instead of base64")
     if opts.max then
       add(string.rep("a", opts.max + 1), "length " .. opts.max+1 .. " (max+1)")
     end
 
   elseif t == "semver" then
-    add("1.0",     "missing patch version")
-    add("notver",  "non-semver string")
+    add("1.0",                   "missing patch version")
+    add("notver",                "non-semver string")
+    add(123,                     "number instead of semver")
+    add(false,                   "boolean instead of semver")
+    add(string.rep("x", 129),   "length 129 (max 128)")
+    add("1.0.0\0",               "null byte")
+    add("1.0.0\r\n",             "CRLF injection")
 
   elseif t == "url" then
-    add("not-a-url",         "missing protocol")
-    add("ftp://example.com", "non-http/https scheme")
+    add("not-a-url",                                     "missing protocol")
+    add("ftp://example.com",                             "non-http/https scheme")
+    add(123,                                             "number instead of URL")
+    add(false,                                           "boolean instead of URL")
+    add("https://example.com/" .. string.rep("a", 2028), "length 2049 (max 2048)")
+    add("https://example.com/\0",                        "null byte in URL")
+    add("https://example.com/a\r\nb",                    "CRLF injection")
 
   elseif t == "bearer_token" then
-    add("nobearer",   "missing 'Bearer ' prefix")
-    add("Bearer",     "no token value after 'Bearer'")
+    add("nobearer",                          "missing 'Bearer ' prefix")
+    add("Bearer",                            "no token value after 'Bearer'")
+    add(123,                                 "number instead of token")
+    add(false,                               "boolean instead of token")
+    add("Bearer " .. string.rep("a", 2042), "length 2049 (max 2048)")
+    add("Bearer tok\0en",                   "null byte")
 
   elseif t == "sec_gpc" then
-    add("0", "value '0' (only '1' valid)")
-    add("2", "value '2' out of range")
+    add("0",   "value '0' (only '1' valid)")
+    add("2",   "value '2' out of range")
+    add(123,   "number instead of string")
+    add(false, "boolean instead of string")
 
   elseif t == "http_priority" then
     add("u=8",    "urgency 8 (max is 7)")
     add("invalid","non-priority string")
+    add(123,      "number instead of string")
+    add(false,    "boolean instead of string")
 
   elseif t == "lang_tag" then
-    add("a",                      "single char (min 2)")
-    add(string.rep("a", 36),      "too long (max 35)")
+    add("a",                   "single char (min 2)")
+    add(string.rep("a", 36),   "too long (max 35)")
+    add(123,                   "number instead of language tag")
+    add(false,                 "boolean instead of language tag")
+    add("en_US",               "underscore instead of hyphen")
+    add("en-",                 "trailing hyphen (empty subtag)")
+    add("en\0",                "null byte")
 
   elseif t == "bool_query" then
-    add("yes", "value 'yes' (only true/false valid)")
-    add("1",   "value '1'")
+    add("yes",  "value 'yes' (only true/false valid)")
+    add("1",    "value '1'")
+    add(123,    "number instead of string")
+    add(false,  "boolean instead of string")
 
   -- T.any: nothing is invalid
   end

@@ -82,6 +82,7 @@ local nu_uuid_or_empty = function(v, path)
   if v == nil or v == ngx.null or v == "" then return true end
   return T.uuid()(v, path)
 end
+T._registry[nu_uuid_or_empty] = { type = "uuid_or_empty" }
 
 -- Path-pattern regex fragments (sourced from types.lua for single-source-of-truth)
 local U      = T.uuid_re    -- UUID segment in route paths
