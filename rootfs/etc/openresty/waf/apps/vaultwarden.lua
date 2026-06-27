@@ -72,6 +72,8 @@ local nu_uuid = T.nullable(T.uuid())       -- nullable UUID
 local nu_bool = T.nullable(T.boolean())    -- nullable boolean
 local nu_num  = T.nullable(T.number({ integer = true }))  -- nullable integer
 local nu_sml  = T.nullable(sml)            -- nullable short string
+local nu_kdf_memory      = T.nullable(T.number({ integer=true, min=1, max=1048576 }))
+local nu_kdf_parallelism = T.nullable(T.number({ integer=true, min=1, max=16 }))
 
 -- Some Bitwarden fields send "" instead of null when unset (e.g. folderId
 -- on a cipher with no folder).  T.nullable only passes nil/ngx.null; this
@@ -124,6 +126,14 @@ local fido2_credential = T.object({
 
 -- Enforces that each cipher type includes its mandatory sub-object.
 -- Bitwarden: 1=Login, 2=SecureNote, 3=Card, 4=Identity, 5=SshKey
+local cipher_type_hints = {
+  { value = { type=1, name="a" }, label = "type=1 without login sub-object"      },
+  { value = { type=2, name="a" }, label = "type=2 without secureNote sub-object" },
+  { value = { type=3, name="a" }, label = "type=3 without card sub-object"       },
+  { value = { type=4, name="a" }, label = "type=4 without identity sub-object"   },
+  { value = { type=5, name="a" }, label = "type=5 without sshKey sub-object"     },
+}
+
 local function cipher_type_check(v, path)
   if type(v) ~= "table" then return true end
   local required = { [1]="login", [2]="secureNote", [3]="card", [4]="identity", [5]="sshKey" }
@@ -215,13 +225,7 @@ local cipher_body = T.with_check(T.object({
     response       = nu_enc,
   })),
   archivedDate = T.nullable(T.iso8601()),
-}, { required = { type=true, name=true } }), cipher_type_check, {
-  { value = { type=1, name="a" }, label = "type=1 without login sub-object"      },
-  { value = { type=2, name="a" }, label = "type=2 without secureNote sub-object" },
-  { value = { type=3, name="a" }, label = "type=3 without card sub-object"       },
-  { value = { type=4, name="a" }, label = "type=4 without identity sub-object"   },
-  { value = { type=5, name="a" }, label = "type=5 without sshKey sub-object"     },
-})
+}, { required = { type=true, name=true } }), cipher_type_check, cipher_type_hints)
 
 -- ---------------------------------------------------------------------------
 -- Registration body: shared by the legacy /identity/accounts/register and
@@ -230,17 +234,16 @@ local cipher_body = T.with_check(T.object({
 -- Serde aliases mean clients send either "key" or "userSymmetricKey" and
 -- either "keys" or "userAsymmetricKeys"; both names are allowed here.
 -- ---------------------------------------------------------------------------
-local keys_data = T.nullable(T.object({
-  encryptedPrivateKey = enc,
-  publicKey           = T.string({ max=4096 }),
-}, { required = { encryptedPrivateKey=true, publicKey=true } }))
+local asym_keys_schema = { encryptedPrivateKey = enc, publicKey = T.string({ max=4096 }) }
+local asym_keys_body   = T.object(asym_keys_schema)
+local keys_data        = T.nullable(T.object(asym_keys_schema, { required = { encryptedPrivateKey=true, publicKey=true } }))
 
 local register_body = T.object({
   email              = T.email(),
   kdf                = T.number({ integer=true, min=0, max=1 }),
   kdfIterations      = T.number({ integer=true, min=1, max=2000000 }),
-  kdfMemory          = T.nullable(T.number({ integer=true, min=1, max=1048576 })),
-  kdfParallelism     = T.nullable(T.number({ integer=true, min=1, max=16 })),
+  kdfMemory          = nu_kdf_memory,
+  kdfParallelism     = nu_kdf_parallelism,
   key                = T.nullable(enc),   -- serde primary name
   userSymmetricKey   = T.nullable(enc),   -- serde alias sent by newer clients
   keys               = keys_data,         -- serde primary name
@@ -329,8 +332,8 @@ local password_or_otp = T.object({
 local kdf_data = T.object({
   kdf            = T.number({ integer=true, min=0, max=1 }),  -- 0=PBKDF2, 1=Argon2id
   kdfIterations  = T.number({ integer=true, min=1, max=2000000 }),
-  kdfMemory      = T.nullable(T.number({ integer=true, min=1, max=1048576 })),
-  kdfParallelism = T.nullable(T.number({ integer=true, min=1, max=16 })),
+  kdfMemory      = nu_kdf_memory,
+  kdfParallelism = nu_kdf_parallelism,
 }, { required = { kdf=true, kdfIterations=true } })
 
 -- Folder body: just an encrypted name
@@ -370,6 +373,13 @@ local cipher_partial_body = T.object({
 local cipher_collections_body = T.object({
   collectionIds = T.array(T.uuid(), { max=200 }),
 }, { required = { collectionIds=true } })
+
+-- Settings: equivalent domain groupings
+-- (src/api/core/accounts.rs: EquivalentDomainData)
+local domains_body = T.object({
+  excludedGlobalEquivalentDomains = T.nullable(T.array(T.number({ integer=true, min=0, max=100 }), { max=100 })),
+  equivalentDomains               = T.nullable(T.array(T.array(T.string({ max=256 }), { max=50 }), { max=100 })),
+})
 
 -- Organization group create/update body (src/api/core/organizations.rs: GroupRequest)
 local group_body = T.object({
@@ -511,7 +521,8 @@ return {
       -- When an Authorization header is present it must be a valid, non-expired
       -- Vaultwarden bearer JWT.  Unauthenticated routes that omit the header
       -- are unaffected; the validator only fires when the header is present.
-      ["authorization"] = vw_auth_header,
+      ["authorization"]          = vw_auth_header,
+      ["bitwarden-client-name"]  = T.string({ max=64 }),
     },
   },
 
@@ -806,10 +817,7 @@ return {
     { name = "key update",  method = "POST", path = [[^/api/accounts/key$]],  content_type = "application/json" },
     { name = "keys update", method = "POST", path = [[^/api/accounts/keys$]],
       content_type = "application/json",
-      json = T.object({
-        encryptedPrivateKey = enc,
-        publicKey           = T.string({ max=4096 }),
-      }) },
+      json = asym_keys_body },
 
     -- Verification
     { name = "security stamp",  method = "POST", path = [[^/api/accounts/security-stamp$]],
@@ -828,10 +836,7 @@ return {
     -- Email & account lifecycle
     { name = "delete account",     methods = { "DELETE", "POST" }, path = [[^/api/accounts(/delete)?$]],
       content_type = "application/json",
-      json = T.object({
-        masterPasswordHash = T.nullable(med),
-        otp                = T.nullable(T.string({ max=16 })),
-      }) },
+      json = password_or_otp },
     -- Account email-change: step 1 sends token, step 2 completes the change
     { name = "email-token", method = "POST", path = [[^/api/accounts/email-token$]],
       content_type = "application/json",
@@ -855,13 +860,10 @@ return {
       json = T.object({
         kdf             = T.number({ integer=true, min=0, max=1 }),
         kdfIterations   = T.number({ integer=true, min=1, max=2000000 }),
-        kdfMemory       = T.nullable(T.number({ integer=true, min=1, max=1048576 })),
-        kdfParallelism  = T.nullable(T.number({ integer=true, min=1, max=16 })),
+        kdfMemory       = nu_kdf_memory,
+        kdfParallelism  = nu_kdf_parallelism,
         key             = enc,
-        keys = T.nullable(T.object({
-          encryptedPrivateKey = enc,
-          publicKey           = T.string({ max=4096 }),
-        })),
+        keys            = T.nullable(asym_keys_body),
         masterPasswordHash = med,
         masterPasswordHint = T.nullable(sml),
         orgIdentifier      = T.nullable(T.string({ max=256 })),
@@ -884,8 +886,8 @@ return {
           masterPasswordUnlockData = T.object({
             kdfType                     = T.number({ integer=true, min=0, max=1 }),
             kdfIterations               = T.number({ integer=true, min=1, max=2000000 }),
-            kdfMemory                   = T.nullable(T.number({ integer=true, min=1, max=1048576 })),
-            kdfParallelism              = T.nullable(T.number({ integer=true, min=1, max=16 })),
+            kdfMemory                   = nu_kdf_memory,
+            kdfParallelism              = nu_kdf_parallelism,
             email                       = T.email(),
             masterKeyAuthenticationHash = sml,
             masterKeyEncryptedUserKey   = enc,
@@ -1130,7 +1132,7 @@ return {
     { name = "org auto-enroll-status", method = "GET", path = [[^/api/organizations/[^/]+/auto-enroll-status$]], no_body = true },
     { name = "org keys", method = "POST", path = "^/api/organizations/" .. U .. "/keys$",
       content_type = "application/json",
-      json = T.object({ encryptedPrivateKey = enc, publicKey = T.string({ max=4096 }) }) },
+      json = asym_keys_body },
     -- SSO domain stub: always returns a dummy value
     { name = "org sso-verified", method = "POST", path = [[^/api/organizations/domain/sso/verified$]], no_body = true },
     { name = "org create", method = "POST", path = [[^/api/organizations$]],
@@ -1141,10 +1143,7 @@ return {
         key            = enc,
         name           = T.string({ max=256 }),
         planType       = T.nullable(T.number({ integer=true, min=0, max=100 })),
-        keys = T.nullable(T.object({
-          encryptedPrivateKey = enc,
-          publicKey           = T.string({ max=4096 }),
-        }, { required = { encryptedPrivateKey=true, publicKey=true } })),
+        keys = keys_data,
       }, { required = { billingEmail=true, collectionName=true, key=true, name=true } }) },
     { name = "collection list",        method = "GET", path = [[^/api/collections$]],                              no_body = true },
     { name = "org collections",        method = "GET", path = "^/api/organizations/" .. U .. "/collections$",      no_body = true },
@@ -1358,19 +1357,9 @@ return {
     -- SETTINGS --------------------------------------------------------------
 
     { name = "domains get",    method = "GET", path = [[^/api/settings/domains$]], no_body = true },
-    { name = "domains update", method = "PUT", path = [[^/api/settings/domains$]],
-      content_type = "application/json",
-      json = T.object({
-        excludedGlobalEquivalentDomains = T.nullable(T.array(T.number({ integer=true, min=0, max=100 }), { max=100 })),
-        equivalentDomains               = T.nullable(T.array(T.array(T.string({ max=256 }), { max=50 }), { max=100 })),
-      }) },
+    { name = "domains update", method = "PUT",  path = [[^/api/settings/domains$]], content_type = "application/json", json = domains_body },
     -- POST alias (same handler as PUT)
-    { name = "domains post", method = "POST", path = [[^/api/settings/domains$]],
-      content_type = "application/json",
-      json = T.object({
-        excludedGlobalEquivalentDomains = T.nullable(T.array(T.number({ integer=true, min=0, max=100 }), { max=100 })),
-        equivalentDomains               = T.nullable(T.array(T.array(T.string({ max=256 }), { max=50 }), { max=100 })),
-      }) },
+    { name = "domains post",   method = "POST", path = [[^/api/settings/domains$]], content_type = "application/json", json = domains_body },
 
     -- PASSWORDLESS / AUTH REQUESTS ------------------------------------------
 
