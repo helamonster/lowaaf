@@ -29,6 +29,22 @@ local function set_ctx()
   ngx.ctx = { waf_verbose = 0, waf_log_mode = false }
 end
 
+-- Stable (sorted-key) string representation for dedup in gen.valid_values.
+-- Not valid JSON — just a deterministic key for the seen-set.
+local function stable_enc(v)
+  if v == nil            then return "\0nil"        end
+  if v == ngx.null       then return "\0null"       end
+  if type(v) ~= "table"  then return tostring(v)   end
+  local keys = {}
+  for k in pairs(v) do keys[#keys + 1] = tostring(k) end
+  table.sort(keys)
+  local parts = {}
+  for _, k in ipairs(keys) do
+    parts[#parts + 1] = k .. "=" .. stable_enc(v[k])
+  end
+  return "{" .. table.concat(parts, ",") .. "}"
+end
+
 -- ── JWT test helpers ──────────────────────────────────────────────────────────
 
 local function b64url(s)
@@ -145,6 +161,113 @@ local function raw_valid(meta)
   return nil
 end
 
+-- ── Raw valid value candidates (unverified, multiple per type) ───────────────
+-- Parallel to raw_valid but returns an array of { value, label } pairs so that
+-- callers can test the full breadth of the valid surface (enum exhaustion,
+-- boolean true+false, number min+max, nullable absent vs. set).
+
+local function raw_valids(meta)
+  if not meta then return {} end
+  local t    = meta.type
+  local opts = meta.opts or {}
+  local results = {}
+  local function add(value, label)
+    results[#results + 1] = { value = value, label = label }
+  end
+
+  if t == "string" then
+    if opts.enum then
+      for k in pairs(opts.enum) do add(k, "'" .. k .. "'") end
+    else
+      -- Six-point boundary: min, min+1, max-1, max.
+      -- match-pattern strings will produce values that fail the pattern and
+      -- are filtered by gen.valid_values — that is expected and fine.
+      local min = opts.min or 1
+      add(string.rep("a", min),     "length " .. min       .. " (min)")
+      add(string.rep("a", min + 1), "length " .. (min + 1) .. " (min+1)")
+      if opts.max then
+        add(string.rep("a", opts.max - 1), "length " .. (opts.max - 1) .. " (max-1)")
+        add(string.rep("a", opts.max),     "length " .. opts.max       .. " (max)")
+      end
+    end
+
+  elseif t == "number" then
+    -- Six-point boundary: min, min+1, max-1, max.
+    -- stable_enc dedup in gen.valid_values collapses identical values
+    -- (e.g. reprompt min=0 max=1: min+1==max and max-1==min).
+    local lo = opts.min or 0
+    if opts.integer then lo = math.floor(lo) end
+    add(lo,     "min(" .. lo .. ")")
+    add(lo + 1, "min+1(" .. (lo + 1) .. ")")
+    if opts.max then
+      local hi = opts.max
+      if opts.integer then hi = math.floor(hi) end
+      add(hi - 1, "max-1(" .. (hi - 1) .. ")")
+      add(hi,     "max(" .. hi .. ")")
+    end
+
+  elseif t == "boolean" then
+    add(true,  "true")
+    add(false, "false")
+
+  elseif t == "bool_query" then
+    add("true",  "'true'")
+    add("false", "'false'")
+    add("",      "''")
+
+  elseif t == "nullable" then
+    add(nil, "absent")
+    local inner_meta = meta.inner and REG[meta.inner]
+    if inner_meta and meta.inner then
+      -- For complex inner types (object/array/dict/with_check), produce one
+      -- "set" variant rather than recursing into field-level variants.
+      local inner_t = inner_meta.type
+      local is_complex = (inner_t == "object" or inner_t == "with_check"
+                          or inner_t == "array" or inner_t == "dict")
+      local inner_pairs
+      if is_complex then
+        local v = raw_valid(inner_meta)
+        if v ~= nil then inner_pairs = { { value = v, label = "set" } } end
+      else
+        inner_pairs = raw_valids(inner_meta)
+      end
+      if inner_pairs then
+        for _, pair in ipairs(inner_pairs) do
+          if pair.value ~= nil then
+            set_ctx()
+            if meta.inner(pair.value, "$") then add(pair.value, pair.label) end
+          end
+        end
+      end
+    end
+
+  elseif t == "object" or t == "with_check" then
+    local schema_meta = (t == "with_check") and meta.base_meta or meta
+    if not schema_meta then return results end
+    local base = raw_valid(schema_meta) or {}
+    add(base, "base")
+    for key, sub_v in pairs(schema_meta.schema or {}) do
+      local sub_meta = type(sub_v) == "function" and REG[sub_v]
+      if sub_meta then
+        local field_pairs = raw_valids(sub_meta)
+        if #field_pairs > 1 then
+          for _, pair in ipairs(field_pairs) do
+            local variant    = copy(base)
+            variant[key]     = pair.value   -- nil removes the key
+            add(variant, "." .. key .. "=" .. pair.label)
+          end
+        end
+      end
+    end
+
+  else
+    local v = raw_valid(meta)
+    if v ~= nil then add(v, "base") end
+  end
+
+  return results
+end
+
 -- ── Public: valid_value ───────────────────────────────────────────────────────
 
 function gen.valid_value(validator)
@@ -157,6 +280,31 @@ function gen.valid_value(validator)
   local ok = validator(v, "$")
   if not ok then return nil end
   return v
+end
+
+-- ── Public: valid_values ─────────────────────────────────────────────────────
+-- Returns all confirmed-valid variants for the validator: the base value plus
+-- alternatives covering enums, boolean true/false, number min/max, nullable
+-- absent/set, and per-field substitutions in objects.
+-- Deduplicates by cjson encoding so identical bodies are tested only once.
+
+function gen.valid_values(validator)
+  if type(validator) ~= "function" then return {} end
+  local meta = REG[validator]
+  if not meta then return {} end
+  local candidates = raw_valids(meta)
+  local confirmed  = {}
+  local seen       = {}
+  for _, pair in ipairs(candidates) do
+    local enc = stable_enc(pair.value)
+    if not seen[enc] then
+      seen[enc] = true
+      set_ctx()
+      local ok = validator(pair.value, "$")
+      if ok then confirmed[#confirmed + 1] = pair end
+    end
+  end
+  return confirmed
 end
 
 -- ── Raw invalid candidates (unverified) ──────────────────────────────────────

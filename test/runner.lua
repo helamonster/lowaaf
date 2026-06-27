@@ -2,11 +2,13 @@
 -- Run as:  resty -I /etc/openresty test/runner.lua [app-name]
 --
 -- Enumerates every route in the app and runs:
---   1. Valid request  → expect WAF to allow
---   2. Wrong method   → expect WAF to deny
---   3. Body-schema invalids (per-field boundary tests) → expect WAF to deny
---   4. Form-schema invalids → expect WAF to deny
---   5. Query-schema invalids → expect WAF to deny
+--   1.  Valid request        → expect WAF to allow
+--   1b. Valid value variants → enum exhaustion, boolean true/false, number
+--                              min/max, nullable absent/set → expect WAF to allow
+--   2.  Wrong method         → expect WAF to deny
+--   3.  Body-schema invalids (per-field boundary tests) → expect WAF to deny
+--   4.  Form-schema invalids → expect WAF to deny
+--   5.  Query-schema invalids → expect WAF to deny
 --
 -- A route is skipped (not failed) when no valid body can be auto-generated
 -- (e.g. jwt_claims in query params).
@@ -17,6 +19,17 @@ local cjson = require "cjson.safe"
 local mock  = require "test.mock_ngx"
 local gen   = require "test.gen"
 local core  = require "waf.core"
+
+-- Memoize gen.valid_values / gen.invalid_values so both the planning pass and
+-- the execution pass get cached results — each schema is only walked once.
+do
+  local vv_cache = {}
+  local iv_cache = {}
+  local orig_vv  = gen.valid_values
+  local orig_iv  = gen.invalid_values
+  gen.valid_values   = function(v) if not vv_cache[v] then vv_cache[v] = orig_vv(v)  end return vv_cache[v] end
+  gen.invalid_values = function(v) if not iv_cache[v] then iv_cache[v] = orig_iv(v)  end return iv_cache[v] end
+end
 
 -- ── Load app ──────────────────────────────────────────────────────────────────
 
@@ -34,21 +47,78 @@ app.mode = "block"
 
 -- ── Test infrastructure ───────────────────────────────────────────────────────
 
-local pass_count = 0
-local fail_count = 0
-local skip_count = 0
-local results    = {}  -- { route_name, label, outcome, detail }
+local pass_count   = 0
+local fail_count   = 0
+local skip_count   = 0
+local results      = {}
+local route_test_n = 0   -- per-route counter, reset at start of each test_route
+local route_buf    = {}  -- per-route print buffer, flushed live after each route
+
+local Y  = "\027[33m"   -- yellow
+local G  = "\027[32m"   -- green
+local R  = "\027[31m"   -- red
+local RS = "\027[0m"    -- reset
+
+-- Column widths: defaults overwritten after the planning pass.
+local overall_fmt = "%5d"
+local route_fmt   = "%3d"
+
+-- When true: record() just counts and run_request() skips the WAF.
+-- Used in the planning pass to determine column widths cheaply.
+local planning = false
 
 local function record(route_name, label, outcome, detail)
-  results[#results+1] = { route=route_name, label=label, outcome=outcome, detail=detail or "" }
-  if outcome == "PASS" then pass_count = pass_count + 1
-  elseif outcome == "FAIL" then fail_count = fail_count + 1
-  else skip_count = skip_count + 1
+  route_test_n = route_test_n + 1
+  if planning then return end
+  results[#results+1] = {
+    route   = route_name,
+    label   = label,
+    outcome = outcome,
+    detail  = detail or "",
+    route_n = route_test_n,
+  }
+  if outcome == "PASS" then
+    pass_count = pass_count + 1
+  elseif outcome == "FAIL" then
+    fail_count = fail_count + 1
+  else
+    skip_count = skip_count + 1
   end
+  route_buf[#route_buf+1] = {
+    label     = label,
+    outcome   = outcome,
+    overall_n = #results,
+    route_n   = route_test_n,
+  }
+end
+
+local DESC_WIDTH = 80
+
+local function fmt_desc(s)
+  if #s <= DESC_WIDTH then
+    return s .. string.rep(" ", DESC_WIDTH - #s)
+  end
+  return s:sub(1, DESC_WIDTH - 3) .. "..."
+end
+
+local function flush_route(route_name)
+  for _, r in ipairs(route_buf) do
+    local mark = r.outcome == "PASS" and (G .. "✓" .. RS)
+              or r.outcome == "FAIL" and (R .. "✗" .. RS)
+              or                        (Y .. "~" .. RS)
+    io.write(string.format(
+      "%s" .. overall_fmt .. "%s. %-30s  test #%s" .. route_fmt .. "%s  %s  %s\n",
+      Y, r.overall_n, RS, route_name, Y, r.route_n, RS, fmt_desc(r.label), mark
+    ))
+  end
+  if #route_buf > 0 then io.flush() end
+  route_buf = {}
 end
 
 -- Run core.run(app) with the given request; return true if WAF allowed it.
+-- Returns true immediately during the planning pass (no WAF calls).
 local function run_request(req)
+  if planning then return true end
   mock.set_request(req)
   local ok, err = pcall(core.run, app)
   if not ok and err ~= mock._EXIT then
@@ -110,6 +180,7 @@ end
 -- ── Per-route test runner ─────────────────────────────────────────────────────
 
 local function test_route(route)
+  route_test_n = 0
   local name    = route.name or "?"
   local uri     = gen.route_uri(route)
   local methods = route_methods(route)
@@ -219,6 +290,78 @@ local function test_route(route)
     else
       record(name, "valid " .. method .. " " .. uri, "FAIL",
              "valid request was denied")
+    end
+  end
+
+  -- ── 1b. Valid value variants ────────────────────────────────────────────────
+  -- For each schema, test the full breadth of the valid surface: enum
+  -- exhaustion, boolean true+false, number min+max, nullable absent/set.
+  -- Section 1 already tested index 1 (the base), so we start at index 2.
+
+  if json_schema then
+    local all_schemas = route.json_schemas or { json_schema }
+    for si, schema in ipairs(all_schemas) do
+      local sfx      = (#all_schemas > 1) and (" (schema " .. si .. ")") or ""
+      local variants = gen.valid_values(schema)
+      for vi = 2, #variants do
+        local pair     = variants[vi]
+        local body_str = encode_body(pair.value)
+        if body_str then
+          local allowed = run_request({
+            method  = method,
+            uri     = uri,
+            headers = base_headers,
+            body    = body_str,
+          })
+          local label = "valid variant: " .. pair.label .. sfx
+          if allowed then
+            record(name, label, "PASS")
+          else
+            record(name, label, "FAIL", "valid variant was denied")
+          end
+        end
+      end
+    end
+
+  elseif form_schema then
+    local variants = gen.valid_values(form_schema)
+    for vi = 2, #variants do
+      local pair = variants[vi]
+      if type(pair.value) == "table" then
+        local allowed = run_request({
+          method  = method,
+          uri     = uri,
+          headers = base_headers,
+          form    = pair.value,
+        })
+        local label = "valid variant: " .. pair.label
+        if allowed then
+          record(name, label, "PASS")
+        else
+          record(name, label, "FAIL", "valid variant was denied")
+        end
+      end
+    end
+  end
+
+  if query_schema then
+    local variants = gen.valid_values(query_schema)
+    for vi = 2, #variants do
+      local pair = variants[vi]
+      if type(pair.value) == "table" then
+        -- Routes with both a body and query schema (e.g. ciphers purge) need
+        -- the valid body present or the WAF denies at the body-validation step.
+        local req = { method=method, uri=uri, headers=base_headers, query=pair.value }
+        if valid_body then req.body = valid_body end
+        if valid_form then req.form = valid_form end
+        local allowed = run_request(req)
+        local label = "valid query variant: " .. pair.label
+        if allowed then
+          record(name, label, "PASS")
+        else
+          record(name, label, "FAIL", "valid query variant was denied")
+        end
+      end
     end
   end
 
@@ -512,44 +655,54 @@ end
 
 -- ── Run all routes ────────────────────────────────────────────────────────────
 
-io.write(string.format("[%s] Running tests...\n", app_name))
+-- ── Run all routes ────────────────────────────────────────────────────────────
+
+-- Planning pass: run test_route with the WAF disabled to count tests per route
+-- and compute column widths.  gen.* results are memoized for the execution pass.
+io.write(string.format("[%s] Planning...\n", app_name))
+io.flush()
+
+planning = true
+local planned_total = 0
+local max_per_route = 0
+for _, route in ipairs(app.routes) do
+  route_test_n = 0
+  pcall(test_route, route)
+  if route_test_n > max_per_route then max_per_route = route_test_n end
+  planned_total = planned_total + route_test_n
+end
+planning = false
+
+overall_fmt = string.format("%%%dd", #tostring(planned_total))
+route_fmt   = string.format("%%%dd", #tostring(max_per_route))
+
+-- Execution pass: run tests live, printing each route's results immediately.
+io.write(string.format("[%s] Running %d tests...\n", app_name, planned_total))
+io.flush()
 
 for _, route in ipairs(app.routes) do
+  route_test_n = 0
+  route_buf    = {}
   local ok, err = pcall(test_route, route)
   if not ok then
-    local name = route.name or "?"
-    record(name, "ERROR", "FAIL", tostring(err))
+    record(route.name or "?", "ERROR", "FAIL", tostring(err))
   end
+  flush_route(route.name or "?")
 end
 
 app.mode = saved_mode
 
--- ── Print results ─────────────────────────────────────────────────────────────
+-- ── Summary ───────────────────────────────────────────────────────────────────
 
 local total = pass_count + fail_count + skip_count
 
--- Print failures first so they're easy to spot
-local any_fail = false
-for _, r in ipairs(results) do
-  if r.outcome == "FAIL" then
-    if not any_fail then
-      io.write("\n── FAILURES ──────────────────────────────────────────────────\n")
-      any_fail = true
+if fail_count > 0 then
+  io.write("\n── FAILURES ──────────────────────────────────────────────────\n")
+  for _, r in ipairs(results) do
+    if r.outcome == "FAIL" then
+      io.write(string.format("%sFAIL%s  %-30s  %s\n", R, RS, r.route, r.label))
+      if r.detail ~= "" then io.write(string.format("      %s\n", r.detail)) end
     end
-    io.write(string.format("FAIL  %-30s  %s\n", r.route, r.label))
-    if r.detail ~= "" then
-      io.write(string.format("      detail: %s\n", r.detail))
-    end
-  end
-end
-
--- Print all results
-io.write("\n── FULL RESULTS ──────────────────────────────────────────────\n")
-for _, r in ipairs(results) do
-  local marker = r.outcome == "PASS" and "." or (r.outcome == "FAIL" and "F" or "S")
-  io.write(string.format("%s  %-30s  %s\n", marker, r.route, r.label))
-  if r.outcome ~= "PASS" and r.detail ~= "" then
-    io.write(string.format("   %s\n", r.detail))
   end
 end
 
