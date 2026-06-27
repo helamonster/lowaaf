@@ -1,12 +1,12 @@
 -- --------------------------------------------------------------------------------------
--- 
+--
 -- Lua OpenResty Web Application and API Firewall (LOWAAF)
 --
 -- Concept, Framework and Application Firewall Implementation By:
 -- Jeremy Bryan Smith <helamonster@gmail.com>
 -- <https://jeremybryansmith.com>
 --
--- With assistance from: Claude Sonnet 4.6 <noreply@anthropic.com> 
+-- With assistance from: Claude Sonnet 4.6 <noreply@anthropic.com>
 --
 -- --------------------------------------------------------------------------------------
 --
@@ -113,6 +113,97 @@ local function find_route(app)
   return nil
 end
 
+-- These headers are always permitted regardless of the allowed_headers list.
+-- content-type and content-length are validated separately (via check_headers
+-- and check_body respectively) and must not be blocked at the name level.
+local ALWAYS_ALLOWED = {
+  ["host"]           = true,
+  ["content-type"]   = true,
+  ["content-length"] = true,
+}
+
+-- Builds a content-type validator from a string or list of accepted types.
+-- Content-type patterns are pre-escaped at call time; the returned closure
+-- only runs ngx.re.find on each request.
+local function make_ct_validator(allowed_types)
+  local types = list(allowed_types)
+  local patterns = {}
+  for i, expected in ipairs(types) do
+    patterns[i] = "^" .. ngx.re.gsub(expected, [[([.+\-])]], [[\$1]], "jo")
+  end
+  return function(v, path)
+    if type(v) ~= "string" then return false, path .. " must be a string" end
+    for _, pat in ipairs(patterns) do
+      if ngx.re.find(v, pat, "jo") then return true end
+    end
+    return false, path .. ": '" .. v .. "' is not an accepted content-type"
+  end
+end
+
+-- Precomputes per-route header policy caches so check_headers avoids
+-- rebuilding them on every request.  Called once per app table, lazily on
+-- the first core.run() call (access phase, so ngx.re is fully available).
+local function prepare(app)
+  if app._prepared then return end
+
+  local defaults = app.defaults or {}
+
+  -- Base allowed-name set and base validators come from app.defaults.
+  -- These are shared across all routes; per-route fields are merged below.
+  local base_allowed
+  local base_validators = {}
+
+  if defaults.allowed_headers then
+    base_allowed = {}
+    for _, name in ipairs(list(defaults.allowed_headers)) do
+      base_allowed[name:lower()] = true
+    end
+  end
+
+  for name, v in pairs(defaults.headers or {}) do
+    local lower = name:lower()
+    base_validators[lower] = v
+    if base_allowed then base_allowed[lower] = true end  -- implicitly allowed
+  end
+
+  for _, route in ipairs(app.routes or {}) do
+    local ct_types   = route.content_types or route.content_type
+    local has_policy = defaults.allowed_headers or defaults.headers
+                       or route.headers or route.extra_headers or ct_types
+
+    if not has_policy then
+      route._cache = false  -- sentinel: skip all header checks for this route
+    else
+      local c = {}
+
+      -- Merge allowed-name set: defaults + route-specific additions
+      if base_allowed then
+        c.allowed = {}
+        for k, val in pairs(base_allowed) do c.allowed[k] = val end
+        for name, _ in pairs(route.headers or {}) do c.allowed[name:lower()] = true end
+        for _, name in ipairs(list(route.extra_headers or {})) do
+          c.allowed[name:lower()] = true
+        end
+        if ct_types then c.allowed["content-type"] = true end
+      end
+
+      -- Merge value validators: defaults, then route overrides
+      c.validators = {}
+      for k, v in pairs(base_validators) do c.validators[k] = v end
+      for name, v in pairs(route.headers or {}) do c.validators[name:lower()] = v end
+
+      -- Content-type shorthand: build validator unless app already registered one
+      if ct_types and not c.validators["content-type"] then
+        c.validators["content-type"] = make_ct_validator(ct_types)
+      end
+
+      route._cache = c
+    end
+  end
+
+  app._prepared = true
+end
+
 -- Each check_* function calls deny() directly for every violation it finds,
 -- then returns false if any violation occurred (true otherwise).
 -- In block mode, deny() calls ngx.exit() so only the first violation matters.
@@ -184,63 +275,25 @@ local function check_query(app, route)
   return true
 end
 
--- These headers are always permitted regardless of the allowed_headers list.
--- content-type and content-length are validated separately (via check_headers
--- and check_body respectively) and must not be blocked at the name level.
-local ALWAYS_ALLOWED = {
-  ["host"]           = true,
-  ["content-type"]   = true,
-  ["content-length"] = true,
-}
-
--- Build a validator function from a content_type / content_types string list.
--- Checks that the Content-Type header value starts with one of the given types.
-local function make_ct_validator(allowed_types)
-  local types = list(allowed_types)
-  return function(v, path)
-    if type(v) ~= "string" then return false, path .. " must be a string" end
-    for _, expected in ipairs(types) do
-      local escaped = ngx.re.gsub(expected, [[([.+\-])]], [[\$1]], "jo")
-      if ngx.re.find(v, "^" .. escaped, "jo") then return true end
-    end
-    return false, path .. ": '" .. v .. "' is not an accepted content-type"
-  end
-end
-
--- Validate request header names against the allowlist, and header values
--- against any registered validators.  Also handles the route-level
--- content_type / content_types shorthand by converting it into a Content-Type
--- header validator so the two mechanisms are unified.
+-- Validates request header names against the allowlist, and header values
+-- against any registered validators.  Reads from the per-route cache built
+-- by prepare() — no set/map construction happens at request time.
 --
 -- Name allowlist is only enforced when defaults.allowed_headers is set.
 -- Value validators (defaults.headers, route.headers) always run when present.
 local function check_headers(app, route)
-  local defaults  = app.defaults or {}
-  local ct_types  = route.content_types or route.content_type
-  local verbose   = app.verbose or 0
+  local c = route._cache
+  if c == false then return true end  -- no header policy for this route
 
-  local has_policy = defaults.allowed_headers or defaults.headers
-                     or route.headers or route.extra_headers or ct_types
-  if not has_policy then return true end
-
+  local verbose     = app.verbose or 0
   local req_headers = ngx.req.get_headers(100)
 
-  -- name allowlist: only enforced when the app declares defaults.allowed_headers
-  if defaults.allowed_headers then
-    local allowed = {}
-    for _, name in ipairs(list(defaults.allowed_headers)) do
-      allowed[name:lower()] = true
-    end
-    -- headers with registered validators are implicitly allowed by name
-    for name, _ in pairs(defaults.headers  or {}) do allowed[name:lower()] = true end
-    for name, _ in pairs(route.headers     or {}) do allowed[name:lower()] = true end
-    for _, name  in ipairs(list(route.extra_headers or {})) do allowed[name:lower()] = true end
-    if ct_types then allowed["content-type"] = true end
-
+  -- Name allowlist: only enforced when the app declares defaults.allowed_headers
+  if c.allowed then
     local had_violation = false
     for name, _ in pairs(req_headers) do
       local lower = name:lower()
-      if not ALWAYS_ALLOWED[lower] and not allowed[lower] then
+      if not ALWAYS_ALLOWED[lower] and not c.allowed[lower] then
         local msg = "header '" .. name .. "' is not allowed"
         if verbose >= 1 then
           local v = req_headers[name]
@@ -254,22 +307,9 @@ local function check_headers(app, route)
     if had_violation and not ngx.ctx.waf_log_mode then return false end
   end
 
-  -- value validators: defaults.headers provides the base, route.headers overrides
-  local validators = {}
-  for name, v in pairs(defaults.headers or {}) do
-    validators[name:lower()] = v
-  end
-  for name, v in pairs(route.headers or {}) do
-    validators[name:lower()] = v
-  end
-  -- content_type / content_types shorthand: auto-generate a validator unless
-  -- the app already registered one via headers = { ["Content-Type"] = ... }
-  if ct_types and not validators["content-type"] then
-    validators["content-type"] = make_ct_validator(ct_types)
-  end
-
+  -- Value validators: defaults.headers provides the base, route.headers overrides
   local had_violation = false
-  for name_lower, validator in pairs(validators) do
+  for name_lower, validator in pairs(c.validators) do
     local value = req_headers[name_lower]
     if value ~= nil then
       -- ngx.req.get_headers() returns a table when a header appears multiple times
@@ -359,6 +399,8 @@ local function check_body(app, route)
 end
 
 function core.run(app)
+  prepare(app)
+
   ngx.ctx.waf_verbose  = app.verbose or 0
   ngx.ctx.waf_log_mode = (app.mode or "log") == "log"
 
