@@ -1454,7 +1454,10 @@ return {
       }),
     },
     { name = "admin users update-revision", method = "POST", path = [[^/admin/users/update_revision$]],  no_body = true },
-    { name = "admin users by-mail",         method = "GET",  path = [[^/admin/users/by-mail/[^/]+$]],   no_body = true },
+    { name = "admin users by-mail",         method = "GET",
+      path      = [[^/admin/users/by-mail/[^@\s/]+@[^@\s/]+\.[^@\s/]+$]],
+      _test_uri = "/admin/users/by-mail/test@example.com",
+      no_body   = true },
 
     -- Per-user actions — sub-paths before the bare /<uuid> route
     { name = "admin user invite resend", method = "POST",   path = "^/admin/users/" .. U .. "/invite/resend$", no_body = true },

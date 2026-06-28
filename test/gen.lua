@@ -621,6 +621,7 @@ function gen.path_from_pattern(pat)
 end
 
 function gen.route_uri(route)
+  if route._test_uri then return route._test_uri end
   local pats = route.paths or route.path
   if type(pats) == "table" then pats = pats[1] end
   return gen.path_from_pattern(pats)
