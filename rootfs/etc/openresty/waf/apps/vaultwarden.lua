@@ -49,16 +49,21 @@ local function ua_cli()
 end
 
 -- Accepts any official Bitwarden client (web, mobile, desktop, CLI).
+-- Wrapped with T.with_check so T._registry is populated and gen.lua can
+-- produce invalid UA test cases automatically (unrecognized bot UAs as hints).
 local function ua_any_known()
   local clients = { ua_web(), ua_mobile(), ua_desktop(), ua_cli() }
-  return function(v, path)
-    if type(v) ~= "string" then return false, path .. " must be a string" end
-    if #v > 512 then return false, path .. " too long" end
+  local base = T.string({ max = 512 })
+  return T.with_check(base, function(v, path)
     for _, check in ipairs(clients) do
       if check(v, path) then return true end
     end
     return false, path .. ": unrecognized Bitwarden client user-agent"
-  end
+  end, {
+    { value = "BadBot/1.0",           label = "unrecognized UA" },
+    { value = "curl/7.81.0",          label = "curl UA" },
+    { value = "python-requests/2.28", label = "python-requests UA" },
+  })
 end
 
 -- ---------------------------------------------------------------------------
@@ -1470,6 +1475,8 @@ return {
     },
 
     -- Config management
+    -- No json schema for admin config post: the field set is open-ended and changes
+    -- across Vaultwarden versions.  Content-type + max_body still enforced.
     { name = "admin config post",      method = "POST", path = [[^/admin/config$]],
       content_type = "application/json", max_body = 1024 * 1024,
     },

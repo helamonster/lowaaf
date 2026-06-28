@@ -365,6 +365,42 @@ local function test_route(route)
     end
   end
 
+  -- ── 1c. Header valid variants ───────────────────────────────────────────────
+  -- Test all confirmed-valid variants of every header validator (enum exhaustion,
+  -- uuid alternatives, etc.).  Uses the same valid body/form from section 1 so
+  -- body validation does not block these tests.
+
+  do
+    local merged = {}
+    if app.defaults and app.defaults.headers then
+      for k, v in pairs(app.defaults.headers) do merged[k] = v end
+    end
+    if route.headers then
+      for k, v in pairs(route.headers) do merged[k] = v end
+    end
+    for header_name, validator in pairs(merged) do
+      if type(validator) == "function" then
+        for _, pair in ipairs(gen.valid_values(validator)) do
+          if type(pair.value) == "string" then
+            local hdrs = {}
+            for k, v in pairs(base_headers) do hdrs[k] = v end
+            hdrs[header_name] = pair.value
+            local req = { method=method, uri=uri, headers=hdrs }
+            if valid_body then req.body = valid_body end
+            if valid_form then req.form = valid_form end
+            local allowed = run_request(req)
+            local label = "valid header: " .. header_name .. "=" .. pair.label
+            if allowed then
+              record(name, label, "PASS")
+            else
+              record(name, label, "FAIL", "valid header variant was denied")
+            end
+          end
+        end
+      end
+    end
+  end
+
   -- ── 2. Wrong method ─────────────────────────────────────────────────────────
 
   local bad_method = wrong_method(route)
@@ -652,8 +688,6 @@ local function test_route(route)
     end
   end
 end
-
--- ── Run all routes ────────────────────────────────────────────────────────────
 
 -- ── Run all routes ────────────────────────────────────────────────────────────
 
