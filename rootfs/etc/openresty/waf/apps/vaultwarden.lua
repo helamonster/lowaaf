@@ -232,7 +232,15 @@ local cipher_body = T.with_check(T.object({
     response       = nu_enc,
   })),
   archivedDate = T.nullable(T.iso8601()),
-}, { required = { type=true, name=true } }), cipher_type_check, cipher_type_hints)
+}, { required = { type=true, name=true } }), cipher_type_check, cipher_type_hints, {
+  -- Coordinated multi-field variants: type + its mandatory sub-object.
+  -- Single-field substitution in gen.lua cannot produce these because changing
+  -- type alone fails cipher_type_check (sub-object absent).
+  { value = { type=2, name="a", secureNote={} }, label = "type=2 (SecureNote)" },
+  { value = { type=3, name="a", card={} },       label = "type=3 (Card)"       },
+  { value = { type=4, name="a", identity={} },   label = "type=4 (Identity)"   },
+  { value = { type=5, name="a", sshKey={} },     label = "type=5 (SshKey)"     },
+})
 
 -- ---------------------------------------------------------------------------
 -- Registration body: shared by the legacy /identity/accounts/register and

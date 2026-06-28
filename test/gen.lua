@@ -259,6 +259,11 @@ local function raw_valids(meta)
         end
       end
     end
+    -- Explicit valid hints: coordinated multi-field variants (with_check only)
+    -- that single-field substitution cannot produce.
+    for _, hint in ipairs(meta.valid_hints or {}) do
+      add(hint.value, hint.label)
+    end
 
   else
     local v = raw_valid(meta)

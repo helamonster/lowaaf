@@ -302,9 +302,13 @@ end
 
 -- Wraps a base validator with an additional cross-field check function.
 -- check_fn(v, path) → ok, err runs only when base passes.
--- invalid_hints: optional array of { value, label } pairs — known-bad inputs
--- that pass base but fail check_fn; included in gen.invalid_values output.
-function T.with_check(base, check_fn, invalid_hints)
+-- invalid_hints: optional array of { value, label } — known-bad inputs that
+--   pass base but fail check_fn; included in gen.invalid_values output.
+-- valid_hints:   optional array of { value, label } — coordinated multi-field
+--   variants that single-field substitution cannot produce (e.g. cipher type
+--   bodies that require changing both `type` and its sub-object together);
+--   included in gen.valid_values output.
+function T.with_check(base, check_fn, invalid_hints, valid_hints)
   local fn = function(v, path)
     local ok, err = base(v, path)
     if not ok then return false, err end
@@ -314,6 +318,7 @@ function T.with_check(base, check_fn, invalid_hints)
     type          = "with_check",
     base_meta     = T._registry[base],
     invalid_hints = invalid_hints or {},
+    valid_hints   = valid_hints   or {},
   }
   return fn
 end
