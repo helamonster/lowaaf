@@ -507,4 +507,30 @@ function core.run(app)
   check_body(app, route)
 end
 
+-- Returns an on_deny callback that bans the client IP in an ipset.
+-- Runs via a zero-delay timer so the response is never delayed.
+-- The ipset must already exist before OpenResty starts:
+--   ipset create waf-blocklist hash:ip timeout 3600
+-- Wire it up with nftables or iptables, then add to the app policy:
+--   local core = require "waf.core"
+--   on_deny = core.ipset_deny_hook("waf-blocklist")
+--
+-- opts.timeout      seconds until ban auto-expires (default 3600)
+-- opts.skip_private skip RFC 1918 / loopback IPs (default true)
+function core.ipset_deny_hook(set_name, opts)
+  opts = opts or {}
+  local ban_timeout = opts.timeout or 3600
+  local skip_priv   = opts.skip_private ~= false
+  local private_re  = [[^(?:127\.|10\.|172\.(?:1[6-9]|2\d|3[01])\.|192\.168\.|::1$|fd[\da-f]{2}:)]]
+
+  return function(reason, status)
+    local ip = ngx.var and ngx.var.remote_addr
+    if not ip then return end
+    if skip_priv and ngx.re.find(ip, private_re, "joi") then return end
+    local cmd = "ipset add " .. set_name .. " " .. ip
+                .. " timeout " .. tostring(ban_timeout) .. " 2>/dev/null"
+    ngx.timer.at(0, function() os.execute(cmd) end)
+  end
+end
+
 return core

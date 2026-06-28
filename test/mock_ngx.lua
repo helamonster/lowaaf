@@ -70,7 +70,9 @@ local mock_ngx = {
     if level == real_WARN then _denied = true end
   end,
 
-  say = function() end,
+  say   = function() end,
+  -- timer.at used by core.ipset_deny_hook; no-op in tests (we don't call ipset)
+  timer = { at = function() end },
 
   -- In block mode, deny() calls ngx.exit() after logging.
   -- Throw the sentinel so core.run() aborts; runner catches it via pcall.

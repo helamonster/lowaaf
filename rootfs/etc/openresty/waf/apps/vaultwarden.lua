@@ -18,7 +18,8 @@
 --
 -- --------------------------------------------------------------------------------------
 
-local T = require "waf.types"
+local T    = require "waf.types"
+local core = require "waf.core"
 
 -- ---------------------------------------------------------------------------
 -- Bitwarden client User-Agent validators (Vaultwarden-specific)
@@ -472,6 +473,9 @@ return {
   name    = "vaultwarden",
   mode    = "log",   -- flip to "block" after validating against real traffic
   verbose = 2,
+  -- on_deny fires only in "block" mode.  Requires the ipset to exist:
+  --   ipset create waf-blocklist hash:ip timeout 3600
+  on_deny = core.ipset_deny_hook("waf-blocklist"),
 
   defaults = {
     max_body = 5 * 1024 * 1024,  -- 5 MB; covers attachment uploads
