@@ -93,6 +93,16 @@ waf/
     vaultwarden.lua # Policy definition for Vaultwarden
     jellyfin.lua    # (in progress)
     mediawiki.lua   # (in progress)
+
+test/
+  runner.lua        # Test suite — runs offline (mock_ngx) or online (http_client)
+  gen.lua           # Test-case generator — derives invalid variants from valid schema
+  mock_ngx.lua      # Stub for the OpenResty `ngx` API (offline mode)
+  http_client.lua   # Cosocket HTTP client (online mode)
+
+docker/
+  docker-compose.yml  # Local OpenResty + Vaultwarden test stack
+  nginx.conf          # Nginx config with WAF on all locations including /notifications/hub
 ```
 
 ### types.lua — Validator Factories
@@ -165,11 +175,87 @@ return {
 
 ---
 
+## Testing
+
+The test suite covers every declared route and generates thousands of cases automatically — valid requests that must be allowed, and invalid variants that must be denied.
+
+### Offline tests (no Docker required)
+
+The runner uses a mock of the OpenResty `ngx` API so tests run entirely in `resty` without a live server:
+
+```bash
+bash tools.sh offline-test              # all apps
+bash tools.sh offline-test vaultwarden  # one app
+```
+
+For each route the suite:
+1. Sends a valid baseline request and verifies it is allowed
+2. Sends the wrong HTTP method and verifies it is denied
+3. Sends unknown headers and verifies they are denied
+4. Generates every declared header validator's invalid variants (bad format, wrong length, value not in enum, CRLF injection, ESC chars, …)
+5. Tests the IP allowlist on admin-only routes
+6. Tests body-size enforcement
+7. Sends a body to `no_body` routes and verifies denial
+8. Tests JSON schema invalids — missing required fields, extra unknown fields, wrong types, out-of-range values, invalid UUIDs, invalid emails, …
+9. Tests form/query-string schema invalids
+10. Tests malformed JSON and malformed form bodies
+
+The Vaultwarden policy currently generates **~25,000 test cases** across 270 routes.
+
+### Online tests (live Docker stack)
+
+`online-test-full` runs the same cases against the actual WAF inside OpenResty, sending real HTTP requests and inspecting the `X-WAF: block` response header to distinguish WAF denials from application responses:
+
+```bash
+bash tools.sh docker-test-up       # start OpenResty + Vaultwarden
+bash tools.sh online-test-full     # ~23,700 HTTP requests, ~1 minute
+bash tools.sh docker-test-down
+```
+
+The runner temporarily forces block mode in the container for the duration of the test (by touching `/tmp/waf-block-mode`) and restores it on exit. A small number of offline cases are skipped in online mode where HTTP semantics differ — for example, nginx strips null bytes from headers before the WAF sees them, and URL-encoding collapses type mismatches to strings.
+
+Running both suites together catches two classes of bugs that neither catches alone:
+- **Logic bugs** — caught offline, because every case runs with full schema coverage
+- **Infrastructure bugs** — caught online, such as large bodies spilling to nginx temp files (a real bug found and fixed this way, where bodies > 8 KB caused the WAF to read an empty body and deny valid requests)
+
+### CLI integration tests
+
+A smaller set of end-to-end tests using the `bw` CLI client exercises the full Vaultwarden authentication and vault flow against the Docker stack:
+
+```bash
+bash tools.sh online-test-cli
+```
+
+---
+
+## Development Tools
+
+`tools.sh` provides a single entry point for common development tasks:
+
+| Command | Description |
+|---|---|
+| `offline-test [app]` | Run WAF unit tests via `resty` (mock, no Docker) |
+| `online-test-full [app]` | Live HTTP replay of the full test suite against Docker |
+| `online-test-cli [--no-reset]` | `bw` CLI integration tests against Docker |
+| `docker-test-up` | Start the OpenResty + Vaultwarden Docker stack |
+| `docker-test-down` | Stop the Docker stack |
+| `docker-test-reload` | Reload OpenResty in-container (picks up WAF code changes without restart) |
+| `docker-test-logs` | Tail WAF deny log entries from the running container |
+| `diff` | Diff WAF sources against the deployed copy in `/etc/openresty/waf/` |
+| `deploy` | rsync WAF sources to `/etc/openresty/waf/` and restart OpenResty |
+
+The Docker stack exposes three ports:
+- `8080` — HTTP → redirects to HTTPS
+- `8443` — HTTPS (used by `bw` CLI and browser)
+- `8888` — plain HTTP WAF listener (used by `online-test-full` to avoid per-request TLS overhead)
+
+---
+
 ## Current Application Policies
 
 | Application | Status | Notes |
 |---|---|---|
-| [Vaultwarden](https://github.com/dani-garcia/vaultwarden) | Working (log mode) | Full route coverage, cipher/login/send schemas, UA restriction |
+| [Vaultwarden](https://github.com/dani-garcia/vaultwarden) | Working (log mode) | Full route coverage; cipher, login, send, admin schemas; UA restriction; ~25k test cases |
 | Jellyfin | Partial PoC | Pre-framework implementation, migration in progress |
 | MediaWiki | Partial PoC | Pre-framework implementation, migration in progress |
 
@@ -179,14 +265,14 @@ return {
 
 This project is actively being developed and improved. Planned work includes:
 
-- **More application policies** — Jellyfin, MediaWiki, WordPress, and others migrated to the new framework
-- **Stricter schemas** — deeper JSON validation on more endpoints as real-traffic log analysis reveals the actual request shapes clients send
+- **More application policies** — Jellyfin, MediaWiki, WordPress, Nextcloud, and others migrated to the framework
+- **Stricter schemas** — deeper JSON validation on more endpoints as real-traffic log analysis reveals actual request shapes
 - **Rate limiting integration** — per-route and per-client request rate limits
 - **IPv6 CIDR support** — IP allowlists currently handle IPv4 only
 - **Query string validation** — allowlisting and validating URI query parameters
 - **Response filtering** — optionally inspect and sanitize upstream responses
-- **More templates** — additional `T.*` helpers for common patterns (JWT validation, API key formats, common header value shapes)
-- **Testing infrastructure** — unit tests for the framework engine and validator library
+- **More validator helpers** — additional `T.*` factories for common patterns (JWT validation, API key formats, common header value shapes)
+- ~~**Testing infrastructure**~~ *(done — offline + online test suites, ~25k cases for Vaultwarden)*
 
 ---
 

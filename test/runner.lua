@@ -16,9 +16,25 @@
 -- package.path is provided by:  resty -I rootfs/etc/openresty test/runner.lua
 
 local cjson = require "cjson.safe"
-local mock  = require "test.mock_ngx"
-local gen   = require "test.gen"
-local core  = require "waf.core"
+
+-- When WAF_HTTP_BASE is set the runner sends real HTTP requests to the live
+-- Docker stack instead of exercising core.run() in-process.
+local HTTP_BASE = os.getenv("WAF_HTTP_BASE")
+local mock, http_client, core
+
+if HTTP_BASE then
+  http_client = require "test.http_client"
+else
+  -- mock_ngx must be required BEFORE waf.core so the global `ngx` is replaced
+  -- before core.lua captures it via `local ngx = ngx`.
+  mock = require "test.mock_ngx"
+end
+
+local gen = require "test.gen"
+
+if not HTTP_BASE then
+  core = require "waf.core"
+end
 
 -- Memoize gen.valid_values / gen.invalid_values so both the planning pass and
 -- the execution pass get cached results — each schema is only walked once.
@@ -41,9 +57,12 @@ if not ok then
 end
 
 -- Force block mode so denied requests exit early (cleaner detection).
--- We save and restore around each test.
+-- In HTTP mode the WAF runs in Docker; block mode is enabled there via the
+-- /tmp/waf-block-mode sentinel file (managed by the online-test-full command).
 local saved_mode = app.mode
-app.mode = "block"
+if not HTTP_BASE then
+  app.mode = "block"
+end
 
 -- ── Test infrastructure ───────────────────────────────────────────────────────
 
@@ -115,10 +134,20 @@ local function flush_route(route_name)
   route_buf = {}
 end
 
--- Run core.run(app) with the given request; return true if WAF allowed it.
+-- Run the WAF against req; return true if WAF allowed it, false if denied.
 -- Returns true immediately during the planning pass (no WAF calls).
 local function run_request(req)
   if planning then return true end
+
+  if HTTP_BASE then
+    local status = http_client.request(HTTP_BASE, req)
+    if status == -1 then
+      error("HTTP request to " .. HTTP_BASE .. " failed (is the Docker stack up?)")
+    end
+    -- -2: WAF set X-WAF: block (deny in block mode);  anything else: WAF passed
+    return status ~= -2
+  end
+
   mock.set_request(req)
   local ok, err = pcall(core.run, app)
   if not ok and err ~= mock._EXIT then
@@ -454,6 +483,8 @@ local function test_route(route)
           -- HTTP headers are always strings; non-string invalids become valid
           -- after core.lua's tostring() conversion, so skip them here.
           if type(pair.value) ~= "string" then goto continue end
+          -- Null bytes are stripped by the HTTP parser before reaching the WAF.
+          if HTTP_BASE and pair.value:find("\0", 1, true) then goto continue end
           local bad_hdrs = {}
           for k, v in pairs(base_headers) do bad_hdrs[k] = v end
           bad_hdrs[header_name] = pair.value
@@ -475,8 +506,9 @@ local function test_route(route)
   end
 
   -- ── 4. IP allowlist ────────────────────────────────────────────────────────
+  -- (offline only: real HTTP cannot spoof remote_addr)
 
-  if route.allow_ips then
+  if route.allow_ips and not HTTP_BASE then
     local denied = not run_request({
       method      = method,
       uri         = uri,
@@ -508,9 +540,10 @@ local function test_route(route)
   end
 
   -- ── 6. Max body size ───────────────────────────────────────────────────────
+  -- (offline only: sending max_body+1 bytes over HTTP is impractical)
 
   local max_body = route.max_body or (app.defaults and app.defaults.max_body)
-  if max_body and not route.no_body then
+  if max_body and not route.no_body and not HTTP_BASE then
     local denied = not run_request({
       method         = method,
       uri            = uri,
@@ -578,8 +611,9 @@ local function test_route(route)
   -- core.lua passes get_post_args() directly to validate_any_schema; if it
   -- returns a non-table the schema rejects it.  Section 10 skips non-table
   -- invalids, so test the structural cases here explicitly.
+  -- (offline only: non-table values cannot be represented in a real HTTP body)
 
-  if form_schema and not route.no_body then
+  if form_schema and not route.no_body and not HTTP_BASE then
     local bad_forms = {
       { form = "not a table", label = "string instead of form data" },
       { form = 123,           label = "number instead of form data" },
@@ -650,6 +684,18 @@ local function test_route(route)
     local invalids = gen.invalid_values(form_schema)
     for _, pair in ipairs(invalids) do
       if type(pair.value) == "table" then
+        -- In HTTP mode: URL-encoding converts all primitive values to strings, so
+        -- type-mismatch invalids (boolean/number in a string field) become valid
+        -- after form encoding.  Skip them; they are covered by the offline test.
+        if HTTP_BASE then
+          local type_mismatch = false
+          for _, v in pairs(pair.value) do
+            if type(v) == "boolean" or type(v) == "number" then
+              type_mismatch = true; break
+            end
+          end
+          if type_mismatch then goto next_form_invalid end
+        end
         local denied = not run_request({
           method  = method,
           uri     = uri,
@@ -662,6 +708,7 @@ local function test_route(route)
           record(name, "form invalid: " .. pair.label, "FAIL",
                  "expected deny, got allow")
         end
+        ::next_form_invalid::
       end
     end
   end
@@ -672,6 +719,17 @@ local function test_route(route)
     local invalids = gen.invalid_values(query_schema)
     for _, pair in ipairs(invalids) do
       if type(pair.value) == "table" then
+        -- In HTTP mode: URL-encoded query params are always strings, so
+        -- boolean/number type-mismatch invalids become valid after encoding.
+        if HTTP_BASE then
+          local type_mismatch = false
+          for _, v in pairs(pair.value) do
+            if type(v) == "boolean" or type(v) == "number" then
+              type_mismatch = true; break
+            end
+          end
+          if type_mismatch then goto next_query_invalid end
+        end
         local denied = not run_request({
           method  = method,
           uri     = uri,
@@ -684,6 +742,7 @@ local function test_route(route)
           record(name, "query invalid: " .. pair.label, "FAIL",
                  "expected deny, got allow")
         end
+        ::next_query_invalid::
       end
     end
   end
@@ -724,7 +783,7 @@ for _, route in ipairs(app.routes) do
   flush_route(route.name or "?")
 end
 
-app.mode = saved_mode
+if not HTTP_BASE then app.mode = saved_mode end
 
 -- ── Summary ───────────────────────────────────────────────────────────────────
 

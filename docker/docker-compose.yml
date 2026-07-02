@@ -1,0 +1,37 @@
+services:
+
+  vaultwarden:
+    image: vaultwarden/server:latest
+    restart: unless-stopped
+    environment:
+      DOMAIN:              "https://localhost:8443"
+      SIGNUPS_ALLOWED:     "true"
+      WEBSOCKET_ENABLED:   "true"   # needed for older clients
+      LOG_LEVEL:           "warn"
+    volumes:
+      - vaultwarden-data:/data
+    networks:
+      - waf-test
+
+  openresty:
+    image: openresty/openresty:alpine
+    restart: unless-stopped
+    ports:
+      - "8080:80"    # HTTP → redirects to HTTPS
+      - "8443:443"   # HTTPS — bw CLI and browser
+      - "8888:8888"  # HTTP WAF (no TLS) — online-test-full
+    volumes:
+      # WAF code — bind-mounted read-only; nginx -s reload picks up changes.
+      - ../rootfs/etc/openresty/waf:/etc/openresty/waf:ro
+      - ./nginx.conf:/usr/local/openresty/nginx/conf/nginx.conf:ro
+      - ./certs:/etc/openresty/certs:ro
+    depends_on:
+      - vaultwarden
+    networks:
+      - waf-test
+
+networks:
+  waf-test:
+
+volumes:
+  vaultwarden-data:

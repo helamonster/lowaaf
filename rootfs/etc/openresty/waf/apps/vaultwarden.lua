@@ -280,7 +280,8 @@ local register_body = T.object({
 -- (src/api/core/ciphers.rs: CipherIdsData)
 -- ---------------------------------------------------------------------------
 local cipher_ids_body = T.object({
-  ids = T.array(T.uuid(), { max = 2000 }),
+  ids            = T.array(T.uuid(), { max = 2000 }),
+  organizationId = nu_uuid,
 }, { required = { ids=true } })
 
 -- ---------------------------------------------------------------------------
@@ -312,12 +313,17 @@ local send_body = T.object({
   maxAccessCount = T.nullable(T.number({ integer=true, min=0, max=1000000 })),
   expirationDate = T.nullable(T.iso8601()),
   hideEmail      = nu_bool,
+  accessCount    = T.nullable(T.number({ integer=true, min=0, max=1000000 })),
   notes          = nu_enc,
   fileLength     = T.nullable(T.number({ integer=true, min=0, max=536870912 })),
   id             = nu_uuid,
+  -- bw CLI v2026+: email notification list and send auth type
+  emails         = T.nullable(T.array(T.email(), { max=1000 })),
+  authType       = T.nullable(T.number({ integer=true, min=0, max=10 })),
   text = T.nullable(T.object({
-    text   = nu_enc,
-    hidden = nu_bool,
+    text     = nu_enc,
+    hidden   = nu_bool,
+    response = T.nullable(T.string({ max=65536 })),  -- server-side plaintext; null on create/update
   })),
   file = T.nullable(T.object({
     fileName = nu_enc,
@@ -379,6 +385,7 @@ local bulk_uuid_ids = T.object({ ids = T.array(T.uuid(), { max=2000 }) }, { requ
 
 -- Partial cipher update: folderId and favorite only (src/api/core/ciphers.rs: PartialCipherData)
 local cipher_partial_body = T.object({
+  name     = T.nullable(enc),
   folderId = nu_uuid_or_empty,
   favorite = T.boolean(),
 }, { required = { favorite=true } })
@@ -413,7 +420,7 @@ local group_body = T.object({
 local function vw_iss(suffix)
   return function(v, path)
     if type(v) ~= "string" then return false, path .. " must be a string" end
-    local expected = "https://" .. (ngx.var.server_name or "") .. "|" .. suffix
+    local expected = "https://" .. (ngx.var.http_host or "") .. "|" .. suffix
     if v ~= expected then return false, path .. ": unexpected iss" end
     return true
   end
@@ -799,7 +806,7 @@ return {
     { name = "profile get",        method = "GET",    path = [[^/api/accounts/profile$]],           no_body = true },
     { name = "profile update", methods = { "PUT", "POST" }, path = [[^/api/accounts/profile$]],
       content_type = "application/json",
-      json = T.object({ name = T.string({ max=50 }) }) },
+      json = T.object({ name = T.string({ max=50 }), masterPasswordHint = nu_sml }) },
     { name = "avatar update", method = "PUT", path = [[^/api/accounts/avatar$]],
       content_type = "application/json",
       json = T.object({ avatarColor = T.nullable(T.string({ max=7, match=[[^#[0-9a-fA-F]{6}$]] })) }) },

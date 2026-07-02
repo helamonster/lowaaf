@@ -33,6 +33,7 @@ local mock_ngx = {
 
   -- Per-request context; reset by set_request()
   ctx    = { waf_verbose = 0, waf_log_mode = true },
+  header = {},
   status = 200,
 
   req = {
@@ -95,6 +96,7 @@ function mock.set_request(t)
   _req    = t or {}
   _denied = false
   mock_ngx.ctx    = { waf_verbose = 0, waf_log_mode = true }
+  mock_ngx.header = {}
   mock_ngx.status = 200
 end
 

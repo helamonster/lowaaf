@@ -167,8 +167,9 @@ end
 -- and nginx continues to proxy the request.
 local function deny(app, status, reason)
   ngx.log(ngx.WARN, "[waf:", app.name or "?", "] ", reason)
-  if (app.mode or "log") == "block" then
+  if not ngx.ctx.waf_log_mode then
     if app.on_deny then pcall(app.on_deny, reason, status) end
+    ngx.header["X-WAF"] = "block"
     ngx.status = status or 400
     ngx.say("bad request")
     ngx.exit(ngx.status)
@@ -440,7 +441,16 @@ local function check_body(app, route)
 
   if json_schemas then
     ngx.req.read_body()
-    local body = ngx.req.get_body_data() or ""
+    local body = ngx.req.get_body_data()
+    if not body then
+      -- Body spilled to a temp file (exceeded client_body_buffer_size).
+      local fname = ngx.req.get_body_file()
+      if fname then
+        local f = io.open(fname, "r")
+        if f then body = f:read("*all"); f:close() end
+      end
+    end
+    body = body or ""
     local obj, err = cjson.decode(body)
     if not obj then
       deny(app, 400, "route '" .. (route.name or "?") ..
@@ -479,7 +489,12 @@ function core.run(app)
   prepare(app)
 
   ngx.ctx.waf_verbose  = app.verbose or 0
-  ngx.ctx.waf_log_mode = (app.mode or "log") == "log"
+  -- /tmp/waf-block-mode can be created inside the container (via docker exec)
+  -- to force block mode without reloading nginx.  Checked per-request so it
+  -- takes effect immediately; used by online-test-full.
+  local _bmf = io.open("/tmp/waf-block-mode", "r")
+  local _mode = _bmf and (_bmf:close() or "block") or (app.mode or "log")
+  ngx.ctx.waf_log_mode = _mode == "log"
 
   local method = ngx.req.get_method()
 
