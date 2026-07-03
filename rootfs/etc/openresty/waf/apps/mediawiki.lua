@@ -167,7 +167,6 @@ local idx_base = {
   hideMinor       = T.string({ max=4 }),
   newOnly         = T.string({ max=4 }),
   topOnly         = T.string({ max=4 }),
-  ["wpfilters[]"] = T.string({ max=64 }),
 
   -- Special:ActiveUsers
   ["groups[]"]    = T.string({ max=64 }),
@@ -185,7 +184,6 @@ local idx_base = {
   page2           = T.string({ max=512 }),
   hidetrans       = T.string({ max=4 }),
   hidelinks       = T.string({ max=4 }),
-  hideredirs      = T.string({ max=4 }),
   dest            = T.string({ max=512 }),
   submitted       = T.string({ max=4 }),
   mergepoint      = T.string({ max=32 }),
@@ -334,7 +332,7 @@ return {
     -- Accepts: GET /rest.php and GET /rest.php/v1/search/title[?q=...]
     -------------------------------------------------------------------------
     {
-      name    = "rest-php",
+      name    = "rest php",
       method  = "GET",
       paths   = {
         [[^/rest\.php$]],
@@ -347,7 +345,7 @@ return {
     -- api.php GET  (Action API — read operations, opensearch, etc.)
     -------------------------------------------------------------------------
     {
-      name    = "api-get",
+      name    = "api get",
       method  = "GET",
       path    = [[^/api\.php$]],
       query   = api_get_query,
@@ -358,7 +356,7 @@ return {
     -- api.php POST  (Action API — edit, token, module operations)
     -------------------------------------------------------------------------
     {
-      name         = "api-post",
+      name         = "api post",
       method       = "POST",
       path         = [[^/api\.php$]],
       content_type = "application/x-www-form-urlencoded",
@@ -371,7 +369,7 @@ return {
     -- A single broad query schema covers all known Special page variants.
     -------------------------------------------------------------------------
     {
-      name    = "index-php-get",
+      name    = "index php get",
       method  = "GET",
       paths   = {
         [[^/index\.php$]],
@@ -381,7 +379,7 @@ return {
       no_body = true,
     },
     {
-      name    = "index-php-post",
+      name    = "index php post",
       method  = "POST",
       paths   = {
         [[^/index\.php$]],
@@ -398,14 +396,14 @@ return {
     -- load.php  (ResourceLoader — JS/CSS module delivery)
     -------------------------------------------------------------------------
     {
-      name    = "load-php-get",
+      name    = "load php get",
       method  = "GET",
       path    = [[^/load\.php$]],
       query   = load_get_query,
       no_body = true,
     },
     {
-      name    = "load-php-post",
+      name    = "load php post",
       method  = "POST",
       path    = [[^/load\.php$]],
       form    = T.object({ oldid = T.string({ max=20 }) }),

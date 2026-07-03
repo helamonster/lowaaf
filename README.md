@@ -91,8 +91,8 @@ waf/
   types.lua         # Validator factory library — composable building blocks
   apps/
     vaultwarden.lua # Policy definition for Vaultwarden
-    jellyfin.lua    # (in progress)
-    mediawiki.lua   # (in progress)
+    jellyfin.lua    # Policy definition for Jellyfin
+    mediawiki.lua   # Policy definition for MediaWiki
 
 test/
   runner.lua        # Test suite — runs offline (mock_ngx) or online (http_client)
@@ -200,7 +200,7 @@ For each route the suite:
 9. Tests form/query-string schema invalids
 10. Tests malformed JSON and malformed form bodies
 
-The Vaultwarden policy currently generates **~25,000 test cases** across 270 routes.
+Across all three policies the offline suite generates **~28,000 test cases** covering 435 routes (Vaultwarden: ~25,000 cases / 270 routes; Jellyfin: ~1,400 cases / 154 routes; MediaWiki: ~1,200 cases / 11 routes).
 
 ### Online tests (live Docker stack)
 
@@ -256,8 +256,8 @@ The Docker stack exposes three ports:
 | Application | Status | Notes |
 |---|---|---|
 | [Vaultwarden](https://github.com/dani-garcia/vaultwarden) | Working (log mode) | Full route coverage; cipher, login, send, admin schemas; UA restriction; ~25k test cases |
-| Jellyfin | Partial PoC | Pre-framework implementation, migration in progress |
-| MediaWiki | Partial PoC | Pre-framework implementation, migration in progress |
+| [Jellyfin](https://github.com/jellyfin/jellyfin) | Working (log mode) | 154 routes; library, playback, session, admin schemas; ~1.4k test cases |
+| [MediaWiki](https://www.mediawiki.org) | Working (log mode) | index.php / api.php / load.php query & form schemas; ~1.2k test cases |
 
 ---
 
@@ -265,14 +265,15 @@ The Docker stack exposes three ports:
 
 This project is actively being developed and improved. Planned work includes:
 
-- **More application policies** — Jellyfin, MediaWiki, WordPress, Nextcloud, and others migrated to the framework
+- **More application policies** — WordPress, Nextcloud, and others migrated to the framework
 - **Stricter schemas** — deeper JSON validation on more endpoints as real-traffic log analysis reveals actual request shapes
 - **Rate limiting integration** — per-route and per-client request rate limits
 - **IPv6 CIDR support** — IP allowlists currently handle IPv4 only
 - **Query string validation** — allowlisting and validating URI query parameters
 - **Response filtering** — optionally inspect and sanitize upstream responses
 - **More validator helpers** — additional `T.*` factories for common patterns (JWT validation, API key formats, common header value shapes)
-- ~~**Testing infrastructure**~~ *(done — offline + online test suites, ~25k cases for Vaultwarden)*
+- ~~**Testing infrastructure**~~ *(done — offline + online test suites, ~28k cases across all three policies)*
+- ~~**Jellyfin & MediaWiki policies**~~ *(done — both migrated to the declarative framework with full offline test coverage)*
 
 ---
 

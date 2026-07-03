@@ -611,17 +611,37 @@ function gen.path_from_pattern(pat)
   -- Substitute known regex fragments with concrete literals (plain-text find)
   if T_uuid_re   then p = plain_sub(p, T_uuid_re,   PATH_UUID)   end
   if T_fileid_re then p = plain_sub(p, T_fileid_re, PATH_FILEID) end
+  -- Resolve any other quantified character class (e.g. a bare hex-32 id
+  -- pattern like `[0-9a-fA-F]{32}`) into a concrete string of the required
+  -- length, using a representative character from the class. Negated
+  -- classes (`[^/]{n,m}` etc.) are left for the specific rules below.
+  p = p:gsub("%[([^%]]-)%]%{(%d+)[^}]-%}", function(class, n)
+    if class:sub(1, 1) == "^" then return nil end
+    local ch = class:match("%d") or class:match("%a") or class:sub(1, 1)
+    return ch:rep(tonumber(n))
+  end)
   -- Common remaining patterns (Lua pattern substitution on what's left):
   p = p:gsub("%[%^/%]%{[^}]*%}", "testval") -- [^/]{n,m}
   p = p:gsub("%[%^/%]%+",        "testval") -- [^/]+
   p = p:gsub("%[%^/%]%*",        "")        -- [^/]*
   p = p:gsub("%.%+",             "testval") -- .+
+  -- Resolve any remaining one-or-more character class (e.g. `[0-9.]+`,
+  -- `[0-9A-Za-z_.-]+`) into a single representative character.
+  p = p:gsub("%[([^%]]-)%]%+", function(class)
+    if class:sub(1, 1) == "^" then return nil end
+    return class:match("%d") or class:match("%a") or class:sub(1, 1)
+  end)
   p = p:gsub("%[0%-9%]%{1,3%}",  "0")       -- [0-9]{1,3}
   p = p:gsub("%[0%-9%]%{1,2%}",  "0")       -- [0-9]{1,2}
-  p = p:gsub("%(/%|%$%)", "/")           -- (/|$) → /
-  p = p:gsub("%(%.%a+%)%?", "")          -- (.js)? etc.
-  p = p:gsub("[%(%)%|%?]", "")           -- stray alternation chars
-  p = p:gsub("%{[^}]*%}", "")            -- remaining {n} quantifiers
+  -- Resolve alternation groups `(?:a|b|c)` / `(a|b|c)` to their first
+  -- alternative so the result is a concrete, matchable path. This also
+  -- covers non-alternating optional groups like `(\.js)?`, which reduce
+  -- to their single (only) branch.
+  p = p:gsub("%(%??:?([^%(%)]-)%)%??", function(inner)
+    return inner:match("^[^|]*")
+  end)
+  p = p:gsub("[%(%)%|%?]", "")           -- stray alternation chars (fallback)
+  p = p:gsub("%{[^}]*%}", "")            -- remaining {n} quantifiers (fallback)
   return p
 end
 

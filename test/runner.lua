@@ -303,16 +303,15 @@ local function test_route(route)
     end
   else
     -- No body schema: valid request has no body; include query params if declared.
-    local valid_query_obj
     if query_schema then
       local qv = gen.valid_value(query_schema)
-      if qv ~= nil then valid_query_obj = qv end
+      if qv ~= nil then valid_query = qv end
     end
     local allowed = run_request({
       method  = method,
       uri     = uri,
       headers = base_headers,
-      query   = valid_query_obj,
+      query   = valid_query,
     })
     if allowed then
       record(name, "valid " .. method .. " " .. uri, "PASS")
@@ -415,8 +414,9 @@ local function test_route(route)
             for k, v in pairs(base_headers) do hdrs[k] = v end
             hdrs[header_name] = pair.value
             local req = { method=method, uri=uri, headers=hdrs }
-            if valid_body then req.body = valid_body end
-            if valid_form then req.form = valid_form end
+            if valid_body  then req.body  = valid_body  end
+            if valid_form  then req.form  = valid_form  end
+            if valid_query then req.query = valid_query end
             local allowed = run_request(req)
             local label = "valid header: " .. header_name .. "=" .. pair.label
             if allowed then
