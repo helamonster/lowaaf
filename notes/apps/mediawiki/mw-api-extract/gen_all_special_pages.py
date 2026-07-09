@@ -86,10 +86,24 @@ def label_for(page_key):
     return re.sub(r"[^a-z0-9]", "", page_key.lower())
 
 
+def _tokenize(name):
+    # Splits on camelCase boundaries and non-alnum separators, e.g.
+    # "wpContextTitle" -> {"wp", "context", "title"}, "log-comment" ->
+    # {"log", "comment"}. Whole-word hint matching against these tokens
+    # (instead of raw substring containment against the full lowercased
+    # name) avoids accidental collisions like "wpContextTitle" matching the
+    # "text" hint purely because "con-TEXT-title" contains those 4 letters
+    # in a row - confirmed live: this gave a single-line MediaWiki title
+    # input (HTMLForm 'type' => 'text', 'size' => 60 - not a textarea) a 1MB
+    # cap meant for genuine free-text fields.
+    spaced = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", " ", name)
+    return set(re.split(r"[^A-Za-z0-9]+", spaced.lower())) - {""}
+
+
 def cap_for(name, spec):
-    lname = name.lower()
+    tokens = _tokenize(name)
     for hint, cap in LONG_FIELD_HINTS.items():
-        if hint in lname:
+        if hint in tokens:
             return cap
     return DEFAULT_MAX
 
@@ -148,6 +162,15 @@ def main():
     # integrate_all_special_pages.py, which splices this into the generic
     # route's form_schemas.
     special_post_forms = []
+    # (page_key, page_name, get_extra_fields) for every page that has extra
+    # GET-navigable fields AND isn't one of the 16 already hand-tuned in
+    # mw_special_pages (ALREADY_HAS_GET_ROUTE) - those already have precise,
+    # title-gated coverage for the ?title=Special:X query-string form via
+    # index_query_check; this list extends that same mechanism
+    # (mw_bulk_special_query_pages, reassigned into a forward-declared local
+    # - see mediawiki.lua) to the remaining pages. Confirmed live missing
+    # for Special:PrefixIndex's prefix/namespace/hideredirects/stripprefix.
+    special_query_pages = []
 
     for page_key in sorted(data.keys()):
         entry = data[page_key]
@@ -159,7 +182,24 @@ def main():
         has_get_already = page_key.lower() in ALREADY_HAS_GET_ROUTE
         # redirect_passthrough fields are GET-navigable query params (e.g.
         # returnto/returntoquery); form_fields/heuristic fields are POST-submitted.
-        get_extra_fields = fields if method == "redirect_passthrough" else {}
+        #
+        # heuristic fields are also GET-navigable, though, and get exposed
+        # BOTH ways below: they come from scanning $request->getVal()/
+        # getBool()/getInt() calls directly, and WebRequest's getters don't
+        # care which HTTP method supplied the value - unlike a real
+        # HTMLForm's declared fields (form_fields, which assume a POST
+        # submission with its own CSRF/wasPosted() gate), a heuristic-
+        # scanned page reading e.g. `prefix`/`namespace`/`hideredirects` via
+        # getVal() will happily accept those same names on a plain GET too.
+        # Confirmed live: SpecialPrefixIndex (extends SpecialAllPages, a
+        # GET-navigable listing page already hand-tuned in
+        # ALREADY_HAS_GET_ROUTE) - browsing it via GET with
+        # prefix=/namespace=/hideredirects=/stripprefix= got denied because
+        # those fields only existed in the generated POST form, never in the
+        # page's own GET route.
+        get_extra_fields = dict(fields) if method == "redirect_passthrough" else {}
+        if method == "heuristic":
+            get_extra_fields.update(fields)
         post_fields = fields if method in ("form_fields", "heuristic") else {}
         if post_fields:
             # HTMLForm::getHiddenFields() unconditionally injects title (for
@@ -190,6 +230,8 @@ def main():
                 print(f"    query   = T.object(idx_common),")
             print("    no_body = true,")
             print("  },")
+            if get_extra_fields:
+                special_query_pages.append((page_key, page_name, get_extra_fields))
 
         if post_fields:
             print("  {")
@@ -219,6 +261,19 @@ def main():
         print(f"  T.object({{")
         print(emit_fields(post_fields, "    "))
         print("  }),")
+    print("}")
+    print()
+    print("-- Reassigns the forward-declared local from earlier in this file (NOT")
+    print("-- `local` here - see the comment next to its declaration, right after")
+    print("-- mw_special_pages, for why). Same {label, titles, fields} shape as")
+    print("-- mw_special_pages, covering the query-string ?title=Special:X form for")
+    print("-- every page below that ISN'T one of the 16 already hand-tuned there.")
+    print("mw_bulk_special_query_pages = {")
+    for page_key, page_name, get_extra_fields in special_query_pages:
+        label = label_for(page_key)
+        print(f"  {{ label = {lua_str(label)}, titles = {{ {lua_str(page_name)} }}, fields = {{")
+        print(emit_fields(get_extra_fields, "    "))
+        print("  } },")
     print("}")
 
 

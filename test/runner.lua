@@ -181,6 +181,28 @@ local function make_recorder()
   return record, flush_route, function() return route_test_n end
 end
 
+-- A query table this large, urlencoded onto a real GET request line, exceeds
+-- nginx's own URI-length limit (~8KB by default) and gets rejected with a
+-- plain 414 before the WAF ever runs - not a realistic request shape any
+-- real client would send. Routes with pathologically wide merged schemas
+-- (api.php's union of every action's + every query submodule's fields, incl.
+-- the g-prefixed generator= variants, is 1200+ fields) build their "valid"
+-- test fixture by setting every possible field at once, the same "wider than
+-- reality" fixture that already needed an offline-only skip for arg-count
+-- reasons (FORM_ARG_CAP/QUERY_ARG_CAP below) - HTTP mode needs this
+-- additional, separate skip for total BYTE LENGTH, which is a different
+-- constraint (a small field count can still produce a huge byte length, and
+-- vice versa). Confirmed live: api.php's full valid fixture is ~16KB.
+local QUERY_HTTP_BYTE_CAP = 8000
+local function query_too_big_for_http(q)
+  if not HTTP_BASE or type(q) ~= "table" then return false end
+  local total = 0
+  for k, v in pairs(q) do
+    total = total + #tostring(k) + #tostring(v) + 2
+  end
+  return total > QUERY_HTTP_BYTE_CAP
+end
+
 -- Run the WAF against req; return true if WAF allowed it, false if denied.
 -- Returns true immediately during the planning pass (no WAF calls).
 local function run_request(req)
@@ -422,17 +444,22 @@ local function test_route(route)
       local qv = gen.valid_value(query_schema)
       if qv ~= nil then valid_query = qv end
     end
-    local allowed = run_request({
-      method  = method,
-      uri     = uri,
-      headers = base_headers,
-      query   = valid_query,
-    })
-    if allowed then
-      record(name, "valid " .. method .. " " .. uri, "PASS")
+    if query_too_big_for_http(valid_query) then
+      record(name, "valid " .. method .. " " .. uri, "SKIP",
+             "full valid query fixture exceeds a realistic URI length over real HTTP")
     else
-      record(name, "valid " .. method .. " " .. uri, "FAIL",
-             "valid request was denied")
+      local allowed = run_request({
+        method  = method,
+        uri     = uri,
+        headers = base_headers,
+        query   = valid_query,
+      })
+      if allowed then
+        record(name, "valid " .. method .. " " .. uri, "PASS")
+      else
+        record(name, "valid " .. method .. " " .. uri, "FAIL",
+               "valid request was denied")
+      end
     end
   end
 
@@ -492,17 +519,21 @@ local function test_route(route)
     for vi = 2, #variants do
       local pair = variants[vi]
       if type(pair.value) == "table" then
-        -- Routes with both a body and query schema (e.g. ciphers purge) need
-        -- the valid body present or the WAF denies at the body-validation step.
-        local req = { method=method, uri=uri, headers=base_headers, query=pair.value }
-        if valid_body then req.body = valid_body end
-        if valid_form then req.form = valid_form end
-        local allowed = run_request(req)
         local label = "valid query variant: " .. pair.label
-        if allowed then
-          record(name, label, "PASS")
+        if query_too_big_for_http(pair.value) then
+          record(name, label, "SKIP", "full valid query fixture exceeds a realistic URI length over real HTTP")
         else
-          record(name, label, "FAIL", "valid query variant was denied")
+          -- Routes with both a body and query schema (e.g. ciphers purge) need
+          -- the valid body present or the WAF denies at the body-validation step.
+          local req = { method=method, uri=uri, headers=base_headers, query=pair.value }
+          if valid_body then req.body = valid_body end
+          if valid_form then req.form = valid_form end
+          local allowed = run_request(req)
+          if allowed then
+            record(name, label, "PASS")
+          else
+            record(name, label, "FAIL", "valid query variant was denied")
+          end
         end
       end
     end
@@ -525,19 +556,23 @@ local function test_route(route)
       if type(validator) == "function" then
         for _, pair in ipairs(gen.valid_values(validator)) do
           if type(pair.value) == "string" then
-            local hdrs = {}
-            for k, v in pairs(base_headers) do hdrs[k] = v end
-            hdrs[header_name] = pair.value
-            local req = { method=method, uri=uri, headers=hdrs }
-            if valid_body  then req.body  = valid_body  end
-            if valid_form  then req.form  = valid_form  end
-            if valid_query then req.query = valid_query end
-            local allowed = run_request(req)
             local label = "valid header: " .. header_name .. "=" .. pair.label
-            if allowed then
-              record(name, label, "PASS")
+            if query_too_big_for_http(valid_query) then
+              record(name, label, "SKIP", "full valid query fixture exceeds a realistic URI length over real HTTP")
             else
-              record(name, label, "FAIL", "valid header variant was denied")
+              local hdrs = {}
+              for k, v in pairs(base_headers) do hdrs[k] = v end
+              hdrs[header_name] = pair.value
+              local req = { method=method, uri=uri, headers=hdrs }
+              if valid_body  then req.body  = valid_body  end
+              if valid_form  then req.form  = valid_form  end
+              if valid_query then req.query = valid_query end
+              local allowed = run_request(req)
+              if allowed then
+                record(name, label, "PASS")
+              else
+                record(name, label, "FAIL", "valid header variant was denied")
+              end
             end
           end
         end

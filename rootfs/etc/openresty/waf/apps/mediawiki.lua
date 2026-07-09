@@ -230,6 +230,21 @@ local mw_special_pages = {
     } },
 }
 
+-- Same {label, titles, fields} shape as mw_special_pages above, but covering
+-- the remaining ~116 Special: pages (everything NOT hand-tuned above) -
+-- reassigned (not re-`local`'d) further down in this file, from the
+-- generated Tier 6 block (gen_all_special_pages.py's get_extra_fields,
+-- shared with each page's own dedicated GET route). Forward-declared here,
+-- before index_query_check/mw_special_fields below need it, since
+-- index_query_check's closure captures it as an upvalue by reference - it
+-- only actually gets read at request-validation time, long after the whole
+-- module (including the later reassignment) has finished loading. Without
+-- this, a Special: page reached via ?title=Special:X query-string style
+-- (not /index.php/Special:X path style) only ever saw idx_common's bare
+-- baseline, never its own page-specific fields - confirmed live for
+-- Special:PrefixIndex's prefix/namespace/hideredirects/stripprefix.
+local mw_bulk_special_query_pages = {}
+
 local mw_pages_by_label = {}
 for _, page in ipairs(mw_special_pages) do
   mw_pages_by_label[page.label] = page
@@ -261,19 +276,37 @@ local function title_is(title, page_name)
   return t == p or t:sub(1, #p + 1) == p .. "/"
 end
 
+-- Iterates mw_special_pages (hand-tuned, 16 pages) then
+-- mw_bulk_special_query_pages (generated, the remaining ~116) as if they
+-- were one table - two separate tables instead of one combined local so the
+-- generated block can be wholesale-replaced each regen without disturbing
+-- the hand-tuned entries above it.
+local function each_special_query_page(fn)
+  for _, page in ipairs(mw_special_pages) do fn(page) end
+  for _, page in ipairs(mw_bulk_special_query_pages) do fn(page) end
+end
+
 local function index_query_check(v, path)
   for key in pairs(v) do
-    local is_gated, matched = false, false
-    for _, page in ipairs(mw_special_pages) do
-      if page.fields[key] ~= nil then
-        is_gated = true
-        for _, t in ipairs(page.titles) do
-          if title_is(v.title, t) then matched = true end
+    -- idx_common fields are unconditionally valid on every /index.php
+    -- request; never gate one just because some page's heuristic field scan
+    -- happened to also pick up a $request->getVal() call using the same
+    -- name (confirmed live: SpecialApiHelp.php reads 'title', which - being
+    -- one of idx_common's own keys - briefly made `title` itself only
+    -- "valid for its specific Special: page" for every request, everywhere).
+    if idx_common[key] == nil then
+      local is_gated, matched = false, false
+      each_special_query_page(function(page)
+        if page.fields[key] ~= nil then
+          is_gated = true
+          for _, t in ipairs(page.titles) do
+            if title_is(v.title, t) then matched = true end
+          end
         end
+      end)
+      if is_gated and not matched then
+        return false, path .. "." .. key .. ": only valid for its specific Special: page"
       end
-    end
-    if is_gated and not matched then
-      return false, path .. "." .. key .. ": only valid for its specific Special: page"
     end
   end
 
@@ -287,15 +320,11 @@ local function index_query_check(v, path)
   return true
 end
 
-local mw_special_fields = {}
-for _, page in ipairs(mw_special_pages) do
-  mw_special_fields = merge(mw_special_fields, page.fields)
-end
-
-local index_query = T.with_check(
-  T.object(merge(idx_common, mw_special_fields)),
-  index_query_check
-)
+-- mw_special_fields/index_query themselves are built much further down (see
+-- the comment there) - not here, even though everything else Special:-page
+-- related lives in this section - because they depend on
+-- mw_bulk_special_query_pages, which isn't reassigned to its real content
+-- until the generated Tier 6 block runs, later in this file.
 
 -- One dedicated route per Special: page reached via clean path
 -- (/index.php/Special:Foo), so the extra fields are unconditionally valid
@@ -1731,6 +1760,18 @@ end
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
 -- list=allusers is a user-enumeration lookup (used by admin pages like
 -- Special:ListUsers / Special:ActiveUsers / Special:RenameUser to populate
 -- autocomplete). As a lightweight defense against direct, unauthenticated
@@ -2086,7 +2127,11 @@ local mw_bulk_special_routes = {
     name    = "index php special apihelp",
     method  = "GET",
     path    = [[(?i)^/index\.php/Special:ApiHelp(?:/.*)?$]],
-    query   = T.object(idx_common),
+    query   = T.object(merge(idx_common, {
+      recursivesubmodules = T.nullable(T.string({ max=512 })),
+      submodules = T.nullable(T.string({ max=512 })),
+      title = T.nullable(T.string({ max=512 })),
+    })),
     no_body = true,
   },
   {
@@ -2115,7 +2160,9 @@ local mw_bulk_special_routes = {
     name    = "index php special authenticationpopupsuccess",
     method  = "GET",
     path    = [[(?i)^/index\.php/Special:AuthenticationPopupSuccess(?:/.*)?$]],
-    query   = T.object(idx_common),
+    query   = T.object(merge(idx_common, {
+      display = T.nullable(T.string({ max=512 })),
+    })),
     no_body = true,
   },
   {
@@ -2186,7 +2233,13 @@ local mw_bulk_special_routes = {
     name    = "index php special blocklist",
     method  = "GET",
     path    = [[(?i)^/index\.php/Special:BlockList(?:/.*)?$]],
-    query   = T.object(idx_common),
+    query   = T.object(merge(idx_common, {
+      action = T.nullable(T.string({ max=512 })),
+      blockType = T.nullable(T.string({ max=512 })),
+      ip = T.nullable(T.string({ max=512 })),
+      wpOptions = T.nullable(T.string({ max=512 })),
+      wpTarget = T.nullable(T.string({ max=512 })),
+    })),
     no_body = true,
   },
   {
@@ -2210,7 +2263,9 @@ local mw_bulk_special_routes = {
     name    = "index php special booksources",
     method  = "GET",
     path    = [[(?i)^/index\.php/Special:Booksources(?:/.*)?$]],
-    query   = T.object(idx_common),
+    query   = T.object(merge(idx_common, {
+      isbn = T.nullable(T.string({ max=512 })),
+    })),
     no_body = true,
   },
   {
@@ -2261,7 +2316,9 @@ local mw_bulk_special_routes = {
     name    = "index php special categories",
     method  = "GET",
     path    = [[(?i)^/index\.php/Special:Categories(?:/.*)?$]],
-    query   = T.object(idx_common),
+    query   = T.object(merge(idx_common, {
+      from = T.nullable(T.string({ max=512 })),
+    })),
     no_body = true,
   },
   {
@@ -2303,7 +2360,19 @@ local mw_bulk_special_routes = {
     name    = "index php special changecredentials",
     method  = "GET",
     path    = [[(?i)^/index\.php/Special:ChangeCredentials(?:/.*)?$]],
-    query   = T.object(idx_common),
+    query   = T.object(merge(idx_common, {
+      authAction = T.nullable(T.string({ max=512 })),
+      authUniqueId = T.nullable(T.string({ max=512 })),
+      password = T.nullable(T.string({ max=512 })),
+      returnto = T.nullable(T.string({ max=512 })),
+      returntoanchor = T.nullable(T.string({ max=512 })),
+      returntoquery = T.nullable(T.string({ max=512 })),
+      retype = T.nullable(T.string({ max=512 })),
+      uselang = T.nullable(T.string({ max=512 })),
+      variant = T.nullable(T.string({ max=512 })),
+      wpAuthToken = T.nullable(T.string({ max=512 })),
+      wpusername = T.nullable(T.string({ max=512 })),
+    })),
     no_body = true,
   },
   {
@@ -2314,15 +2383,18 @@ local mw_bulk_special_routes = {
     form    = T.object({
       authAction = T.nullable(T.string({ max=512 })),
       authUniqueId = T.nullable(T.string({ max=512 })),
+      password = T.nullable(T.string({ max=512 })),
       returnto = T.nullable(T.string({ max=512 })),
       returntoanchor = T.nullable(T.string({ max=512 })),
       returntoquery = T.nullable(T.string({ max=512 })),
+      retype = T.nullable(T.string({ max=512 })),
       title = T.nullable(T.string({ max=512 })),
       uselang = T.nullable(T.string({ max=512 })),
       variant = T.nullable(T.string({ max=512 })),
       wpAuthToken = T.nullable(T.string({ max=512 })),
       wpEditToken = T.nullable(T.string({ max=512 })),
       wpFormIdentifier = T.nullable(T.string({ max=512 })),
+      wpusername = T.nullable(T.string({ max=512 })),
     }),
   },
   -- ChangePassword (SpecialChangePassword, extends=SpecialRedirectToSpecial, method=redirect_passthrough) -- Specials/SpecialChangePassword.php
@@ -2380,7 +2452,41 @@ local mw_bulk_special_routes = {
     name    = "index php special createaccount",
     method  = "GET",
     path    = [[(?i)^/index\.php/Special:CreateAccount(?:/.*)?$]],
-    query   = T.object(idx_common),
+    query   = T.object(merge(idx_common, {
+      action = T.nullable(T.string({ max=512 })),
+      alwaysShowLogin = T.nullable(T.string({ max=512 })),
+      authAction = T.nullable(T.string({ max=512 })),
+      authUniqueId = T.nullable(T.string({ max=512 })),
+      error = T.nullable(T.string({ max=512 })),
+      force = T.nullable(T.string({ max=512 })),
+      fromhttp = T.nullable(T.string({ max=512 })),
+      notice = T.nullable(T.string({ max=512 })),
+      returnto = T.nullable(T.string({ max=512 })),
+      returntoanchor = T.nullable(T.string({ max=512 })),
+      returntoquery = T.nullable(T.string({ max=512 })),
+      uselang = T.nullable(T.string({ max=512 })),
+      variant = T.nullable(T.string({ max=512 })),
+      warning = T.nullable(T.string({ max=512 })),
+      wpAuthToken = T.nullable(T.string({ max=512 })),
+      wpCreateaccount = T.nullable(T.string({ max=512 })),
+      wpCreateaccountMail = T.nullable(T.string({ max=512 })),
+      wpCreateaccountToken = T.nullable(T.string({ max=512 })),
+      wpEmail = T.nullable(T.string({ max=512 })),
+      wpForceHttps = T.nullable(T.string({ max=512 })),
+      wpFromhttp = T.nullable(T.string({ max=512 })),
+      wpLoginToken = T.nullable(T.string({ max=512 })),
+      wpName = T.nullable(T.string({ max=512 })),
+      wpName1 = T.nullable(T.string({ max=512 })),
+      wpName2 = T.nullable(T.string({ max=512 })),
+      wpPassword = T.nullable(T.string({ max=512 })),
+      wpPassword1 = T.nullable(T.string({ max=512 })),
+      wpPassword2 = T.nullable(T.string({ max=512 })),
+      wpRealName = T.nullable(T.string({ max=512 })),
+      wpReason = T.nullable(T.string({ max=1024 })),
+      wpRemember = T.nullable(T.string({ max=512 })),
+      wpRetype = T.nullable(T.string({ max=512 })),
+      wploginattempt = T.nullable(T.string({ max=512 })),
+    })),
     no_body = true,
   },
   {
@@ -2413,7 +2519,6 @@ local mw_bulk_special_routes = {
       wpForceHttps = T.nullable(T.string({ max=512 })),
       wpFormIdentifier = T.nullable(T.string({ max=512 })),
       wpFromhttp = T.nullable(T.string({ max=512 })),
-      wpLoginAttempt = T.nullable(T.string({ max=512 })),
       wpLoginToken = T.nullable(T.string({ max=512 })),
       wpName = T.nullable(T.string({ max=512 })),
       wpName1 = T.nullable(T.string({ max=512 })),
@@ -2425,6 +2530,7 @@ local mw_bulk_special_routes = {
       wpReason = T.nullable(T.string({ max=1024 })),
       wpRemember = T.nullable(T.string({ max=512 })),
       wpRetype = T.nullable(T.string({ max=512 })),
+      wploginattempt = T.nullable(T.string({ max=512 })),
     }),
   },
   -- Deadendpages (SpecialDeadendPages, extends=PageQueryPage, method=query_page_standard) -- Specials/SpecialDeadendPages.php
@@ -2448,7 +2554,26 @@ local mw_bulk_special_routes = {
     name    = "index php special deletedcontributions",
     method  = "GET",
     path    = [[(?i)^/index\.php/Special:DeletedContributions(?:/.*)?$]],
-    query   = T.object(idx_common),
+    query   = T.object(merge(idx_common, {
+      associated = T.nullable(T.string({ max=512 })),
+      bot = T.nullable(T.string({ max=512 })),
+      deletedOnly = T.nullable(T.string({ max=512 })),
+      ['end'] = T.nullable(T.string({ max=512 })),
+      feed = T.nullable(T.string({ max=512 })),
+      hideMinor = T.nullable(T.string({ max=512 })),
+      limit = T.nullable(T.string({ max=512 })),
+      month = T.nullable(T.string({ max=512 })),
+      namespace = T.nullable(T.string({ max=512 })),
+      newOnly = T.nullable(T.string({ max=512 })),
+      nsInvert = T.nullable(T.string({ max=512 })),
+      start = T.nullable(T.string({ max=512 })),
+      tagInvert = T.nullable(T.string({ max=512 })),
+      tagfilter = T.nullable(T.string({ max=512 })),
+      target = T.nullable(T.string({ max=512 })),
+      topOnly = T.nullable(T.string({ max=512 })),
+      wpfilters = T.nullable(T.string({ max=512 })),
+      year = T.nullable(T.string({ max=512 })),
+    })),
     no_body = true,
   },
   {
@@ -2509,7 +2634,19 @@ local mw_bulk_special_routes = {
     name    = "index php special edittags",
     method  = "GET",
     path    = [[(?i)^/index\.php/Special:EditTags(?:/.*)?$]],
-    query   = T.object(idx_common),
+    query   = T.object(merge(idx_common, {
+      ids = T.nullable(T.string({ max=512 })),
+      target = T.nullable(T.string({ max=512 })),
+      type = T.nullable(T.string({ max=512 })),
+      wpEditToken = T.nullable(T.string({ max=512 })),
+      wpExistingTags = T.nullable(T.string({ max=512 })),
+      wpReason = T.nullable(T.string({ max=1024 })),
+      wpRemoveAllTags = T.nullable(T.string({ max=512 })),
+      wpSubmit = T.nullable(T.string({ max=512 })),
+      wpTagList = T.nullable(T.string({ max=512 })),
+      wpTagsToRemove = T.nullable(T.string({ max=512 })),
+      wpfilters = T.nullable(T.string({ max=512 })),
+    })),
     no_body = true,
   },
   {
@@ -2538,7 +2675,13 @@ local mw_bulk_special_routes = {
     name    = "index php special editwatchlist",
     method  = "GET",
     path    = [[(?i)^/index\.php/Special:EditWatchlist(?:/.*)?$]],
-    query   = T.object(idx_common),
+    query   = T.object(merge(idx_common, {
+      action = T.nullable(T.string({ max=512 })),
+      limit = T.nullable(T.string({ max=512 })),
+      watchlistlabels = T.nullable(T.string({ max=512 })),
+      ['watchlistlabels-action'] = T.nullable(T.string({ max=512 })),
+      wpTitles = T.nullable(T.string({ max=512 })),
+    })),
     no_body = true,
   },
   {
@@ -2587,7 +2730,15 @@ local mw_bulk_special_routes = {
     name    = "index php special expandtemplates",
     method  = "GET",
     path    = [[(?i)^/index\.php/Special:ExpandTemplates(?:/.*)?$]],
-    query   = T.object(idx_common),
+    query   = T.object(merge(idx_common, {
+      wpContextTitle = T.nullable(T.string({ max=512 })),
+      wpEditToken = T.nullable(T.string({ max=512 })),
+      wpGenerateRawHtml = T.nullable(T.string({ max=512 })),
+      wpGenerateXml = T.nullable(T.string({ max=512 })),
+      wpInput = T.nullable(T.string({ max=512 })),
+      wpRemoveComments = T.nullable(T.string({ max=512 })),
+      wpRemoveNowiki = T.nullable(T.string({ max=512 })),
+    })),
     no_body = true,
   },
   {
@@ -2597,13 +2748,13 @@ local mw_bulk_special_routes = {
     content_types = { "application/x-www-form-urlencoded", "multipart/form-data" },
     form    = T.object({
       title = T.nullable(T.string({ max=512 })),
-      wpContextTitle = T.nullable(T.string({ max=1048576 })),
+      wpContextTitle = T.nullable(T.string({ max=512 })),
       wpEditToken = T.nullable(T.string({ max=512 })),
       wpFormIdentifier = T.nullable(T.string({ max=512 })),
       wpGenerateRawHtml = T.nullable(T.string({ max=512 })),
       wpGenerateXml = T.nullable(T.string({ max=512 })),
       wpInput = T.nullable(T.string({ max=512 })),
-      wpRemoveComments = T.nullable(T.string({ max=1024 })),
+      wpRemoveComments = T.nullable(T.string({ max=512 })),
       wpRemoveNowiki = T.nullable(T.string({ max=512 })),
     }),
   },
@@ -2612,7 +2763,24 @@ local mw_bulk_special_routes = {
     name    = "index php special export",
     method  = "GET",
     path    = [[(?i)^/index\.php/Special:Export(?:/.*)?$]],
-    query   = T.object(idx_common),
+    query   = T.object(merge(idx_common, {
+      addcat = T.nullable(T.string({ max=512 })),
+      addns = T.nullable(T.string({ max=512 })),
+      catname = T.nullable(T.string({ max=512 })),
+      curonly = T.nullable(T.string({ max=512 })),
+      dir = T.nullable(T.string({ max=512 })),
+      exportall = T.nullable(T.string({ max=512 })),
+      history = T.nullable(T.string({ max=512 })),
+      limit = T.nullable(T.string({ max=512 })),
+      listauthors = T.nullable(T.string({ max=512 })),
+      nsindex = T.nullable(T.string({ max=512 })),
+      offset = T.nullable(T.string({ max=512 })),
+      ['pagelink-depth'] = T.nullable(T.string({ max=512 })),
+      pages = T.nullable(T.string({ max=512 })),
+      templates = T.nullable(T.string({ max=512 })),
+      wpDownload = T.nullable(T.string({ max=512 })),
+      wpExportTemplates = T.nullable(T.string({ max=512 })),
+    })),
     no_body = true,
   },
   {
@@ -2655,7 +2823,9 @@ local mw_bulk_special_routes = {
     name    = "index php special fileduplicatesearch",
     method  = "GET",
     path    = [[(?i)^/index\.php/Special:FileDuplicateSearch(?:/.*)?$]],
-    query   = T.object(idx_common),
+    query   = T.object(merge(idx_common, {
+      filename = T.nullable(T.string({ max=512 })),
+    })),
     no_body = true,
   },
   {
@@ -2691,7 +2861,23 @@ local mw_bulk_special_routes = {
     name    = "index php special import",
     method  = "GET",
     path    = [[(?i)^/index\.php/Special:Import(?:/.*)?$]],
-    query   = T.object(idx_common),
+    query   = T.object(merge(idx_common, {
+      action = T.nullable(T.string({ max=512 })),
+      assignKnownUsers = T.nullable(T.string({ max=512 })),
+      frompage = T.nullable(T.string({ max=512 })),
+      interwiki = T.nullable(T.string({ max=512 })),
+      interwikiHistory = T.nullable(T.string({ max=512 })),
+      interwikiTemplates = T.nullable(T.string({ max=512 })),
+      ['log-comment'] = T.nullable(T.string({ max=1024 })),
+      mapping = T.nullable(T.string({ max=512 })),
+      namespace = T.nullable(T.string({ max=512 })),
+      ['pagelink-depth'] = T.nullable(T.string({ max=512 })),
+      rootpage = T.nullable(T.string({ max=512 })),
+      source = T.nullable(T.string({ max=512 })),
+      subproject = T.nullable(T.string({ max=512 })),
+      usernamePrefix = T.nullable(T.string({ max=512 })),
+      wpEditToken = T.nullable(T.string({ max=512 })),
+    })),
     no_body = true,
   },
   {
@@ -2724,7 +2910,10 @@ local mw_bulk_special_routes = {
     name    = "index php special interwiki",
     method  = "GET",
     path    = [[(?i)^/index\.php/Special:Interwiki(?:/.*)?$]],
-    query   = T.object(idx_common),
+    query   = T.object(merge(idx_common, {
+      action = T.nullable(T.string({ max=512 })),
+      prefix = T.nullable(T.string({ max=512 })),
+    })),
     no_body = true,
   },
   {
@@ -2745,7 +2934,16 @@ local mw_bulk_special_routes = {
     name    = "index php special linkaccounts",
     method  = "GET",
     path    = [[(?i)^/index\.php/Special:LinkAccounts(?:/.*)?$]],
-    query   = T.object(idx_common),
+    query   = T.object(merge(idx_common, {
+      authAction = T.nullable(T.string({ max=512 })),
+      authUniqueId = T.nullable(T.string({ max=512 })),
+      returnto = T.nullable(T.string({ max=512 })),
+      returntoanchor = T.nullable(T.string({ max=512 })),
+      returntoquery = T.nullable(T.string({ max=512 })),
+      uselang = T.nullable(T.string({ max=512 })),
+      variant = T.nullable(T.string({ max=512 })),
+      wpAuthToken = T.nullable(T.string({ max=512 })),
+    })),
     no_body = true,
   },
   {
@@ -2797,7 +2995,11 @@ local mw_bulk_special_routes = {
     name    = "index php special listfiles",
     method  = "GET",
     path    = [[(?i)^/index\.php/Special:Listfiles(?:/.*)?$]],
-    query   = T.object(idx_common),
+    query   = T.object(merge(idx_common, {
+      ilsearch = T.nullable(T.string({ max=512 })),
+      ilshowall = T.nullable(T.string({ max=512 })),
+      user = T.nullable(T.string({ max=512 })),
+    })),
     no_body = true,
   },
   {
@@ -2981,7 +3183,28 @@ local mw_bulk_special_routes = {
     name    = "index php special movepage",
     method  = "GET",
     path    = [[(?i)^/index\.php/Special:Movepage(?:/.*)?$]],
-    query   = T.object(idx_common),
+    query   = T.object(merge(idx_common, {
+      action = T.nullable(T.string({ max=512 })),
+      target = T.nullable(T.string({ max=512 })),
+      wpDeleteAndMove = T.nullable(T.string({ max=512 })),
+      wpEditToken = T.nullable(T.string({ max=512 })),
+      wpFixRedirects = T.nullable(T.string({ max=512 })),
+      wpLeaveRedirect = T.nullable(T.string({ max=512 })),
+      wpMove = T.nullable(T.string({ max=512 })),
+      wpMoveOverProtection = T.nullable(T.string({ max=512 })),
+      wpMoveOverSharedFile = T.nullable(T.string({ max=512 })),
+      wpMovesubpages = T.nullable(T.string({ max=512 })),
+      wpMovetalk = T.nullable(T.string({ max=512 })),
+      ['wpMovetalk-field'] = T.nullable(T.string({ max=512 })),
+      wpNewTitle = T.nullable(T.string({ max=512 })),
+      wpNewTitleMain = T.nullable(T.string({ max=512 })),
+      wpNewTitleNs = T.nullable(T.string({ max=512 })),
+      wpOldTitle = T.nullable(T.string({ max=512 })),
+      wpReason = T.nullable(T.string({ max=1024 })),
+      wpReasonList = T.nullable(T.string({ max=1024 })),
+      wpWatch = T.nullable(T.string({ max=512 })),
+      wpWatchlistExpiry = T.nullable(T.string({ max=512 })),
+    })),
     no_body = true,
   },
   {
@@ -3284,7 +3507,14 @@ local mw_bulk_special_routes = {
     name    = "index php special prefixindex",
     method  = "GET",
     path    = [[(?i)^/index\.php/Special:Prefixindex(?:/.*)?$]],
-    query   = T.object(idx_common),
+    query   = T.object(merge(idx_common, {
+      from = T.nullable(T.string({ max=512 })),
+      hideredirects = T.nullable(T.string({ max=512 })),
+      namespace = T.nullable(T.string({ max=512 })),
+      prefix = T.nullable(T.string({ max=512 })),
+      stripprefix = T.nullable(T.string({ max=512 })),
+      to = T.nullable(T.string({ max=512 })),
+    })),
     no_body = true,
   },
   {
@@ -3317,7 +3547,14 @@ local mw_bulk_special_routes = {
     name    = "index php special protectedpages",
     method  = "GET",
     path    = [[(?i)^/index\.php/Special:Protectedpages(?:/.*)?$]],
-    query   = T.object(idx_common),
+    query   = T.object(merge(idx_common, {
+      level = T.nullable(T.string({ max=512 })),
+      namespace = T.nullable(T.string({ max=512 })),
+      size = T.nullable(T.string({ max=512 })),
+      ['size-mode'] = T.nullable(T.string({ max=512 })),
+      type = T.nullable(T.string({ max=512 })),
+      wpfilters = T.nullable(T.string({ max=512 })),
+    })),
     no_body = true,
   },
   {
@@ -3384,7 +3621,9 @@ local mw_bulk_special_routes = {
     name    = "index php special randompage",
     method  = "GET",
     path    = [[(?i)^/index\.php/Special:Randompage(?:/.*)?$]],
-    query   = T.object(idx_common),
+    query   = T.object(merge(idx_common, {
+      action = T.nullable(T.string({ max=512 })),
+    })),
     no_body = true,
   },
   {
@@ -3420,7 +3659,14 @@ local mw_bulk_special_routes = {
     name    = "index php special recentchanges",
     method  = "GET",
     path    = [[(?i)^/index\.php/Special:Recentchanges(?:/.*)?$]],
-    query   = T.object(idx_common),
+    query   = T.object(merge(idx_common, {
+      action = T.nullable(T.string({ max=512 })),
+      enable_partitioning = T.nullable(T.string({ max=512 })),
+      feed = T.nullable(T.string({ max=512 })),
+      peek = T.nullable(T.string({ max=512 })),
+      rcfilters = T.nullable(T.string({ max=512 })),
+      urlversion = T.nullable(T.string({ max=512 })),
+    })),
     no_body = true,
   },
   {
@@ -3477,7 +3723,16 @@ local mw_bulk_special_routes = {
     name    = "index php special removecredentials",
     method  = "GET",
     path    = [[(?i)^/index\.php/Special:RemoveCredentials(?:/.*)?$]],
-    query   = T.object(idx_common),
+    query   = T.object(merge(idx_common, {
+      authAction = T.nullable(T.string({ max=512 })),
+      authUniqueId = T.nullable(T.string({ max=512 })),
+      returnto = T.nullable(T.string({ max=512 })),
+      returntoanchor = T.nullable(T.string({ max=512 })),
+      returntoquery = T.nullable(T.string({ max=512 })),
+      uselang = T.nullable(T.string({ max=512 })),
+      variant = T.nullable(T.string({ max=512 })),
+      wpAuthToken = T.nullable(T.string({ max=512 })),
+    })),
     no_body = true,
   },
   {
@@ -3504,7 +3759,16 @@ local mw_bulk_special_routes = {
     name    = "index php special renameuser",
     method  = "GET",
     path    = [[(?i)^/index\.php/Special:Renameuser(?:/.*)?$]],
-    query   = T.object(idx_common),
+    query   = T.object(merge(idx_common, {
+      confirmaction = T.nullable(T.string({ max=512 })),
+      forceglobaldetach = T.nullable(T.string({ max=512 })),
+      movepages = T.nullable(T.string({ max=512 })),
+      newusername = T.nullable(T.string({ max=512 })),
+      oldusername = T.nullable(T.string({ max=512 })),
+      reason = T.nullable(T.string({ max=1024 })),
+      suppressredirect = T.nullable(T.string({ max=512 })),
+      wpEditToken = T.nullable(T.string({ max=512 })),
+    })),
     no_body = true,
   },
   {
@@ -3550,7 +3814,22 @@ local mw_bulk_special_routes = {
     name    = "index php special revisiondelete",
     method  = "GET",
     path    = [[(?i)^/index\.php/Special:Revisiondelete(?:/.*)?$]],
-    query   = T.object(idx_common),
+    query   = T.object(merge(idx_common, {
+      file = T.nullable(T.string({ max=512 })),
+      ids = T.nullable(T.string({ max=512 })),
+      target = T.nullable(T.string({ max=512 })),
+      token = T.nullable(T.string({ max=512 })),
+      type = T.nullable(T.string({ max=512 })),
+      wpEditToken = T.nullable(T.string({ max=512 })),
+      wpHideComment = T.nullable(T.string({ max=1024 })),
+      wpHidePrimary = T.nullable(T.string({ max=512 })),
+      wpHideRestricted = T.nullable(T.string({ max=512 })),
+      wpHideUser = T.nullable(T.string({ max=512 })),
+      wpReason = T.nullable(T.string({ max=1024 })),
+      wpReasonDropDown = T.nullable(T.string({ max=1024 })),
+      wpRevDeleteReasonList = T.nullable(T.string({ max=1024 })),
+      wpSubmit = T.nullable(T.string({ max=512 })),
+    })),
     no_body = true,
   },
   {
@@ -3614,7 +3893,9 @@ local mw_bulk_special_routes = {
     name    = "index php special tags",
     method  = "GET",
     path    = [[(?i)^/index\.php/Special:Tags(?:/.*)?$]],
-    query   = T.object(idx_common),
+    query   = T.object(merge(idx_common, {
+      tag = T.nullable(T.string({ max=512 })),
+    })),
     no_body = true,
   },
   {
@@ -3662,7 +3943,12 @@ local mw_bulk_special_routes = {
     name    = "index php special unblock",
     method  = "GET",
     path    = [[(?i)^/index\.php/Special:Unblock(?:/.*)?$]],
-    query   = T.object(idx_common),
+    query   = T.object(merge(idx_common, {
+      ip = T.nullable(T.string({ max=512 })),
+      usecodex = T.nullable(T.string({ max=512 })),
+      wpBlockAddress = T.nullable(T.string({ max=512 })),
+      wpTarget = T.nullable(T.string({ max=512 })),
+    })),
     no_body = true,
   },
   {
@@ -3717,7 +4003,28 @@ local mw_bulk_special_routes = {
     name    = "index php special undelete",
     method  = "GET",
     path    = [[(?i)^/index\.php/Special:Undelete(?:/.*)?$]],
-    query   = T.object(idx_common),
+    query   = T.object(merge(idx_common, {
+      action = T.nullable(T.string({ max=512 })),
+      diff = T.nullable(T.string({ max=512 })),
+      diffonly = T.nullable(T.string({ max=512 })),
+      file = T.nullable(T.string({ max=512 })),
+      fuzzy = T.nullable(T.string({ max=512 })),
+      historyoffset = T.nullable(T.string({ max=512 })),
+      invert = T.nullable(T.string({ max=512 })),
+      prefix = T.nullable(T.string({ max=512 })),
+      preview = T.nullable(T.string({ max=512 })),
+      restore = T.nullable(T.string({ max=512 })),
+      revdel = T.nullable(T.string({ max=512 })),
+      target = T.nullable(T.string({ max=512 })),
+      timestamp = T.nullable(T.string({ max=512 })),
+      token = T.nullable(T.string({ max=512 })),
+      undeletetalk = T.nullable(T.string({ max=512 })),
+      wpComment = T.nullable(T.string({ max=1024 })),
+      wpCommentList = T.nullable(T.string({ max=1024 })),
+      wpEditToken = T.nullable(T.string({ max=512 })),
+      wpUnsuppress = T.nullable(T.string({ max=512 })),
+      wpWatch = T.nullable(T.string({ max=512 })),
+    })),
     no_body = true,
   },
   {
@@ -3755,7 +4062,16 @@ local mw_bulk_special_routes = {
     name    = "index php special unlinkaccounts",
     method  = "GET",
     path    = [[(?i)^/index\.php/Special:UnlinkAccounts(?:/.*)?$]],
-    query   = T.object(idx_common),
+    query   = T.object(merge(idx_common, {
+      authAction = T.nullable(T.string({ max=512 })),
+      authUniqueId = T.nullable(T.string({ max=512 })),
+      returnto = T.nullable(T.string({ max=512 })),
+      returntoanchor = T.nullable(T.string({ max=512 })),
+      returntoquery = T.nullable(T.string({ max=512 })),
+      uselang = T.nullable(T.string({ max=512 })),
+      variant = T.nullable(T.string({ max=512 })),
+      wpAuthToken = T.nullable(T.string({ max=512 })),
+    })),
     no_body = true,
   },
   {
@@ -3834,7 +4150,27 @@ local mw_bulk_special_routes = {
     name    = "index php special upload",
     method  = "GET",
     path    = [[(?i)^/index\.php/Special:Upload(?:/.*)?$]],
-    query   = T.object(idx_common),
+    query   = T.object(merge(idx_common, {
+      wpCacheKey = T.nullable(T.string({ max=512 })),
+      wpCancelUpload = T.nullable(T.string({ max=512 })),
+      wpChangeTags = T.nullable(T.string({ max=512 })),
+      wpDestFile = T.nullable(T.string({ max=512 })),
+      wpDestFileWarningAck = T.nullable(T.string({ max=512 })),
+      wpDestUrl = T.nullable(T.string({ max=512 })),
+      wpEditToken = T.nullable(T.string({ max=512 })),
+      wpForReUpload = T.nullable(T.string({ max=512 })),
+      wpIgnoreWarning = T.nullable(T.string({ max=512 })),
+      wpLicense = T.nullable(T.string({ max=512 })),
+      wpReUpload = T.nullable(T.string({ max=512 })),
+      wpSourceType = T.nullable(T.string({ max=512 })),
+      wpUpload = T.nullable(T.string({ max=512 })),
+      wpUploadCopyStatus = T.nullable(T.string({ max=512 })),
+      wpUploadDescription = T.nullable(T.string({ max=65536 })),
+      wpUploadFile = T.nullable(T.string({ max=512 })),
+      wpUploadIgnoreWarning = T.nullable(T.string({ max=512 })),
+      wpUploadSource = T.nullable(T.string({ max=512 })),
+      wpWatchthis = T.nullable(T.string({ max=512 })),
+    })),
     no_body = true,
   },
   {
@@ -3880,7 +4216,42 @@ local mw_bulk_special_routes = {
     name    = "index php special userlogin",
     method  = "GET",
     path    = [[(?i)^/index\.php/Special:Userlogin(?:/.*)?$]],
-    query   = T.object(idx_common),
+    query   = T.object(merge(idx_common, {
+      action = T.nullable(T.string({ max=512 })),
+      alwaysShowLogin = T.nullable(T.string({ max=512 })),
+      authAction = T.nullable(T.string({ max=512 })),
+      authUniqueId = T.nullable(T.string({ max=512 })),
+      error = T.nullable(T.string({ max=512 })),
+      force = T.nullable(T.string({ max=512 })),
+      fromhttp = T.nullable(T.string({ max=512 })),
+      notice = T.nullable(T.string({ max=512 })),
+      returnto = T.nullable(T.string({ max=512 })),
+      returntoanchor = T.nullable(T.string({ max=512 })),
+      returntoquery = T.nullable(T.string({ max=512 })),
+      type = T.nullable(T.string({ max=512 })),
+      uselang = T.nullable(T.string({ max=512 })),
+      variant = T.nullable(T.string({ max=512 })),
+      warning = T.nullable(T.string({ max=512 })),
+      wpAuthToken = T.nullable(T.string({ max=512 })),
+      wpCreateaccount = T.nullable(T.string({ max=512 })),
+      wpCreateaccountMail = T.nullable(T.string({ max=512 })),
+      wpCreateaccountToken = T.nullable(T.string({ max=512 })),
+      wpEmail = T.nullable(T.string({ max=512 })),
+      wpForceHttps = T.nullable(T.string({ max=512 })),
+      wpFromhttp = T.nullable(T.string({ max=512 })),
+      wpLoginToken = T.nullable(T.string({ max=512 })),
+      wpName = T.nullable(T.string({ max=512 })),
+      wpName1 = T.nullable(T.string({ max=512 })),
+      wpName2 = T.nullable(T.string({ max=512 })),
+      wpPassword = T.nullable(T.string({ max=512 })),
+      wpPassword1 = T.nullable(T.string({ max=512 })),
+      wpPassword2 = T.nullable(T.string({ max=512 })),
+      wpRealName = T.nullable(T.string({ max=512 })),
+      wpReason = T.nullable(T.string({ max=1024 })),
+      wpRemember = T.nullable(T.string({ max=512 })),
+      wpRetype = T.nullable(T.string({ max=512 })),
+      wploginattempt = T.nullable(T.string({ max=512 })),
+    })),
     no_body = true,
   },
   {
@@ -3914,7 +4285,6 @@ local mw_bulk_special_routes = {
       wpForceHttps = T.nullable(T.string({ max=512 })),
       wpFormIdentifier = T.nullable(T.string({ max=512 })),
       wpFromhttp = T.nullable(T.string({ max=512 })),
-      wpLoginAttempt = T.nullable(T.string({ max=512 })),
       wpLoginToken = T.nullable(T.string({ max=512 })),
       wpName = T.nullable(T.string({ max=512 })),
       wpName1 = T.nullable(T.string({ max=512 })),
@@ -3926,6 +4296,7 @@ local mw_bulk_special_routes = {
       wpReason = T.nullable(T.string({ max=1024 })),
       wpRemember = T.nullable(T.string({ max=512 })),
       wpRetype = T.nullable(T.string({ max=512 })),
+      wploginattempt = T.nullable(T.string({ max=512 })),
     }),
   },
   -- Userlogout (SpecialUserLogout, extends=FormSpecialPage, method=heuristic) -- Specials/SpecialUserLogout.php
@@ -3933,7 +4304,9 @@ local mw_bulk_special_routes = {
     name    = "index php special userlogout",
     method  = "GET",
     path    = [[(?i)^/index\.php/Special:Userlogout(?:/.*)?$]],
-    query   = T.object(idx_common),
+    query   = T.object(merge(idx_common, {
+      wasTempUser = T.nullable(T.string({ max=512 })),
+    })),
     no_body = true,
   },
   {
@@ -3953,7 +4326,14 @@ local mw_bulk_special_routes = {
     name    = "index php special userrights",
     method  = "GET",
     path    = [[(?i)^/index\.php/Special:Userrights(?:/.*)?$]],
-    query   = T.object(idx_common),
+    query   = T.object(merge(idx_common, {
+      saveusergroups = T.nullable(T.string({ max=512 })),
+      user = T.nullable(T.string({ max=512 })),
+      ['user-reason'] = T.nullable(T.string({ max=1024 })),
+      wpEditToken = T.nullable(T.string({ max=512 })),
+      wpReason = T.nullable(T.string({ max=1024 })),
+      wpWatch = T.nullable(T.string({ max=512 })),
+    })),
     no_body = true,
   },
   {
@@ -4017,7 +4397,15 @@ local mw_bulk_special_routes = {
     name    = "index php special watchlist",
     method  = "GET",
     path    = [[(?i)^/index\.php/Special:Watchlist(?:/.*)?$]],
-    query   = T.object(idx_common),
+    query   = T.object(merge(idx_common, {
+      action = T.nullable(T.string({ max=512 })),
+      enable_partitioning = T.nullable(T.string({ max=512 })),
+      peek = T.nullable(T.string({ max=512 })),
+      rcfilters = T.nullable(T.string({ max=512 })),
+      reset = T.nullable(T.string({ max=512 })),
+      token = T.nullable(T.string({ max=512 })),
+      urlversion = T.nullable(T.string({ max=512 })),
+    })),
     no_body = true,
   },
   {
@@ -4043,7 +4431,10 @@ local mw_bulk_special_routes = {
     name    = "index php special watchlistlabels",
     method  = "GET",
     path    = [[(?i)^/index\.php/Special:WatchlistLabels(?:/.*)?$]],
-    query   = T.object(idx_common),
+    query   = T.object(merge(idx_common, {
+      asc = T.nullable(T.string({ max=512 })),
+      sort = T.nullable(T.string({ max=512 })),
+    })),
     no_body = true,
   },
   {
@@ -4197,15 +4588,18 @@ local mw_special_post_forms = {
   T.object({
     authAction = T.nullable(T.string({ max=512 })),
     authUniqueId = T.nullable(T.string({ max=512 })),
+    password = T.nullable(T.string({ max=512 })),
     returnto = T.nullable(T.string({ max=512 })),
     returntoanchor = T.nullable(T.string({ max=512 })),
     returntoquery = T.nullable(T.string({ max=512 })),
+    retype = T.nullable(T.string({ max=512 })),
     title = T.nullable(T.string({ max=512 })),
     uselang = T.nullable(T.string({ max=512 })),
     variant = T.nullable(T.string({ max=512 })),
     wpAuthToken = T.nullable(T.string({ max=512 })),
     wpEditToken = T.nullable(T.string({ max=512 })),
     wpFormIdentifier = T.nullable(T.string({ max=512 })),
+    wpusername = T.nullable(T.string({ max=512 })),
   }),
   -- Contributions
   T.object({
@@ -4257,7 +4651,6 @@ local mw_special_post_forms = {
     wpForceHttps = T.nullable(T.string({ max=512 })),
     wpFormIdentifier = T.nullable(T.string({ max=512 })),
     wpFromhttp = T.nullable(T.string({ max=512 })),
-    wpLoginAttempt = T.nullable(T.string({ max=512 })),
     wpLoginToken = T.nullable(T.string({ max=512 })),
     wpName = T.nullable(T.string({ max=512 })),
     wpName1 = T.nullable(T.string({ max=512 })),
@@ -4269,6 +4662,7 @@ local mw_special_post_forms = {
     wpReason = T.nullable(T.string({ max=1024 })),
     wpRemember = T.nullable(T.string({ max=512 })),
     wpRetype = T.nullable(T.string({ max=512 })),
+    wploginattempt = T.nullable(T.string({ max=512 })),
   }),
   -- DeletedContributions
   T.object({
@@ -4336,13 +4730,13 @@ local mw_special_post_forms = {
   -- ExpandTemplates
   T.object({
     title = T.nullable(T.string({ max=512 })),
-    wpContextTitle = T.nullable(T.string({ max=1048576 })),
+    wpContextTitle = T.nullable(T.string({ max=512 })),
     wpEditToken = T.nullable(T.string({ max=512 })),
     wpFormIdentifier = T.nullable(T.string({ max=512 })),
     wpGenerateRawHtml = T.nullable(T.string({ max=512 })),
     wpGenerateXml = T.nullable(T.string({ max=512 })),
     wpInput = T.nullable(T.string({ max=512 })),
-    wpRemoveComments = T.nullable(T.string({ max=1024 })),
+    wpRemoveComments = T.nullable(T.string({ max=512 })),
     wpRemoveNowiki = T.nullable(T.string({ max=512 })),
   }),
   -- Export
@@ -4858,7 +5252,6 @@ local mw_special_post_forms = {
     wpForceHttps = T.nullable(T.string({ max=512 })),
     wpFormIdentifier = T.nullable(T.string({ max=512 })),
     wpFromhttp = T.nullable(T.string({ max=512 })),
-    wpLoginAttempt = T.nullable(T.string({ max=512 })),
     wpLoginToken = T.nullable(T.string({ max=512 })),
     wpName = T.nullable(T.string({ max=512 })),
     wpName1 = T.nullable(T.string({ max=512 })),
@@ -4870,6 +5263,7 @@ local mw_special_post_forms = {
     wpReason = T.nullable(T.string({ max=1024 })),
     wpRemember = T.nullable(T.string({ max=512 })),
     wpRetype = T.nullable(T.string({ max=512 })),
+    wploginattempt = T.nullable(T.string({ max=512 })),
   }),
   -- Userlogout
   T.object({
@@ -4924,6 +5318,401 @@ local mw_special_post_forms = {
     wpFormIdentifier = T.nullable(T.string({ max=512 })),
   }),
 }
+
+-- Reassigns the forward-declared local from earlier in this file (NOT
+-- `local` here - see the comment next to its declaration, right after
+-- mw_special_pages, for why). Same {label, titles, fields} shape as
+-- mw_special_pages, covering the query-string ?title=Special:X form for
+-- every page below that ISN'T one of the 16 already hand-tuned there.
+mw_bulk_special_query_pages = {
+  { label = 'apihelp', titles = { 'Special:ApiHelp' }, fields = {
+    recursivesubmodules = T.nullable(T.string({ max=512 })),
+    submodules = T.nullable(T.string({ max=512 })),
+    title = T.nullable(T.string({ max=512 })),
+  } },
+  { label = 'authenticationpopupsuccess', titles = { 'Special:AuthenticationPopupSuccess' }, fields = {
+    display = T.nullable(T.string({ max=512 })),
+  } },
+  { label = 'blocklist', titles = { 'Special:BlockList' }, fields = {
+    action = T.nullable(T.string({ max=512 })),
+    blockType = T.nullable(T.string({ max=512 })),
+    ip = T.nullable(T.string({ max=512 })),
+    wpOptions = T.nullable(T.string({ max=512 })),
+    wpTarget = T.nullable(T.string({ max=512 })),
+  } },
+  { label = 'booksources', titles = { 'Special:Booksources' }, fields = {
+    isbn = T.nullable(T.string({ max=512 })),
+  } },
+  { label = 'categories', titles = { 'Special:Categories' }, fields = {
+    from = T.nullable(T.string({ max=512 })),
+  } },
+  { label = 'changecredentials', titles = { 'Special:ChangeCredentials' }, fields = {
+    authAction = T.nullable(T.string({ max=512 })),
+    authUniqueId = T.nullable(T.string({ max=512 })),
+    password = T.nullable(T.string({ max=512 })),
+    returnto = T.nullable(T.string({ max=512 })),
+    returntoanchor = T.nullable(T.string({ max=512 })),
+    returntoquery = T.nullable(T.string({ max=512 })),
+    retype = T.nullable(T.string({ max=512 })),
+    uselang = T.nullable(T.string({ max=512 })),
+    variant = T.nullable(T.string({ max=512 })),
+    wpAuthToken = T.nullable(T.string({ max=512 })),
+    wpusername = T.nullable(T.string({ max=512 })),
+  } },
+  { label = 'changepassword', titles = { 'Special:ChangePassword' }, fields = {
+    returnto = T.nullable(T.string({ max=512 })),
+    returntoquery = T.nullable(T.string({ max=512 })),
+  } },
+  { label = 'createaccount', titles = { 'Special:CreateAccount' }, fields = {
+    action = T.nullable(T.string({ max=512 })),
+    alwaysShowLogin = T.nullable(T.string({ max=512 })),
+    authAction = T.nullable(T.string({ max=512 })),
+    authUniqueId = T.nullable(T.string({ max=512 })),
+    error = T.nullable(T.string({ max=512 })),
+    force = T.nullable(T.string({ max=512 })),
+    fromhttp = T.nullable(T.string({ max=512 })),
+    notice = T.nullable(T.string({ max=512 })),
+    returnto = T.nullable(T.string({ max=512 })),
+    returntoanchor = T.nullable(T.string({ max=512 })),
+    returntoquery = T.nullable(T.string({ max=512 })),
+    uselang = T.nullable(T.string({ max=512 })),
+    variant = T.nullable(T.string({ max=512 })),
+    warning = T.nullable(T.string({ max=512 })),
+    wpAuthToken = T.nullable(T.string({ max=512 })),
+    wpCreateaccount = T.nullable(T.string({ max=512 })),
+    wpCreateaccountMail = T.nullable(T.string({ max=512 })),
+    wpCreateaccountToken = T.nullable(T.string({ max=512 })),
+    wpEmail = T.nullable(T.string({ max=512 })),
+    wpForceHttps = T.nullable(T.string({ max=512 })),
+    wpFromhttp = T.nullable(T.string({ max=512 })),
+    wpLoginToken = T.nullable(T.string({ max=512 })),
+    wpName = T.nullable(T.string({ max=512 })),
+    wpName1 = T.nullable(T.string({ max=512 })),
+    wpName2 = T.nullable(T.string({ max=512 })),
+    wpPassword = T.nullable(T.string({ max=512 })),
+    wpPassword1 = T.nullable(T.string({ max=512 })),
+    wpPassword2 = T.nullable(T.string({ max=512 })),
+    wpRealName = T.nullable(T.string({ max=512 })),
+    wpReason = T.nullable(T.string({ max=1024 })),
+    wpRemember = T.nullable(T.string({ max=512 })),
+    wpRetype = T.nullable(T.string({ max=512 })),
+    wploginattempt = T.nullable(T.string({ max=512 })),
+  } },
+  { label = 'deletedcontributions', titles = { 'Special:DeletedContributions' }, fields = {
+    associated = T.nullable(T.string({ max=512 })),
+    bot = T.nullable(T.string({ max=512 })),
+    deletedOnly = T.nullable(T.string({ max=512 })),
+    ['end'] = T.nullable(T.string({ max=512 })),
+    feed = T.nullable(T.string({ max=512 })),
+    hideMinor = T.nullable(T.string({ max=512 })),
+    limit = T.nullable(T.string({ max=512 })),
+    month = T.nullable(T.string({ max=512 })),
+    namespace = T.nullable(T.string({ max=512 })),
+    newOnly = T.nullable(T.string({ max=512 })),
+    nsInvert = T.nullable(T.string({ max=512 })),
+    start = T.nullable(T.string({ max=512 })),
+    tagInvert = T.nullable(T.string({ max=512 })),
+    tagfilter = T.nullable(T.string({ max=512 })),
+    target = T.nullable(T.string({ max=512 })),
+    topOnly = T.nullable(T.string({ max=512 })),
+    wpfilters = T.nullable(T.string({ max=512 })),
+    year = T.nullable(T.string({ max=512 })),
+  } },
+  { label = 'edittags', titles = { 'Special:EditTags' }, fields = {
+    ids = T.nullable(T.string({ max=512 })),
+    target = T.nullable(T.string({ max=512 })),
+    type = T.nullable(T.string({ max=512 })),
+    wpEditToken = T.nullable(T.string({ max=512 })),
+    wpExistingTags = T.nullable(T.string({ max=512 })),
+    wpReason = T.nullable(T.string({ max=1024 })),
+    wpRemoveAllTags = T.nullable(T.string({ max=512 })),
+    wpSubmit = T.nullable(T.string({ max=512 })),
+    wpTagList = T.nullable(T.string({ max=512 })),
+    wpTagsToRemove = T.nullable(T.string({ max=512 })),
+    wpfilters = T.nullable(T.string({ max=512 })),
+  } },
+  { label = 'editwatchlist', titles = { 'Special:EditWatchlist' }, fields = {
+    action = T.nullable(T.string({ max=512 })),
+    limit = T.nullable(T.string({ max=512 })),
+    watchlistlabels = T.nullable(T.string({ max=512 })),
+    ['watchlistlabels-action'] = T.nullable(T.string({ max=512 })),
+    wpTitles = T.nullable(T.string({ max=512 })),
+  } },
+  { label = 'expandtemplates', titles = { 'Special:ExpandTemplates' }, fields = {
+    wpContextTitle = T.nullable(T.string({ max=512 })),
+    wpEditToken = T.nullable(T.string({ max=512 })),
+    wpGenerateRawHtml = T.nullable(T.string({ max=512 })),
+    wpGenerateXml = T.nullable(T.string({ max=512 })),
+    wpInput = T.nullable(T.string({ max=512 })),
+    wpRemoveComments = T.nullable(T.string({ max=512 })),
+    wpRemoveNowiki = T.nullable(T.string({ max=512 })),
+  } },
+  { label = 'export', titles = { 'Special:Export' }, fields = {
+    addcat = T.nullable(T.string({ max=512 })),
+    addns = T.nullable(T.string({ max=512 })),
+    catname = T.nullable(T.string({ max=512 })),
+    curonly = T.nullable(T.string({ max=512 })),
+    dir = T.nullable(T.string({ max=512 })),
+    exportall = T.nullable(T.string({ max=512 })),
+    history = T.nullable(T.string({ max=512 })),
+    limit = T.nullable(T.string({ max=512 })),
+    listauthors = T.nullable(T.string({ max=512 })),
+    nsindex = T.nullable(T.string({ max=512 })),
+    offset = T.nullable(T.string({ max=512 })),
+    ['pagelink-depth'] = T.nullable(T.string({ max=512 })),
+    pages = T.nullable(T.string({ max=512 })),
+    templates = T.nullable(T.string({ max=512 })),
+    wpDownload = T.nullable(T.string({ max=512 })),
+    wpExportTemplates = T.nullable(T.string({ max=512 })),
+  } },
+  { label = 'fileduplicatesearch', titles = { 'Special:FileDuplicateSearch' }, fields = {
+    filename = T.nullable(T.string({ max=512 })),
+  } },
+  { label = 'import', titles = { 'Special:Import' }, fields = {
+    action = T.nullable(T.string({ max=512 })),
+    assignKnownUsers = T.nullable(T.string({ max=512 })),
+    frompage = T.nullable(T.string({ max=512 })),
+    interwiki = T.nullable(T.string({ max=512 })),
+    interwikiHistory = T.nullable(T.string({ max=512 })),
+    interwikiTemplates = T.nullable(T.string({ max=512 })),
+    ['log-comment'] = T.nullable(T.string({ max=1024 })),
+    mapping = T.nullable(T.string({ max=512 })),
+    namespace = T.nullable(T.string({ max=512 })),
+    ['pagelink-depth'] = T.nullable(T.string({ max=512 })),
+    rootpage = T.nullable(T.string({ max=512 })),
+    source = T.nullable(T.string({ max=512 })),
+    subproject = T.nullable(T.string({ max=512 })),
+    usernamePrefix = T.nullable(T.string({ max=512 })),
+    wpEditToken = T.nullable(T.string({ max=512 })),
+  } },
+  { label = 'interwiki', titles = { 'Special:Interwiki' }, fields = {
+    action = T.nullable(T.string({ max=512 })),
+    prefix = T.nullable(T.string({ max=512 })),
+  } },
+  { label = 'linkaccounts', titles = { 'Special:LinkAccounts' }, fields = {
+    authAction = T.nullable(T.string({ max=512 })),
+    authUniqueId = T.nullable(T.string({ max=512 })),
+    returnto = T.nullable(T.string({ max=512 })),
+    returntoanchor = T.nullable(T.string({ max=512 })),
+    returntoquery = T.nullable(T.string({ max=512 })),
+    uselang = T.nullable(T.string({ max=512 })),
+    variant = T.nullable(T.string({ max=512 })),
+    wpAuthToken = T.nullable(T.string({ max=512 })),
+  } },
+  { label = 'listfiles', titles = { 'Special:Listfiles' }, fields = {
+    ilsearch = T.nullable(T.string({ max=512 })),
+    ilshowall = T.nullable(T.string({ max=512 })),
+    user = T.nullable(T.string({ max=512 })),
+  } },
+  { label = 'movepage', titles = { 'Special:Movepage' }, fields = {
+    action = T.nullable(T.string({ max=512 })),
+    target = T.nullable(T.string({ max=512 })),
+    wpDeleteAndMove = T.nullable(T.string({ max=512 })),
+    wpEditToken = T.nullable(T.string({ max=512 })),
+    wpFixRedirects = T.nullable(T.string({ max=512 })),
+    wpLeaveRedirect = T.nullable(T.string({ max=512 })),
+    wpMove = T.nullable(T.string({ max=512 })),
+    wpMoveOverProtection = T.nullable(T.string({ max=512 })),
+    wpMoveOverSharedFile = T.nullable(T.string({ max=512 })),
+    wpMovesubpages = T.nullable(T.string({ max=512 })),
+    wpMovetalk = T.nullable(T.string({ max=512 })),
+    ['wpMovetalk-field'] = T.nullable(T.string({ max=512 })),
+    wpNewTitle = T.nullable(T.string({ max=512 })),
+    wpNewTitleMain = T.nullable(T.string({ max=512 })),
+    wpNewTitleNs = T.nullable(T.string({ max=512 })),
+    wpOldTitle = T.nullable(T.string({ max=512 })),
+    wpReason = T.nullable(T.string({ max=1024 })),
+    wpReasonList = T.nullable(T.string({ max=1024 })),
+    wpWatch = T.nullable(T.string({ max=512 })),
+    wpWatchlistExpiry = T.nullable(T.string({ max=512 })),
+  } },
+  { label = 'prefixindex', titles = { 'Special:Prefixindex' }, fields = {
+    from = T.nullable(T.string({ max=512 })),
+    hideredirects = T.nullable(T.string({ max=512 })),
+    namespace = T.nullable(T.string({ max=512 })),
+    prefix = T.nullable(T.string({ max=512 })),
+    stripprefix = T.nullable(T.string({ max=512 })),
+    to = T.nullable(T.string({ max=512 })),
+  } },
+  { label = 'protectedpages', titles = { 'Special:Protectedpages' }, fields = {
+    level = T.nullable(T.string({ max=512 })),
+    namespace = T.nullable(T.string({ max=512 })),
+    size = T.nullable(T.string({ max=512 })),
+    ['size-mode'] = T.nullable(T.string({ max=512 })),
+    type = T.nullable(T.string({ max=512 })),
+    wpfilters = T.nullable(T.string({ max=512 })),
+  } },
+  { label = 'randompage', titles = { 'Special:Randompage' }, fields = {
+    action = T.nullable(T.string({ max=512 })),
+  } },
+  { label = 'recentchanges', titles = { 'Special:Recentchanges' }, fields = {
+    action = T.nullable(T.string({ max=512 })),
+    enable_partitioning = T.nullable(T.string({ max=512 })),
+    feed = T.nullable(T.string({ max=512 })),
+    peek = T.nullable(T.string({ max=512 })),
+    rcfilters = T.nullable(T.string({ max=512 })),
+    urlversion = T.nullable(T.string({ max=512 })),
+  } },
+  { label = 'removecredentials', titles = { 'Special:RemoveCredentials' }, fields = {
+    authAction = T.nullable(T.string({ max=512 })),
+    authUniqueId = T.nullable(T.string({ max=512 })),
+    returnto = T.nullable(T.string({ max=512 })),
+    returntoanchor = T.nullable(T.string({ max=512 })),
+    returntoquery = T.nullable(T.string({ max=512 })),
+    uselang = T.nullable(T.string({ max=512 })),
+    variant = T.nullable(T.string({ max=512 })),
+    wpAuthToken = T.nullable(T.string({ max=512 })),
+  } },
+  { label = 'renameuser', titles = { 'Special:Renameuser' }, fields = {
+    confirmaction = T.nullable(T.string({ max=512 })),
+    forceglobaldetach = T.nullable(T.string({ max=512 })),
+    movepages = T.nullable(T.string({ max=512 })),
+    newusername = T.nullable(T.string({ max=512 })),
+    oldusername = T.nullable(T.string({ max=512 })),
+    reason = T.nullable(T.string({ max=1024 })),
+    suppressredirect = T.nullable(T.string({ max=512 })),
+    wpEditToken = T.nullable(T.string({ max=512 })),
+  } },
+  { label = 'revisiondelete', titles = { 'Special:Revisiondelete' }, fields = {
+    file = T.nullable(T.string({ max=512 })),
+    ids = T.nullable(T.string({ max=512 })),
+    target = T.nullable(T.string({ max=512 })),
+    token = T.nullable(T.string({ max=512 })),
+    type = T.nullable(T.string({ max=512 })),
+    wpEditToken = T.nullable(T.string({ max=512 })),
+    wpHideComment = T.nullable(T.string({ max=1024 })),
+    wpHidePrimary = T.nullable(T.string({ max=512 })),
+    wpHideRestricted = T.nullable(T.string({ max=512 })),
+    wpHideUser = T.nullable(T.string({ max=512 })),
+    wpReason = T.nullable(T.string({ max=1024 })),
+    wpReasonDropDown = T.nullable(T.string({ max=1024 })),
+    wpRevDeleteReasonList = T.nullable(T.string({ max=1024 })),
+    wpSubmit = T.nullable(T.string({ max=512 })),
+  } },
+  { label = 'tags', titles = { 'Special:Tags' }, fields = {
+    tag = T.nullable(T.string({ max=512 })),
+  } },
+  { label = 'unblock', titles = { 'Special:Unblock' }, fields = {
+    ip = T.nullable(T.string({ max=512 })),
+    usecodex = T.nullable(T.string({ max=512 })),
+    wpBlockAddress = T.nullable(T.string({ max=512 })),
+    wpTarget = T.nullable(T.string({ max=512 })),
+  } },
+  { label = 'undelete', titles = { 'Special:Undelete' }, fields = {
+    action = T.nullable(T.string({ max=512 })),
+    diff = T.nullable(T.string({ max=512 })),
+    diffonly = T.nullable(T.string({ max=512 })),
+    file = T.nullable(T.string({ max=512 })),
+    fuzzy = T.nullable(T.string({ max=512 })),
+    historyoffset = T.nullable(T.string({ max=512 })),
+    invert = T.nullable(T.string({ max=512 })),
+    prefix = T.nullable(T.string({ max=512 })),
+    preview = T.nullable(T.string({ max=512 })),
+    restore = T.nullable(T.string({ max=512 })),
+    revdel = T.nullable(T.string({ max=512 })),
+    target = T.nullable(T.string({ max=512 })),
+    timestamp = T.nullable(T.string({ max=512 })),
+    token = T.nullable(T.string({ max=512 })),
+    undeletetalk = T.nullable(T.string({ max=512 })),
+    wpComment = T.nullable(T.string({ max=1024 })),
+    wpCommentList = T.nullable(T.string({ max=1024 })),
+    wpEditToken = T.nullable(T.string({ max=512 })),
+    wpUnsuppress = T.nullable(T.string({ max=512 })),
+    wpWatch = T.nullable(T.string({ max=512 })),
+  } },
+  { label = 'unlinkaccounts', titles = { 'Special:UnlinkAccounts' }, fields = {
+    authAction = T.nullable(T.string({ max=512 })),
+    authUniqueId = T.nullable(T.string({ max=512 })),
+    returnto = T.nullable(T.string({ max=512 })),
+    returntoanchor = T.nullable(T.string({ max=512 })),
+    returntoquery = T.nullable(T.string({ max=512 })),
+    uselang = T.nullable(T.string({ max=512 })),
+    variant = T.nullable(T.string({ max=512 })),
+    wpAuthToken = T.nullable(T.string({ max=512 })),
+  } },
+  { label = 'upload', titles = { 'Special:Upload' }, fields = {
+    wpCacheKey = T.nullable(T.string({ max=512 })),
+    wpCancelUpload = T.nullable(T.string({ max=512 })),
+    wpChangeTags = T.nullable(T.string({ max=512 })),
+    wpDestFile = T.nullable(T.string({ max=512 })),
+    wpDestFileWarningAck = T.nullable(T.string({ max=512 })),
+    wpDestUrl = T.nullable(T.string({ max=512 })),
+    wpEditToken = T.nullable(T.string({ max=512 })),
+    wpForReUpload = T.nullable(T.string({ max=512 })),
+    wpIgnoreWarning = T.nullable(T.string({ max=512 })),
+    wpLicense = T.nullable(T.string({ max=512 })),
+    wpReUpload = T.nullable(T.string({ max=512 })),
+    wpSourceType = T.nullable(T.string({ max=512 })),
+    wpUpload = T.nullable(T.string({ max=512 })),
+    wpUploadCopyStatus = T.nullable(T.string({ max=512 })),
+    wpUploadDescription = T.nullable(T.string({ max=65536 })),
+    wpUploadFile = T.nullable(T.string({ max=512 })),
+    wpUploadIgnoreWarning = T.nullable(T.string({ max=512 })),
+    wpUploadSource = T.nullable(T.string({ max=512 })),
+    wpWatchthis = T.nullable(T.string({ max=512 })),
+  } },
+  { label = 'userlogin', titles = { 'Special:Userlogin' }, fields = {
+    action = T.nullable(T.string({ max=512 })),
+    alwaysShowLogin = T.nullable(T.string({ max=512 })),
+    authAction = T.nullable(T.string({ max=512 })),
+    authUniqueId = T.nullable(T.string({ max=512 })),
+    error = T.nullable(T.string({ max=512 })),
+    force = T.nullable(T.string({ max=512 })),
+    fromhttp = T.nullable(T.string({ max=512 })),
+    notice = T.nullable(T.string({ max=512 })),
+    returnto = T.nullable(T.string({ max=512 })),
+    returntoanchor = T.nullable(T.string({ max=512 })),
+    returntoquery = T.nullable(T.string({ max=512 })),
+    type = T.nullable(T.string({ max=512 })),
+    uselang = T.nullable(T.string({ max=512 })),
+    variant = T.nullable(T.string({ max=512 })),
+    warning = T.nullable(T.string({ max=512 })),
+    wpAuthToken = T.nullable(T.string({ max=512 })),
+    wpCreateaccount = T.nullable(T.string({ max=512 })),
+    wpCreateaccountMail = T.nullable(T.string({ max=512 })),
+    wpCreateaccountToken = T.nullable(T.string({ max=512 })),
+    wpEmail = T.nullable(T.string({ max=512 })),
+    wpForceHttps = T.nullable(T.string({ max=512 })),
+    wpFromhttp = T.nullable(T.string({ max=512 })),
+    wpLoginToken = T.nullable(T.string({ max=512 })),
+    wpName = T.nullable(T.string({ max=512 })),
+    wpName1 = T.nullable(T.string({ max=512 })),
+    wpName2 = T.nullable(T.string({ max=512 })),
+    wpPassword = T.nullable(T.string({ max=512 })),
+    wpPassword1 = T.nullable(T.string({ max=512 })),
+    wpPassword2 = T.nullable(T.string({ max=512 })),
+    wpRealName = T.nullable(T.string({ max=512 })),
+    wpReason = T.nullable(T.string({ max=1024 })),
+    wpRemember = T.nullable(T.string({ max=512 })),
+    wpRetype = T.nullable(T.string({ max=512 })),
+    wploginattempt = T.nullable(T.string({ max=512 })),
+  } },
+  { label = 'userlogout', titles = { 'Special:Userlogout' }, fields = {
+    wasTempUser = T.nullable(T.string({ max=512 })),
+  } },
+  { label = 'userrights', titles = { 'Special:Userrights' }, fields = {
+    saveusergroups = T.nullable(T.string({ max=512 })),
+    user = T.nullable(T.string({ max=512 })),
+    ['user-reason'] = T.nullable(T.string({ max=1024 })),
+    wpEditToken = T.nullable(T.string({ max=512 })),
+    wpReason = T.nullable(T.string({ max=1024 })),
+    wpWatch = T.nullable(T.string({ max=512 })),
+  } },
+  { label = 'watchlist', titles = { 'Special:Watchlist' }, fields = {
+    action = T.nullable(T.string({ max=512 })),
+    enable_partitioning = T.nullable(T.string({ max=512 })),
+    peek = T.nullable(T.string({ max=512 })),
+    rcfilters = T.nullable(T.string({ max=512 })),
+    reset = T.nullable(T.string({ max=512 })),
+    token = T.nullable(T.string({ max=512 })),
+    urlversion = T.nullable(T.string({ max=512 })),
+  } },
+  { label = 'watchlistlabels', titles = { 'Special:WatchlistLabels' }, fields = {
+    asc = T.nullable(T.string({ max=512 })),
+    sort = T.nullable(T.string({ max=512 })),
+  } },
+}
+
 -- ---------------------------------------------------------------------------
 -- load.php GET query schema
 -- ---------------------------------------------------------------------------
@@ -4942,6 +5731,33 @@ local load_get_query = T.object({
   sourcemap       = T.string({ max=4 }),
   safemode        = T.string({ max=4 }),
 })
+
+-- Built here, not back where mw_special_pages/index_query_check/
+-- each_special_query_page are defined, because it depends on
+-- mw_bulk_special_query_pages, which only gets reassigned its real content
+-- inside the generated Tier 6 block further up - T.object() bakes in
+-- whatever key set its schema table holds AT THE MOMENT IT'S CALLED (unlike
+-- index_query_check, a plain function whose body only runs later, at
+-- request-validation time, long after the whole module including that
+-- reassignment has finished loading). Also deliberately placed AFTER the
+-- "load.php GET query schema" marker above (not just after the
+-- reassignment), not before it: integrate_all_special_pages.py wholesale-
+-- replaces everything from its own block header through right up to that
+-- marker on every regen - anything placed inside that span, even textually
+-- after the reassignment, gets silently deleted on the next run (confirmed
+-- the hard way: index_query ended up nil, silently disabling query
+-- validation on "index php get" entirely - not caught by the test suite
+-- either, since a nil route.query just makes the query-invalid test
+-- section skip itself rather than fail).
+local mw_special_fields = {}
+each_special_query_page(function(page)
+  mw_special_fields = merge(mw_special_fields, page.fields)
+end)
+
+local index_query = T.with_check(
+  T.object(merge(idx_common, mw_special_fields)),
+  index_query_check
+)
 
 local mw_routes = (function()
   local rs = {

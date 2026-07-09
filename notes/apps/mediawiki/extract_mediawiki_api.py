@@ -1068,6 +1068,8 @@ def extract_special_pages(special_factory_path, specials_dir, log):
         #    DeletedContributions -> ContributionsSpecialPage, ...) since a
         #    page's own file is frequently a thin wrapper around shared logic.
         heuristic = sorted(heuristic_scan_with_parents(hit, short, mw_src))
+        heuristic = [HEURISTIC_NAME_CORRECTIONS.get((page, n), n) for n in heuristic]
+        heuristic = sorted(set(heuristic) | set(AUTHMANAGER_EXTRA_FIELDS.get(page, [])))
         result[page] = {
             "class": short, "file": rel_file, "extends": base,
             "method": "heuristic" if heuristic else "none",
@@ -1087,6 +1089,59 @@ def extract_special_pages(special_factory_path, specials_dir, log):
 # the genuine field wpWatchlistLabels, which ends in the plural "Labels").
 WP_LITERAL_RE = re.compile(r"'(wp[A-Za-z0-9\-]+)'")
 WP_LITERAL_EXCLUDE_RE = re.compile(r"(?:Widget|Label)$")
+
+# WP_LITERAL_RE can't tell an HTMLForm field descriptor's 'id' => '...'
+# (a cosmetic CSS/JS hook, camelCase by convention) apart from its 'name' =>
+# '...' (the real submitted field, actually 'wp' + the descriptor's own
+# ARRAY KEY, case preserved) - they're usually identical so this rarely
+# matters, but LoginSignupSpecialPage.php's 'loginattempt' descriptor
+# (includes/SpecialPage/LoginSignupSpecialPage.php:1176) has
+# 'id' => 'wpLoginAttempt' while the actual submitted name, derived from the
+# lowercase array key, is 'wploginattempt' - confirmed live: a real login
+# POST got denied on exactly this field. Corrected by hand here rather than
+# teaching the heuristic to parse full descriptor arrays (name= vs id= vs
+# bare array key) for what is, so far, a single confirmed mismatch.
+HEURISTIC_NAME_CORRECTIONS = {
+    ("Userlogin", "wpLoginAttempt"): "wploginattempt",
+    ("CreateAccount", "wpLoginAttempt"): "wploginattempt",
+}
+
+# ChangeCredentials/RemoveCredentials/LinkAccounts/UnlinkAccounts are built
+# entirely by AuthManager from a set of AuthenticationRequest objects
+# (includes/Auth/*AuthenticationRequest.php) that the page itself never
+# mentions by field name - heuristic_scan_with_parents's extends-chain walk
+# can't find them because these classes are COMPOSED/used, not inherited
+# from. Worse, the same logical field gets a DIFFERENT wire name depending
+# on which layer produces it: AuthManagerSpecialPage::mapSingleFieldInfo()
+# explicitly does NOT prefix names sourced directly from
+# AuthenticationRequest::getFieldInfo() ("Do not prefix input name with
+# 'wp'. This is important for the redirect flow." - literally in a code
+# comment there), but a Special page's OWN supplemental descriptor entries
+# (added via onAuthChangeFormFields(), with no explicit 'name' override)
+# fall through to HTMLForm's ordinary 'wp' + array-key default instead. No
+# regex heuristic can reliably tell those two cases apart; hand-verified
+# from source instead of guessed:
+#   - PasswordAuthenticationRequest::getFieldInfo() for ACTION_CHANGE
+#     (includes/Auth/PasswordAuthenticationRequest.php) returns 'password'
+#     and 'retype', both unprefixed.
+#   - SpecialChangeCredentials::onAuthChangeFormFields()
+#     (includes/Specials/SpecialChangeCredentials.php) additionally injects
+#     its own 'username' field (readonly, autofill-hint only, per T263927)
+#     with no 'name' override, so it becomes 'wpusername' via HTMLForm's
+#     default - confirmed live: a real credentials-change POST got denied
+#     on password/retype/wpusername all at once.
+#   - RemoveCredentials sets $loadUserData = false, so
+#     getAuthFormDescriptor() returns [] unconditionally - nothing to add.
+#   - LinkAccounts/UnlinkAccounts are gated on canLinkAccounts() (only
+#     meaningful with an SSO/OAuth-style extension installed) and mostly use
+#     ButtonAuthenticationRequest, whose field name is $this->name - set per
+#     provider at runtime, not a fixed string in core - so there's nothing
+#     reliable to hardcode here without knowing which extension is active.
+#     A core-only install won't hit this; an install with such an extension
+#     may see gaps here that this table can't cover.
+AUTHMANAGER_EXTRA_FIELDS = {
+    "ChangeCredentials": ["password", "retype", "wpusername"],
+}
 
 
 def extract_editpage_fields(mw_src, log):

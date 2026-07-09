@@ -236,3 +236,107 @@ RESOLVED (2026-07-08, this session, continued):
   reachable through both URL styles.
 
 
+
+
+RESOLVED (2026-07-09 05:23:59 CDT, Thursday):
+
+172.18.0.1 [09/Jul/2026:10:23:19 +0000] "GET /index.php?title=Special%3APrefixIndex&prefix=&namespace=0 HTTP/1.1" 200
+2026/07/09 10:23:22 [warn] 12#12: *9679 [lua] core.lua:169: deny(): [waf:mediawiki] route 'index php get': ?.hideredirects: only valid for its specific Special: page, client: 172.18.0.1, server: localhost, request: "GET /index.php?title=Special%3APrefixIndex&prefix=&namespace=0&hideredirects=1 HTTP/1.1", host: "localhost:8889", referrer: "http://localhost:8889/index.php?title=Special%3APrefixIndex&prefix=&namespace=0"
+172.18.0.1 [09/Jul/2026:10:23:23 +0000] "GET /index.php?title=Special%3APrefixIndex&prefix=&namespace=0&hideredirects=1 HTTP/1.1" 200
+2026/07/09 10:23:25 [warn] 12#12: *9679 [lua] core.lua:169: deny(): [waf:mediawiki] route 'index php get': ?.hideredirects: only valid for its specific Special: page, client: 172.18.0.1, server: localhost, request: "GET /index.php?title=Special%3APrefixIndex&prefix=d&namespace=0&hideredirects=1 HTTP/1.1", host: "localhost:8889", referrer: "http://localhost:8889/index.php?title=Special%3APrefixIndex&prefix=&namespace=0&hideredirects=1"
+172.18.0.1 [09/Jul/2026:10:23:25 +0000] "GET /index.php?title=Special%3APrefixIndex&prefix=d&namespace=0&hideredirects=1 HTTP/1.1" 200
+2026/07/09 10:23:29 [warn] 12#12: *9679 [lua] core.lua:169: deny(): [waf:mediawiki] route 'index php get': ?.stripprefix is not an allowed key, client: 172.18.0.1, server: localhost, request: "GET /index.php?title=Special%3APrefixIndex&prefix=d&namespace=0&hideredirects=1&stripprefix=1 HTTP/1.1", host: "localhost:8889", referrer: "http://localhost:8889/index.php?title=Special%3APrefixIndex&prefix=d&namespace=0&hideredirects=1"
+172.18.0.1 [09/Jul/2026:10:23:29 +0000] "GET /index.php?title=Special%3APrefixIndex&prefix=d&namespace=0&hideredirects=1&stripprefix=1 HTTP/1.1" 200
+
+  SpecialPrefixIndex extends SpecialAllPages (already GET-navigable/hand-
+  tuned) but its own fields (prefix/namespace/hideredirects/stripprefix/
+  from/to) were only ever classified as POST form fields by the extraction
+  heuristic, never GET query params - even though the PHP itself reads them
+  via $request->getVal(), which doesn't care which HTTP method supplied the
+  value. Fixed: heuristic-scanned fields now get exposed on GET too (not
+  just redirect_passthrough ones), for both the dedicated per-page route AND
+  (via a new generated mw_bulk_special_query_pages table, title-gated the
+  same way the 16 hand-tuned mw_special_pages entries already were) the
+  generic ?title=Special:X query-string form. Along the way, fixing this
+  surfaced and required fixing two more bugs: (1) a module-load-order bug
+  where the widened field set wasn't actually visible yet at the point
+  index_query got built, silently disabling ALL query validation on
+  "index php get" (not caught by the offline test suite, since a nil
+  route.query just makes that test section skip itself); (2) SpecialApiHelp
+  reading 'title' via the same heuristic scan briefly made idx_common's own
+  universally-valid `title` key incorrectly gated too.
+
+  A closely related pair of bugs got caught during verification of this fix,
+  not from a live browser report:
+  - ExpandTemplates' wpContextTitle (a single-line title input) had
+    accidentally inherited a 1MB cap meant for genuine free-text fields -
+    LONG_FIELD_HINTS's cap-selection did raw substring matching, and
+    "con-TEXT-title" contains "text". Fixed with word-boundary/camelCase-
+    aware token matching instead of substring containment.
+  - Widening api.php's already-large merged schema (1200+ fields, including
+    the generator= g-prefix variants from an earlier session) meant its
+    "set every field to something valid" test fixture now renders to a
+    ~16KB query string - over nginx's own URI length limit, rejected with a
+    plain 414 before the WAF runs. Not a WAF bug, a test-fixture-realism
+    gap: added an HTTP-mode-only skip (query_too_big_for_http in
+    test/runner.lua) for this, matching the existing precedent for the
+    arg-count cap.
+
+
+RESOLVED (2026-07-09 20:25:52, real login attempt from browsing):
+
+2026/07/09 20:25:52 [warn] 10#10: *4979 [lua] core.lua:169: deny(): [waf:mediawiki] route 'index php post': $.wpLoginToken is not an allowed key, client: 172.18.0.1, server: localhost, request: "POST /index.php?title=Special:UserLogin&returnto=Special%3ABotPasswords HTTP/1.1", host: "localhost:8889", referrer: "http://localhost:8889/index.php?title=Special:UserLogin&returnto=Special%3ABotPasswords&returntoquery=&force=BotPasswords"
+(+ wpName, force, wpPassword, wploginattempt, authAction - same request)
+
+  wpLoginToken/wpName/force/wpPassword/authAction were all already correctly
+  extracted and present in the schema - the request was denied solely
+  because of ONE field: wploginattempt (all lowercase). The extraction
+  heuristic had it as wpLoginAttempt (camelCase), read from
+  LoginSignupSpecialPage.php's 'loginattempt' field descriptor's
+  'id' => 'wpLoginAttempt'. Compared against a working field
+  ('rememberMe' => ['name' => 'wpRemember', 'id' => 'wpRemember', ...]),
+  the difference is clear: fields with an explicit 'name' key have 'id'
+  matching it exactly, but 'loginattempt' has ONLY 'id', no 'name' - and
+  HTMLForm's real fallback field-naming convention when 'name' is absent is
+  'wp' + the array key itself (lowercase 'loginattempt'), not the 'id'
+  value's casing. The heuristic scanner has no way to tell "id" apart from
+  "name" (both are just bare 'wpXxx' string literals to it), so it can't
+  catch this class of mismatch in general. Fixed with a narrow, documented
+  correction table (HEURISTIC_NAME_CORRECTIONS in extract_mediawiki_api.py)
+  for this one confirmed case, rather than teaching the heuristic to parse
+  full PHP descriptor arrays for a single known instance.
+
+
+RESOLVED (2026-07-09 21:24:41, real credentials-change attempt from browsing):
+
+2026/07/09 21:24:41 [warn] 12#12: *4995 [lua] core.lua:169: deny(): [waf:mediawiki] route 'index php post': $.password is not an allowed key, client: 172.18.0.1, server: localhost, request: "POST /index.php?title=Special:ChangeCredentials/MediaWiki%5CAuth%5CPasswordAuthenticationRequest HTTP/1.1", host: "localhost:8889", referrer: "http://localhost:8889/index.php?title=Special:ChangeCredentials/MediaWiki%5CAuth%5CPasswordAuthenticationRequest"
+(+ authAction, retype, wpAuthToken, wpusername - same request)
+
+  Not a narrow field-name typo like the previous entry - a whole CATEGORY
+  the extraction heuristic structurally cannot see. ChangeCredentials (and
+  RemoveCredentials/LinkAccounts/UnlinkAccounts/UserLogin/CreateAccount) are
+  built entirely by AuthManager from AuthenticationRequest objects
+  (includes/Auth/*AuthenticationRequest.php) that the Special page itself
+  never names - heuristic_scan_with_parents's extends-chain walk can't find
+  them because these classes are COMPOSED/used at runtime, not inherited
+  from. wpAuthToken/authAction were already covered (framework-injected,
+  found independently); password/retype/wpusername were not, because they
+  come from PasswordAuthenticationRequest::getFieldInfo() (unprefixed by
+  explicit design - AuthManagerSpecialPage::mapSingleFieldInfo() has a code
+  comment: "Do not prefix input name with 'wp'. This is important for the
+  redirect flow.") plus SpecialChangeCredentials's own supplemental
+  'username' UI-flair field (no explicit name override, so it falls through
+  to HTMLForm's ordinary 'wp'+key default instead - 'wpusername', a
+  DIFFERENT naming rule than the field right next to it in the same
+  request). Fixed with a hand-verified field list
+  (AUTHMANAGER_EXTRA_FIELDS in extract_mediawiki_api.py) for
+  ChangeCredentials, built from reading every core AuthenticationRequest
+  class's getFieldInfo(), not guessed. RemoveCredentials sets
+  $loadUserData = false (form is empty beyond what's already covered, no
+  change needed); LinkAccounts/UnlinkAccounts are gated on
+  canLinkAccounts()/mostly use ButtonAuthenticationRequest (field name set
+  per SSO/OAuth extension at runtime, nothing fixed in core to hardcode) -
+  a core-only install won't hit gaps there, but an install with such an
+  extension enabled might.
+
+

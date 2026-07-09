@@ -258,6 +258,9 @@
       "authUniqueId": {
         "type": "string"
       },
+      "password": {
+        "type": "string"
+      },
       "returnto": {
         "type": "string"
       },
@@ -267,6 +270,9 @@
       "returntoquery": {
         "type": "string"
       },
+      "retype": {
+        "type": "string"
+      },
       "uselang": {
         "type": "string"
       },
@@ -274,6 +280,9 @@
         "type": "string"
       },
       "wpAuthToken": {
+        "type": "string"
+      },
+      "wpusername": {
         "type": "string"
       }
     },
@@ -437,9 +446,6 @@
       "wpFromhttp": {
         "type": "string"
       },
-      "wpLoginAttempt": {
-        "type": "string"
-      },
       "wpLoginToken": {
         "type": "string"
       },
@@ -471,6 +477,9 @@
         "type": "string"
       },
       "wpRetype": {
+        "type": "string"
+      },
+      "wploginattempt": {
         "type": "string"
       }
     },
@@ -2354,9 +2363,6 @@
       "wpFromhttp": {
         "type": "string"
       },
-      "wpLoginAttempt": {
-        "type": "string"
-      },
       "wpLoginToken": {
         "type": "string"
       },
@@ -2388,6 +2394,9 @@
         "type": "string"
       },
       "wpRetype": {
+        "type": "string"
+      },
+      "wploginattempt": {
         "type": "string"
       }
     },

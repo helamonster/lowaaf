@@ -134,7 +134,14 @@ local function try_once(scheme, host, port, raw, want_keepalive, want_body_drain
     sock:close()
   end
 
-  local final = (waf_blocked or status == 413) and -2 or status
+  -- 413 (Request Entity Too Large): nginx rejecting an oversized BODY before
+  -- the WAF runs. 414 (Request-URI Too Large): same thing for an oversized
+  -- QUERY STRING - confirmed live for a >1MB query value (a heuristic-scan
+  -- field, e.g. ExpandTemplates' wpContextTitle, exposed on GET after the
+  -- Special: page GET-widening fix). Both are nginx's own protections firing
+  -- ahead of the Lua WAF, not a WAF miss - functionally equivalent to a WAF
+  -- denial for this test's purposes.
+  local final = (waf_blocked or status == 413 or status == 414) and -2 or status
   return final, reused
 end
 
