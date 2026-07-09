@@ -13,20 +13,48 @@ services:
     networks:
       - waf-test
 
+  mediawiki:
+    build:
+      context: ./mediawiki
+    restart: unless-stopped
+    environment:
+      # MW_SERVER should match whatever host:port online-test-full actually
+      # hits (see tools.sh) - it's used as MediaWiki's own $wgServer, which
+      # feeds canonical URL / redirect generation.
+      MW_SERVER:     "${MW_SERVER:-http://localhost:8889}"
+      MW_SITE_NAME:  "${MW_SITE_NAME:-WAF Test Wiki}"
+      MW_ADMIN_USER: "${MW_ADMIN_USER:-Admin}"
+      MW_ADMIN_PASS: "${MW_ADMIN_PASS:-WafTestPass123!}"
+    volumes:
+      # Source tarball to extract on first start - configurable per deployment
+      # (e.g. MEDIAWIKI_TARBALL=/path/to/mediawiki-1.99.0.tar.gz bash tools.sh
+      # docker-test-up). Read-only: entrypoint.sh only ever extracts it, never
+      # writes back to it.
+      - ${MEDIAWIKI_TARBALL:-../app-sources/mediawiki/mediawiki-1.46.0.tar.gz}:/mediawiki-src.tar.gz:ro
+      # Extracted code + LocalSettings.php + the SQLite DB all live here, in a
+      # volume shared with openresty (which needs direct read access to serve
+      # static assets without proxying every request through PHP).
+      - mediawiki-code:/var/www/mediawiki
+    networks:
+      - waf-test
+
   openresty:
     image: openresty/openresty:alpine
     restart: unless-stopped
     ports:
       - "8080:80"    # HTTP → redirects to HTTPS
       - "8443:443"   # HTTPS — bw CLI and browser
-      - "8888:8888"  # HTTP WAF (no TLS) — online-test-full
+      - "8888:8888"  # HTTP WAF (no TLS) — online-test-full (vaultwarden)
+      - "8889:8889"  # HTTP WAF (no TLS) — online-test-full (mediawiki)
     volumes:
       # WAF code — bind-mounted read-only; nginx -s reload picks up changes.
       - ../rootfs/etc/openresty/waf:/etc/openresty/waf:ro
       - ./nginx.conf:/usr/local/openresty/nginx/conf/nginx.conf:ro
       - ./certs:/etc/openresty/certs:ro
+      - mediawiki-code:/var/www/mediawiki:ro
     depends_on:
       - vaultwarden
+      - mediawiki
     networks:
       - waf-test
 
@@ -35,3 +63,4 @@ networks:
 
 volumes:
   vaultwarden-data:
+  mediawiki-code:

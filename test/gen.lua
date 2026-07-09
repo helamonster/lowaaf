@@ -81,6 +81,11 @@ local function raw_valid(meta)
     if opts.integer then return math.floor(v) end
     return v
 
+  elseif t == "number_query" then
+    local v = opts.min or 0
+    if opts.integer then v = math.floor(v) end
+    return tostring(v)
+
   elseif t == "boolean"       then return false
   elseif t == "uuid"          then return "00000000-0000-4000-8000-000000000000"
   elseif t == "email"         then return "test@test.com"
@@ -191,19 +196,20 @@ local function raw_valids(meta)
       end
     end
 
-  elseif t == "number" then
+  elseif t == "number" or t == "number_query" then
     -- Six-point boundary: min, min+1, max-1, max.
     -- stable_enc dedup in gen.valid_values collapses identical values
     -- (e.g. reprompt min=0 max=1: min+1==max and max-1==min).
+    local wrap = (t == "number_query") and tostring or function(x) return x end
     local lo = opts.min or 0
     if opts.integer then lo = math.floor(lo) end
-    add(lo,     "min(" .. lo .. ")")
-    add(lo + 1, "min+1(" .. (lo + 1) .. ")")
+    add(wrap(lo),     "min(" .. lo .. ")")
+    add(wrap(lo + 1), "min+1(" .. (lo + 1) .. ")")
     if opts.max then
       local hi = opts.max
       if opts.integer then hi = math.floor(hi) end
-      add(hi - 1, "max-1(" .. (hi - 1) .. ")")
-      add(hi,     "max(" .. hi .. ")")
+      add(wrap(hi - 1), "max-1(" .. (hi - 1) .. ")")
+      add(wrap(hi),     "max(" .. hi .. ")")
     end
 
   elseif t == "boolean" then
@@ -358,6 +364,20 @@ local function raw_invalids(meta)
     if opts.integer then
       local base = opts.min or 0
       add(base + 0.5, "float " .. base+0.5 .. " (integer required)")
+    end
+
+  elseif t == "number_query" then
+    add("notanumber", "string instead of number")
+    add(false, "boolean instead of a numeric string")
+    if opts.max then
+      add(tostring(opts.max + 1), "value " .. opts.max+1 .. " (max+1)")
+    end
+    if opts.min then
+      add(tostring(opts.min - 1), "value " .. opts.min-1 .. " (min-1)")
+    end
+    if opts.integer then
+      local base = opts.min or 0
+      add(tostring(base + 0.5), "float " .. base+0.5 .. " (integer required)")
     end
 
   elseif t == "boolean" then
@@ -604,6 +624,10 @@ end
 -- Convert a route path regex to a concrete URI suitable for testing.
 function gen.path_from_pattern(pat)
   local p = pat
+  -- Strip a leading PCRE inline-modifier group, e.g. "(?i)" - it's not an
+  -- alternation group (that generic resolver would otherwise mangle it into
+  -- a bare "i"), it just makes the whole pattern case-insensitive.
+  p = p:gsub("^%(%?[a-zA-Z]+%)", "")
   if p:sub(1,1) == "^" then p = p:sub(2) end
   if p:sub(-1)  == "$" then p = p:sub(1,-2) end
   -- Unescape regex `\.` → `.`  (PCRE escaped dot; literal in a URI)

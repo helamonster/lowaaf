@@ -30,6 +30,12 @@ local mock_ngx = {
   WARN          = real_WARN,
   INFO          = real_INFO,
   time          = function() return os.time() end,
+  -- core.lua uses ngx.decode_args(read_full_body(), 200) instead of
+  -- ngx.req.get_post_args() to avoid a real disk-spilled-body bug (see
+  -- core.lua's comment at the call site). The mock never has a real encoded
+  -- body string to decode - like get_post_args below, just hand back the
+  -- pre-built form table the test set up.
+  decode_args   = function(_, _) return _req.form or {} end,
 
   -- Per-request context; reset by set_request()
   ctx    = { waf_verbose = 0, waf_log_mode = true },
@@ -40,6 +46,7 @@ local mock_ngx = {
     get_method    = function()   return _req.method or "GET" end,
     read_body     = function()   end,
     get_body_data = function()   return _req.body end,
+    get_body_file = function()   return nil end,  -- mock never spills to disk
     get_post_args = function(_)  return _req.form or {} end,
     get_headers   = function(_)
       -- nginx normalizes header names to lowercase; replicate that here

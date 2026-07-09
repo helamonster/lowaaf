@@ -1,0 +1,5218 @@
+{
+  "acquiretempusername": {
+    "class": "ApiAcquireTempUserName",
+    "file": "includes/Api/ApiAcquireTempUserName.php",
+    "kind": "action",
+    "params": {},
+    "prefix": ""
+  },
+  "allcategories": {
+    "class": "ApiQueryAllCategories",
+    "file": "includes/Api/ApiQueryAllCategories.php",
+    "kind": "list",
+    "params": {
+      "accontinue": {
+        "type": "string"
+      },
+      "acdir": {
+        "default": "ascending",
+        "enum": [
+          "ascending",
+          "descending"
+        ],
+        "type": "enum"
+      },
+      "acfrom": {
+        "type": "string"
+      },
+      "aclimit": {
+        "default": 10,
+        "param_max": 500,
+        "param_max2": 5000,
+        "param_min": 1,
+        "type": "limit"
+      },
+      "acmax": {
+        "type": "integer"
+      },
+      "acmin": {
+        "type": "integer"
+      },
+      "acprefix": {
+        "type": "string"
+      },
+      "acprop": {
+        "default": "",
+        "enum": [
+          "size",
+          "hidden"
+        ],
+        "ismulti": true,
+        "type": "enum"
+      },
+      "acto": {
+        "type": "string"
+      }
+    },
+    "prefix": "ac"
+  },
+  "alldeletedrevisions": {
+    "class": "ApiQueryAllDeletedRevisions",
+    "file": "includes/Api/ApiQueryAllDeletedRevisions.php",
+    "kind": "list",
+    "params": {
+      "adrcontentformat": {
+        "deprecated": true,
+        "dynamic_type_expr": "$this->contentHandlerFactory->getAllContentFormats()",
+        "type": "string"
+      },
+      "adrcontentformat-{slot}": {
+        "dynamic_type_expr": "$this->contentHandlerFactory->getAllContentFormats()",
+        "type": "string"
+      },
+      "adrcontinue": {
+        "type": "string"
+      },
+      "adrdiffto": {
+        "deprecated": true,
+        "type": "string"
+      },
+      "adrdifftotext": {
+        "deprecated": true,
+        "type": "string"
+      },
+      "adrdifftotextpst": {
+        "default": false,
+        "deprecated": true,
+        "type": "string"
+      },
+      "adrdir": {
+        "default": "older",
+        "enum": [
+          "newer",
+          "older"
+        ],
+        "type": "enum"
+      },
+      "adrend": {
+        "type": "timestamp"
+      },
+      "adrexcludeuser": {
+        "type": "user"
+      },
+      "adrexpandtemplates": {
+        "default": false,
+        "deprecated": true,
+        "type": "string"
+      },
+      "adrfrom": {
+        "type": "string"
+      },
+      "adrgeneratetitles": {
+        "default": false,
+        "type": "string"
+      },
+      "adrgeneratexml": {
+        "default": false,
+        "deprecated": true,
+        "type": "string"
+      },
+      "adrlimit": {
+        "param_max": 500,
+        "param_max2": 5000,
+        "param_min": 1,
+        "type": "limit"
+      },
+      "adrnamespace": {
+        "ismulti": true,
+        "type": "namespace"
+      },
+      "adrparse": {
+        "default": false,
+        "deprecated": true,
+        "type": "string"
+      },
+      "adrprefix": {
+        "type": "string"
+      },
+      "adrprop": {
+        "default": "ids|timestamp|flags|comment|user",
+        "enum": [
+          "ids",
+          "flags",
+          "timestamp",
+          "user",
+          "userid",
+          "size",
+          "slotsize",
+          "sha1",
+          "slotsha1",
+          "contentmodel",
+          "comment",
+          "parsedcomment",
+          "content",
+          "tags",
+          "roles",
+          "parsetree"
+        ],
+        "ismulti": true,
+        "type": "enum"
+      },
+      "adrsection": {
+        "type": "string"
+      },
+      "adrslots": {
+        "dynamic_type_expr": "$slotRoles",
+        "ismulti": true,
+        "type": "string"
+      },
+      "adrstart": {
+        "type": "timestamp"
+      },
+      "adrtag": {
+        "type": "string"
+      },
+      "adrto": {
+        "type": "string"
+      },
+      "adruser": {
+        "type": "user"
+      }
+    },
+    "prefix": "adr"
+  },
+  "allfileusages": {
+    "class": "ApiQueryAllLinks",
+    "file": "includes/Api/ApiQueryAllLinks.php",
+    "kind": "list",
+    "params": {
+      "afcontinue": {
+        "type": "string"
+      },
+      "afdir": {
+        "default": "ascending",
+        "enum": [
+          "ascending",
+          "descending"
+        ],
+        "type": "enum"
+      },
+      "affrom": {
+        "type": "string"
+      },
+      "aflimit": {
+        "default": 10,
+        "param_max": 500,
+        "param_max2": 5000,
+        "param_min": 1,
+        "type": "limit"
+      },
+      "afnamespace": {
+        "default": {
+          "__dynamic__": "$this->dfltNamespace"
+        },
+        "type": "namespace"
+      },
+      "afprefix": {
+        "type": "string"
+      },
+      "afprop": {
+        "default": "title",
+        "enum": [
+          "ids",
+          "title"
+        ],
+        "ismulti": true,
+        "type": "enum"
+      },
+      "afto": {
+        "type": "string"
+      },
+      "afunique": {
+        "default": false,
+        "type": "boolean"
+      }
+    },
+    "prefix": "af"
+  },
+  "allimages": {
+    "class": "ApiQueryAllImages",
+    "file": "includes/Api/ApiQueryAllImages.php",
+    "kind": "list",
+    "params": {
+      "aicontinue": {
+        "type": "string"
+      },
+      "aidir": {
+        "default": "ascending",
+        "enum": [
+          "ascending",
+          "descending",
+          "newer",
+          "older"
+        ],
+        "type": "enum"
+      },
+      "aiend": {
+        "type": "timestamp"
+      },
+      "aifilterbots": {
+        "default": "all",
+        "enum": [
+          "all",
+          "bots",
+          "nobots"
+        ],
+        "type": "enum"
+      },
+      "aifrom": {
+        "type": "string"
+      },
+      "ailimit": {
+        "default": 10,
+        "param_max": 500,
+        "param_max2": 5000,
+        "param_min": 1,
+        "type": "limit"
+      },
+      "aimaxsize": {
+        "type": "integer"
+      },
+      "aimime": {
+        "ismulti": true,
+        "type": "string"
+      },
+      "aiminsize": {
+        "type": "integer"
+      },
+      "aiprefix": {
+        "type": "string"
+      },
+      "aiprop": {
+        "default": "timestamp|url",
+        "dynamic_type_expr": "ApiQueryImageInfo::getPropertyNames( self::PROPERTY_FILTER )",
+        "ismulti": true,
+        "type": "string"
+      },
+      "aisha1": {
+        "type": "string"
+      },
+      "aisha1base36": {
+        "type": "string"
+      },
+      "aisort": {
+        "default": "name",
+        "enum": [
+          "name",
+          "timestamp"
+        ],
+        "type": "enum"
+      },
+      "aistart": {
+        "type": "timestamp"
+      },
+      "aito": {
+        "type": "string"
+      },
+      "aiuser": {
+        "type": "user"
+      }
+    },
+    "prefix": "ai"
+  },
+  "alllinks": {
+    "class": "ApiQueryAllLinks",
+    "file": "includes/Api/ApiQueryAllLinks.php",
+    "kind": "list",
+    "params": {
+      "alcontinue": {
+        "type": "string"
+      },
+      "aldir": {
+        "default": "ascending",
+        "enum": [
+          "ascending",
+          "descending"
+        ],
+        "type": "enum"
+      },
+      "alfrom": {
+        "type": "string"
+      },
+      "allimit": {
+        "default": 10,
+        "param_max": 500,
+        "param_max2": 5000,
+        "param_min": 1,
+        "type": "limit"
+      },
+      "alnamespace": {
+        "default": {
+          "__dynamic__": "$this->dfltNamespace"
+        },
+        "type": "namespace"
+      },
+      "alprefix": {
+        "type": "string"
+      },
+      "alprop": {
+        "default": "title",
+        "enum": [
+          "ids",
+          "title"
+        ],
+        "ismulti": true,
+        "type": "enum"
+      },
+      "alto": {
+        "type": "string"
+      },
+      "alunique": {
+        "default": false,
+        "type": "boolean"
+      }
+    },
+    "prefix": "al"
+  },
+  "allmessages": {
+    "class": "ApiQueryAllMessages",
+    "file": "includes/Api/ApiQueryAllMessages.php",
+    "kind": "meta",
+    "params": {
+      "amargs": {
+        "ismulti": true,
+        "type": "string"
+      },
+      "amcustomised": {
+        "default": "all",
+        "enum": [
+          "all",
+          "modified",
+          "unmodified"
+        ],
+        "type": "enum"
+      },
+      "amenableparser": {
+        "default": false,
+        "type": "boolean"
+      },
+      "amfilter": {
+        "type": "string"
+      },
+      "amfrom": {
+        "type": "string"
+      },
+      "amincludelocal": {
+        "default": false,
+        "type": "boolean"
+      },
+      "amlang": {
+        "type": "string"
+      },
+      "ammessages": {
+        "default": "*",
+        "ismulti": true,
+        "type": "string"
+      },
+      "amnocontent": {
+        "default": false,
+        "type": "boolean"
+      },
+      "amprefix": {
+        "type": "string"
+      },
+      "amprop": {
+        "enum": [
+          "default"
+        ],
+        "ismulti": true,
+        "type": "enum"
+      },
+      "amtitle": {
+        "type": "string"
+      },
+      "amto": {
+        "type": "string"
+      }
+    },
+    "prefix": "am"
+  },
+  "allpages": {
+    "class": "ApiQueryAllPages",
+    "file": "includes/Api/ApiQueryAllPages.php",
+    "kind": "list",
+    "params": {
+      "apcontinue": {
+        "type": "string"
+      },
+      "apdir": {
+        "default": "ascending",
+        "enum": [
+          "ascending",
+          "descending"
+        ],
+        "type": "enum"
+      },
+      "apfilterlanglinks": {
+        "default": "all",
+        "enum": [
+          "withlanglinks",
+          "withoutlanglinks",
+          "all"
+        ],
+        "type": "enum"
+      },
+      "apfilterredir": {
+        "default": "all",
+        "enum": [
+          "all",
+          "redirects",
+          "nonredirects"
+        ],
+        "type": "enum"
+      },
+      "apfrom": {
+        "type": "string"
+      },
+      "aplimit": {
+        "default": 10,
+        "param_max": 500,
+        "param_max2": 5000,
+        "param_min": 1,
+        "type": "limit"
+      },
+      "apmaxsize": {
+        "type": "integer"
+      },
+      "apminsize": {
+        "type": "integer"
+      },
+      "apnamespace": {
+        "default": {
+          "__dynamic__": "NS_MAIN"
+        },
+        "type": "namespace"
+      },
+      "apprefix": {
+        "type": "string"
+      },
+      "apprexpiry": {
+        "default": "all",
+        "enum": [
+          "indefinite",
+          "definite",
+          "all"
+        ],
+        "type": "enum"
+      },
+      "apprfiltercascade": {
+        "default": "all",
+        "enum": [
+          "cascading",
+          "noncascading",
+          "all"
+        ],
+        "type": "enum"
+      },
+      "apprlevel": {
+        "dynamic_type_expr": "$this->getConfig()->get( MainConfigNames::RestrictionLevels )",
+        "ismulti": true,
+        "type": "string"
+      },
+      "apprtype": {
+        "dynamic_type_expr": "$this->restrictionStore->listAllRestrictionTypes( true )",
+        "ismulti": true,
+        "type": "string"
+      },
+      "apto": {
+        "type": "string"
+      }
+    },
+    "prefix": "ap"
+  },
+  "allredirects": {
+    "class": "ApiQueryAllLinks",
+    "file": "includes/Api/ApiQueryAllLinks.php",
+    "kind": "list",
+    "params": {
+      "arcontinue": {
+        "type": "string"
+      },
+      "ardir": {
+        "default": "ascending",
+        "enum": [
+          "ascending",
+          "descending"
+        ],
+        "type": "enum"
+      },
+      "arfrom": {
+        "type": "string"
+      },
+      "arlimit": {
+        "default": 10,
+        "param_max": 500,
+        "param_max2": 5000,
+        "param_min": 1,
+        "type": "limit"
+      },
+      "arnamespace": {
+        "default": {
+          "__dynamic__": "$this->dfltNamespace"
+        },
+        "type": "namespace"
+      },
+      "arprefix": {
+        "type": "string"
+      },
+      "arprop": {
+        "default": "title",
+        "enum": [
+          "ids",
+          "title"
+        ],
+        "ismulti": true,
+        "type": "enum"
+      },
+      "arto": {
+        "type": "string"
+      },
+      "arunique": {
+        "default": false,
+        "type": "boolean"
+      }
+    },
+    "prefix": "ar"
+  },
+  "allrevisions": {
+    "class": "ApiQueryAllRevisions",
+    "file": "includes/Api/ApiQueryAllRevisions.php",
+    "kind": "list",
+    "params": {
+      "arvcontentformat": {
+        "deprecated": true,
+        "dynamic_type_expr": "$this->contentHandlerFactory->getAllContentFormats()",
+        "type": "string"
+      },
+      "arvcontentformat-{slot}": {
+        "dynamic_type_expr": "$this->contentHandlerFactory->getAllContentFormats()",
+        "type": "string"
+      },
+      "arvcontinue": {
+        "type": "string"
+      },
+      "arvdiffto": {
+        "deprecated": true,
+        "type": "string"
+      },
+      "arvdifftotext": {
+        "deprecated": true,
+        "type": "string"
+      },
+      "arvdifftotextpst": {
+        "default": false,
+        "deprecated": true,
+        "type": "string"
+      },
+      "arvdir": {
+        "default": "older",
+        "enum": [
+          "newer",
+          "older"
+        ],
+        "type": "enum"
+      },
+      "arvend": {
+        "type": "timestamp"
+      },
+      "arvexcludeuser": {
+        "type": "user"
+      },
+      "arvexpandtemplates": {
+        "default": false,
+        "deprecated": true,
+        "type": "string"
+      },
+      "arvgeneratetitles": {
+        "default": false,
+        "type": "string"
+      },
+      "arvgeneratexml": {
+        "default": false,
+        "deprecated": true,
+        "type": "string"
+      },
+      "arvlimit": {
+        "param_max": 500,
+        "param_max2": 5000,
+        "param_min": 1,
+        "type": "limit"
+      },
+      "arvnamespace": {
+        "default": null,
+        "ismulti": true,
+        "type": "namespace"
+      },
+      "arvparse": {
+        "default": false,
+        "deprecated": true,
+        "type": "string"
+      },
+      "arvprop": {
+        "default": "ids|timestamp|flags|comment|user",
+        "enum": [
+          "ids",
+          "flags",
+          "timestamp",
+          "user",
+          "userid",
+          "size",
+          "slotsize",
+          "sha1",
+          "slotsha1",
+          "contentmodel",
+          "comment",
+          "parsedcomment",
+          "content",
+          "tags",
+          "roles",
+          "parsetree"
+        ],
+        "ismulti": true,
+        "type": "enum"
+      },
+      "arvsection": {
+        "type": "string"
+      },
+      "arvslots": {
+        "dynamic_type_expr": "$slotRoles",
+        "ismulti": true,
+        "type": "string"
+      },
+      "arvstart": {
+        "type": "timestamp"
+      },
+      "arvuser": {
+        "type": "user"
+      }
+    },
+    "prefix": "arv"
+  },
+  "alltransclusions": {
+    "class": "ApiQueryAllLinks",
+    "file": "includes/Api/ApiQueryAllLinks.php",
+    "kind": "list",
+    "params": {
+      "atcontinue": {
+        "type": "string"
+      },
+      "atdir": {
+        "default": "ascending",
+        "enum": [
+          "ascending",
+          "descending"
+        ],
+        "type": "enum"
+      },
+      "atfrom": {
+        "type": "string"
+      },
+      "atlimit": {
+        "default": 10,
+        "param_max": 500,
+        "param_max2": 5000,
+        "param_min": 1,
+        "type": "limit"
+      },
+      "atnamespace": {
+        "default": {
+          "__dynamic__": "$this->dfltNamespace"
+        },
+        "type": "namespace"
+      },
+      "atprefix": {
+        "type": "string"
+      },
+      "atprop": {
+        "default": "title",
+        "enum": [
+          "ids",
+          "title"
+        ],
+        "ismulti": true,
+        "type": "enum"
+      },
+      "atto": {
+        "type": "string"
+      },
+      "atunique": {
+        "default": false,
+        "type": "boolean"
+      }
+    },
+    "prefix": "at"
+  },
+  "allusers": {
+    "class": "ApiQueryAllUsers",
+    "file": "includes/Api/ApiQueryAllUsers.php",
+    "kind": "list",
+    "params": {
+      "auactiveusers": {
+        "default": false,
+        "type": "string"
+      },
+      "auattachedwiki": {
+        "type": "string"
+      },
+      "audir": {
+        "default": "ascending",
+        "enum": [
+          "ascending",
+          "descending"
+        ],
+        "type": "enum"
+      },
+      "auexcludegroup": {
+        "dynamic_type_expr": "$userGroups",
+        "ismulti": true,
+        "type": "string"
+      },
+      "auexcludenamed": {
+        "type": "boolean"
+      },
+      "auexcludetemp": {
+        "type": "boolean"
+      },
+      "aufrom": {
+        "type": "string"
+      },
+      "augroup": {
+        "dynamic_type_expr": "$userGroups",
+        "ismulti": true,
+        "type": "string"
+      },
+      "aulimit": {
+        "default": 10,
+        "param_max": 500,
+        "param_max2": 5000,
+        "param_min": 1,
+        "type": "limit"
+      },
+      "auprefix": {
+        "type": "string"
+      },
+      "auprop": {
+        "enum": [
+          "blockinfo",
+          "groups",
+          "implicitgroups",
+          "rights",
+          "editcount",
+          "registration",
+          "centralids",
+          "tempexpired"
+        ],
+        "ismulti": true,
+        "type": "enum"
+      },
+      "aurights": {
+        "dynamic_type_expr": "array_unique( array_merge(\n\t\t\t\t\t$this->getPermissionManager()->getAllPermissions(),\n\t\t\t\t\t$this->getPermissionManager()->getImplicitRights()\n\t\t\t\t) )",
+        "ismulti": true,
+        "type": "string"
+      },
+      "auto": {
+        "type": "string"
+      },
+      "auwitheditsonly": {
+        "default": false,
+        "type": "boolean"
+      }
+    },
+    "prefix": "au"
+  },
+  "authmanagerinfo": {
+    "class": "ApiQueryAuthManagerInfo",
+    "file": "includes/Api/ApiQueryAuthManagerInfo.php",
+    "kind": "meta",
+    "params": {
+      "amirequestsfor": {
+        "type": "string"
+      },
+      "amisecuritysensitiveoperation": {
+        "type": "string"
+      }
+    },
+    "prefix": "ami"
+  },
+  "backlinks": {
+    "class": "ApiQueryBacklinks",
+    "file": "includes/Api/ApiQueryBacklinks.php",
+    "kind": "list",
+    "params": {
+      "blcontinue": {
+        "type": "string"
+      },
+      "bldir": {
+        "default": "ascending",
+        "enum": [
+          "ascending",
+          "descending"
+        ],
+        "type": "enum"
+      },
+      "blfilterredir": {
+        "default": "all",
+        "enum": [
+          "all",
+          "redirects",
+          "nonredirects"
+        ],
+        "type": "enum"
+      },
+      "bllimit": {
+        "default": 10,
+        "param_max": 500,
+        "param_max2": 5000,
+        "param_min": 1,
+        "type": "limit"
+      },
+      "blnamespace": {
+        "ismulti": true,
+        "type": "namespace"
+      },
+      "blpageid": {
+        "type": "integer"
+      },
+      "bltitle": {
+        "type": "string"
+      }
+    },
+    "prefix": "bl"
+  },
+  "block": {
+    "class": "ApiBlock",
+    "file": "includes/Api/ApiBlock.php",
+    "kind": "action",
+    "params": {
+      "actionrestrictions": {
+        "dynamic_type_expr": "array_keys(\n\t\t\t\t\t$this->blockActionInfo->getAllBlockActions()\n\t\t\t\t)",
+        "ismulti": true,
+        "type": "string"
+      },
+      "allowusertalk": {
+        "default": false,
+        "type": "boolean"
+      },
+      "anononly": {
+        "default": false,
+        "type": "boolean"
+      },
+      "autoblock": {
+        "default": false,
+        "type": "boolean"
+      },
+      "expiry": {
+        "default": "never",
+        "type": "string"
+      },
+      "hidename": {
+        "default": false,
+        "type": "boolean"
+      },
+      "id": {
+        "type": "integer"
+      },
+      "namespacerestrictions": {
+        "ismulti": true,
+        "type": "namespace"
+      },
+      "newblock": {
+        "default": false,
+        "type": "boolean"
+      },
+      "nocreate": {
+        "default": false,
+        "type": "boolean"
+      },
+      "noemail": {
+        "default": false,
+        "type": "boolean"
+      },
+      "pagerestrictions": {
+        "ismulti": true,
+        "type": "title"
+      },
+      "partial": {
+        "default": false,
+        "type": "boolean"
+      },
+      "reason": {
+        "default": "",
+        "type": "string"
+      },
+      "reblock": {
+        "default": false,
+        "type": "boolean"
+      },
+      "tags": {
+        "ismulti": true,
+        "type": "tags"
+      },
+      "token": {
+        "note": "sensitive; injected by ApiBase::getFinalParams() via needsToken(), not declared in getAllowedParams()",
+        "type": "string"
+      },
+      "user": {
+        "type": "user"
+      },
+      "userid": {
+        "deprecated": true,
+        "type": "integer"
+      },
+      "watchlistexpiry": {
+        "type": "expiry"
+      },
+      "watchuser": {
+        "default": false,
+        "type": "boolean"
+      }
+    },
+    "prefix": ""
+  },
+  "blocks": {
+    "class": "ApiQueryBlocks",
+    "file": "includes/Api/ApiQueryBlocks.php",
+    "kind": "list",
+    "params": {
+      "bkcontinue": {
+        "type": "string"
+      },
+      "bkdir": {
+        "default": "older",
+        "enum": [
+          "newer",
+          "older"
+        ],
+        "type": "enum"
+      },
+      "bkend": {
+        "type": "timestamp"
+      },
+      "bkids": {
+        "ismulti": true,
+        "type": "integer"
+      },
+      "bkip": {
+        "type": "string"
+      },
+      "bklimit": {
+        "default": 10,
+        "param_max": 500,
+        "param_max2": 5000,
+        "param_min": 1,
+        "type": "limit"
+      },
+      "bkprop": {
+        "default": "id|user|by|timestamp|expiry|reason|flags",
+        "enum": [
+          "id",
+          "user",
+          "userid",
+          "by",
+          "byid",
+          "timestamp",
+          "expiry",
+          "reason",
+          "parsedreason",
+          "range",
+          "flags",
+          "restrictions"
+        ],
+        "ismulti": true,
+        "type": "enum"
+      },
+      "bkshow": {
+        "enum": [
+          "account",
+          "!account",
+          "temp",
+          "!temp",
+          "ip",
+          "!ip",
+          "range",
+          "!range"
+        ],
+        "ismulti": true,
+        "type": "enum"
+      },
+      "bkstart": {
+        "type": "timestamp"
+      },
+      "bkusers": {
+        "ismulti": true,
+        "type": "user"
+      }
+    },
+    "prefix": "bk"
+  },
+  "categories": {
+    "class": "ApiQueryCategories",
+    "file": "includes/Api/ApiQueryCategories.php",
+    "kind": "prop",
+    "params": {
+      "clcategories": {
+        "ismulti": true,
+        "type": "string"
+      },
+      "clcontinue": {
+        "type": "string"
+      },
+      "cldir": {
+        "default": "ascending",
+        "enum": [
+          "ascending",
+          "descending"
+        ],
+        "type": "enum"
+      },
+      "cllimit": {
+        "default": 10,
+        "param_max": 500,
+        "param_max2": 5000,
+        "param_min": 1,
+        "type": "limit"
+      },
+      "clprop": {
+        "enum": [
+          "sortkey",
+          "timestamp",
+          "hidden"
+        ],
+        "ismulti": true,
+        "type": "enum"
+      },
+      "clshow": {
+        "enum": [
+          "hidden",
+          "!hidden"
+        ],
+        "ismulti": true,
+        "type": "enum"
+      }
+    },
+    "prefix": "cl"
+  },
+  "categoryinfo": {
+    "class": "ApiQueryCategoryInfo",
+    "file": "includes/Api/ApiQueryCategoryInfo.php",
+    "kind": "prop",
+    "params": {
+      "cicontinue": {
+        "type": "string"
+      }
+    },
+    "prefix": "ci"
+  },
+  "categorymembers": {
+    "class": "ApiQueryCategoryMembers",
+    "file": "includes/Api/ApiQueryCategoryMembers.php",
+    "kind": "list",
+    "params": {
+      "cmcontinue": {
+        "type": "string"
+      },
+      "cmdir": {
+        "default": "ascending",
+        "enum": [
+          "asc",
+          "desc",
+          "ascending",
+          "descending",
+          "newer",
+          "older"
+        ],
+        "type": "enum"
+      },
+      "cmend": {
+        "type": "timestamp"
+      },
+      "cmendhexsortkey": {
+        "type": "string"
+      },
+      "cmendsortkey": {
+        "deprecated": true,
+        "type": "string"
+      },
+      "cmendsortkeyprefix": {
+        "type": "string"
+      },
+      "cmlimit": {
+        "default": 10,
+        "param_max": 500,
+        "param_max2": 5000,
+        "param_min": 1,
+        "type": "limit"
+      },
+      "cmnamespace": {
+        "ismulti": true,
+        "type": "namespace"
+      },
+      "cmpageid": {
+        "type": "integer"
+      },
+      "cmprop": {
+        "default": "ids|title",
+        "enum": [
+          "ids",
+          "title",
+          "sortkey",
+          "sortkeyprefix",
+          "type",
+          "timestamp"
+        ],
+        "ismulti": true,
+        "type": "enum"
+      },
+      "cmsort": {
+        "default": "sortkey",
+        "enum": [
+          "sortkey",
+          "timestamp"
+        ],
+        "type": "enum"
+      },
+      "cmstart": {
+        "type": "timestamp"
+      },
+      "cmstarthexsortkey": {
+        "type": "string"
+      },
+      "cmstartsortkey": {
+        "deprecated": true,
+        "type": "string"
+      },
+      "cmstartsortkeyprefix": {
+        "type": "string"
+      },
+      "cmtitle": {
+        "type": "string"
+      },
+      "cmtype": {
+        "default": "page|subcat|file",
+        "enum": [
+          "page",
+          "subcat",
+          "file"
+        ],
+        "ismulti": true,
+        "type": "enum"
+      }
+    },
+    "prefix": "cm"
+  },
+  "changeauthenticationdata": {
+    "class": "ApiChangeAuthenticationData",
+    "file": "includes/Api/ApiChangeAuthenticationData.php",
+    "kind": "action",
+    "params": {
+      "token": {
+        "note": "sensitive; injected by ApiBase::getFinalParams() via needsToken(), not declared in getAllowedParams()",
+        "type": "string"
+      }
+    },
+    "prefix": ""
+  },
+  "changecontentmodel": {
+    "class": "ApiChangeContentModel",
+    "file": "includes/Api/ApiChangeContentModel.php",
+    "kind": "action",
+    "params": {
+      "bot": {
+        "default": false,
+        "type": "boolean"
+      },
+      "model": {
+        "dynamic_type_expr": "$modelOptions",
+        "required": true,
+        "type": "string"
+      },
+      "pageid": {
+        "type": "integer"
+      },
+      "summary": {
+        "type": "string"
+      },
+      "tags": {
+        "ismulti": true,
+        "type": "tags"
+      },
+      "title": {
+        "type": "string"
+      },
+      "token": {
+        "note": "sensitive; injected by ApiBase::getFinalParams() via needsToken(), not declared in getAllowedParams()",
+        "type": "string"
+      }
+    },
+    "prefix": ""
+  },
+  "checktoken": {
+    "class": "ApiCheckToken",
+    "file": "includes/Api/ApiCheckToken.php",
+    "kind": "action",
+    "params": {
+      "maxtokenage": {
+        "type": "integer"
+      },
+      "token": {
+        "required": true,
+        "type": "string"
+      },
+      "type": {
+        "dynamic_type_expr": "array_keys( ApiQueryTokens::getTokenTypeSalts() )",
+        "required": true,
+        "type": "string"
+      }
+    },
+    "prefix": ""
+  },
+  "clearhasmsg": {
+    "class": "ApiClearHasMsg",
+    "file": "includes/Api/ApiClearHasMsg.php",
+    "kind": "action",
+    "params": {},
+    "prefix": ""
+  },
+  "clientlogin": {
+    "class": "ApiClientLogin",
+    "file": "includes/Api/ApiClientLogin.php",
+    "kind": "action",
+    "params": {
+      "token": {
+        "note": "sensitive; injected by ApiBase::getFinalParams() via needsToken(), not declared in getAllowedParams()",
+        "type": "string"
+      }
+    },
+    "prefix": ""
+  },
+  "codexicons": {
+    "class": "ApiQueryCodexIcons",
+    "file": "includes/Api/ApiQueryCodexIcons.php",
+    "kind": "list",
+    "params": {
+      "names": {
+        "dynamic_type_expr": "array_keys( CodexModule::getIcons( null, $this->getConfig() ) )",
+        "ismulti": true,
+        "required": true,
+        "type": "string"
+      }
+    },
+    "prefix": ""
+  },
+  "compare": {
+    "class": "ApiComparePages",
+    "file": "includes/Api/ApiComparePages.php",
+    "kind": "action",
+    "params": {
+      "difftype": {
+        "default": "table",
+        "dynamic_type_expr": "$this->differenceEngine->getSupportedFormats()",
+        "type": "string"
+      },
+      "prop": {
+        "default": "diff|ids|title",
+        "enum": [
+          "diff",
+          "diffsize",
+          "rel",
+          "ids",
+          "title",
+          "user",
+          "comment",
+          "parsedcomment",
+          "size",
+          "timestamp"
+        ],
+        "ismulti": true,
+        "type": "enum"
+      },
+      "slots": {
+        "dynamic_type_expr": "$slotRoles",
+        "ismulti": true,
+        "type": "string"
+      }
+    },
+    "prefix": ""
+  },
+  "contributors": {
+    "class": "ApiQueryContributors",
+    "file": "includes/Api/ApiQueryContributors.php",
+    "kind": "prop",
+    "params": {
+      "pccontinue": {
+        "type": "string"
+      },
+      "pcexcludegroup": {
+        "dynamic_type_expr": "$userGroups",
+        "ismulti": true,
+        "type": "string"
+      },
+      "pcexcluderights": {
+        "dynamic_type_expr": "$userRights",
+        "ismulti": true,
+        "type": "string"
+      },
+      "pcgroup": {
+        "dynamic_type_expr": "$userGroups",
+        "ismulti": true,
+        "type": "string"
+      },
+      "pclimit": {
+        "default": 10,
+        "param_max": 500,
+        "param_max2": 5000,
+        "param_min": 1,
+        "type": "limit"
+      },
+      "pcrights": {
+        "dynamic_type_expr": "$userRights",
+        "ismulti": true,
+        "type": "string"
+      }
+    },
+    "prefix": "pc"
+  },
+  "createaccount": {
+    "class": "ApiAMCreateAccount",
+    "file": "includes/Api/ApiAMCreateAccount.php",
+    "kind": "action",
+    "params": {
+      "token": {
+        "note": "sensitive; injected by ApiBase::getFinalParams() via needsToken(), not declared in getAllowedParams()",
+        "type": "string"
+      }
+    },
+    "prefix": ""
+  },
+  "cspreport": {
+    "class": "ApiCSPReport",
+    "file": "includes/Api/ApiCSPReport.php",
+    "kind": "action",
+    "params": {
+      "reportonly": {
+        "default": false,
+        "type": "boolean"
+      },
+      "source": {
+        "default": "internal",
+        "required": false,
+        "type": "string"
+      }
+    },
+    "prefix": ""
+  },
+  "delete": {
+    "class": "ApiDelete",
+    "file": "includes/Api/ApiDelete.php",
+    "kind": "action",
+    "params": {
+      "deletetalk": {
+        "default": false,
+        "type": "boolean"
+      },
+      "oldimage": {
+        "type": "string"
+      },
+      "pageid": {
+        "type": "integer"
+      },
+      "reason": {
+        "type": "string"
+      },
+      "tags": {
+        "ismulti": true,
+        "type": "tags"
+      },
+      "title": {
+        "type": "string"
+      },
+      "token": {
+        "note": "sensitive; injected by ApiBase::getFinalParams() via needsToken(), not declared in getAllowedParams()",
+        "type": "string"
+      },
+      "unwatch": {
+        "default": false,
+        "deprecated": true,
+        "type": "string"
+      },
+      "watch": {
+        "default": false,
+        "deprecated": true,
+        "type": "string"
+      }
+    },
+    "prefix": ""
+  },
+  "deletedrevisions": {
+    "class": "ApiQueryDeletedRevisions",
+    "file": "includes/Api/ApiQueryDeletedRevisions.php",
+    "kind": "prop",
+    "params": {
+      "drvcontentformat": {
+        "deprecated": true,
+        "dynamic_type_expr": "$this->contentHandlerFactory->getAllContentFormats()",
+        "type": "string"
+      },
+      "drvcontentformat-{slot}": {
+        "dynamic_type_expr": "$this->contentHandlerFactory->getAllContentFormats()",
+        "type": "string"
+      },
+      "drvcontinue": {
+        "type": "string"
+      },
+      "drvdiffto": {
+        "deprecated": true,
+        "type": "string"
+      },
+      "drvdifftotext": {
+        "deprecated": true,
+        "type": "string"
+      },
+      "drvdifftotextpst": {
+        "default": false,
+        "deprecated": true,
+        "type": "string"
+      },
+      "drvdir": {
+        "default": "older",
+        "enum": [
+          "newer",
+          "older"
+        ],
+        "type": "enum"
+      },
+      "drvend": {
+        "type": "timestamp"
+      },
+      "drvexcludeuser": {
+        "type": "user"
+      },
+      "drvexpandtemplates": {
+        "default": false,
+        "deprecated": true,
+        "type": "string"
+      },
+      "drvgeneratexml": {
+        "default": false,
+        "deprecated": true,
+        "type": "string"
+      },
+      "drvlimit": {
+        "param_max": 500,
+        "param_max2": 5000,
+        "param_min": 1,
+        "type": "limit"
+      },
+      "drvparse": {
+        "default": false,
+        "deprecated": true,
+        "type": "string"
+      },
+      "drvprop": {
+        "default": "ids|timestamp|flags|comment|user",
+        "enum": [
+          "ids",
+          "flags",
+          "timestamp",
+          "user",
+          "userid",
+          "size",
+          "slotsize",
+          "sha1",
+          "slotsha1",
+          "contentmodel",
+          "comment",
+          "parsedcomment",
+          "content",
+          "tags",
+          "roles",
+          "parsetree"
+        ],
+        "ismulti": true,
+        "type": "enum"
+      },
+      "drvsection": {
+        "type": "string"
+      },
+      "drvslots": {
+        "dynamic_type_expr": "$slotRoles",
+        "ismulti": true,
+        "type": "string"
+      },
+      "drvstart": {
+        "type": "timestamp"
+      },
+      "drvtag": {
+        "type": "string"
+      },
+      "drvuser": {
+        "type": "user"
+      }
+    },
+    "prefix": "drv"
+  },
+  "deletedrevs": {
+    "class": "ApiQueryDeletedrevs",
+    "file": "includes/Api/ApiQueryDeletedrevs.php",
+    "kind": "list",
+    "params": {
+      "drcontinue": {
+        "type": "string"
+      },
+      "drdir": {
+        "default": "older",
+        "enum": [
+          "newer",
+          "older"
+        ],
+        "type": "enum"
+      },
+      "drend": {
+        "type": "timestamp"
+      },
+      "drexcludeuser": {
+        "type": "user"
+      },
+      "drfrom": {
+        "type": "string"
+      },
+      "drlimit": {
+        "default": 10,
+        "param_max": 500,
+        "param_max2": 5000,
+        "param_min": 1,
+        "type": "limit"
+      },
+      "drnamespace": {
+        "default": {
+          "__dynamic__": "NS_MAIN"
+        },
+        "type": "namespace"
+      },
+      "drprefix": {
+        "type": "string"
+      },
+      "drprop": {
+        "default": "user|comment",
+        "enum": [
+          "revid",
+          "parentid",
+          "user",
+          "userid",
+          "comment",
+          "parsedcomment",
+          "minor",
+          "len",
+          "sha1",
+          "content",
+          "token",
+          "tags"
+        ],
+        "ismulti": true,
+        "type": "enum"
+      },
+      "drstart": {
+        "type": "timestamp"
+      },
+      "drtag": {
+        "type": "string"
+      },
+      "drto": {
+        "type": "string"
+      },
+      "drunique": {
+        "default": false,
+        "type": "string"
+      },
+      "druser": {
+        "type": "user"
+      }
+    },
+    "prefix": "dr"
+  },
+  "duplicatefiles": {
+    "class": "ApiQueryDuplicateFiles",
+    "file": "includes/Api/ApiQueryDuplicateFiles.php",
+    "kind": "prop",
+    "params": {
+      "dfcontinue": {
+        "type": "string"
+      },
+      "dfdir": {
+        "default": "ascending",
+        "enum": [
+          "ascending",
+          "descending"
+        ],
+        "type": "enum"
+      },
+      "dflimit": {
+        "default": 10,
+        "param_max": 500,
+        "param_max2": 5000,
+        "param_min": 1,
+        "type": "limit"
+      },
+      "dflocalonly": {
+        "default": false,
+        "type": "boolean"
+      }
+    },
+    "prefix": "df"
+  },
+  "edit": {
+    "class": "ApiEditPage",
+    "file": "includes/Api/ApiEditPage.php",
+    "kind": "action",
+    "params": {
+      "appendtext": {
+        "type": "text"
+      },
+      "baserevid": {
+        "type": "integer"
+      },
+      "basetimestamp": {
+        "type": "timestamp"
+      },
+      "bot": {
+        "default": false,
+        "type": "boolean"
+      },
+      "contentformat": {
+        "dynamic_type_expr": "$this->contentHandlerFactory->getAllContentFormats()",
+        "type": "string"
+      },
+      "contentmodel": {
+        "dynamic_type_expr": "$this->contentHandlerFactory->getContentModels()",
+        "type": "string"
+      },
+      "createonly": {
+        "default": false,
+        "type": "boolean"
+      },
+      "md5": {
+        "type": "string"
+      },
+      "minor": {
+        "default": false,
+        "type": "boolean"
+      },
+      "nocreate": {
+        "default": false,
+        "type": "boolean"
+      },
+      "notminor": {
+        "default": false,
+        "type": "boolean"
+      },
+      "pageid": {
+        "type": "integer"
+      },
+      "prependtext": {
+        "type": "text"
+      },
+      "recreate": {
+        "default": false,
+        "type": "boolean"
+      },
+      "redirect": {
+        "default": false,
+        "type": "boolean"
+      },
+      "section": {
+        "type": "string"
+      },
+      "sectiontitle": {
+        "type": "string"
+      },
+      "starttimestamp": {
+        "type": "timestamp"
+      },
+      "summary": {
+        "type": "string"
+      },
+      "tags": {
+        "ismulti": true,
+        "type": "tags"
+      },
+      "text": {
+        "type": "text"
+      },
+      "title": {
+        "type": "string"
+      },
+      "token": {
+        "type": "string"
+      },
+      "undo": {
+        "param_min": 0,
+        "type": "integer"
+      },
+      "undoafter": {
+        "param_min": 0,
+        "type": "integer"
+      },
+      "unwatch": {
+        "default": false,
+        "deprecated": true,
+        "type": "string"
+      },
+      "watch": {
+        "default": false,
+        "deprecated": true,
+        "type": "string"
+      }
+    },
+    "prefix": ""
+  },
+  "emailuser": {
+    "class": "ApiEmailUser",
+    "file": "includes/Api/ApiEmailUser.php",
+    "kind": "action",
+    "params": {
+      "ccme": {
+        "default": false,
+        "type": "boolean"
+      },
+      "subject": {
+        "required": true,
+        "type": "string"
+      },
+      "target": {
+        "required": true,
+        "type": "string"
+      },
+      "text": {
+        "required": true,
+        "type": "text"
+      },
+      "token": {
+        "note": "sensitive; injected by ApiBase::getFinalParams() via needsToken(), not declared in getAllowedParams()",
+        "type": "string"
+      }
+    },
+    "prefix": ""
+  },
+  "embeddedin": {
+    "class": "ApiQueryBacklinks",
+    "file": "includes/Api/ApiQueryBacklinks.php",
+    "kind": "list",
+    "params": {
+      "eicontinue": {
+        "type": "string"
+      },
+      "eidir": {
+        "default": "ascending",
+        "enum": [
+          "ascending",
+          "descending"
+        ],
+        "type": "enum"
+      },
+      "eifilterredir": {
+        "default": "all",
+        "enum": [
+          "all",
+          "redirects",
+          "nonredirects"
+        ],
+        "type": "enum"
+      },
+      "eilimit": {
+        "default": 10,
+        "param_max": 500,
+        "param_max2": 5000,
+        "param_min": 1,
+        "type": "limit"
+      },
+      "einamespace": {
+        "ismulti": true,
+        "type": "namespace"
+      },
+      "eipageid": {
+        "type": "integer"
+      },
+      "eititle": {
+        "type": "string"
+      }
+    },
+    "prefix": "ei"
+  },
+  "expandtemplates": {
+    "class": "ApiExpandTemplates",
+    "file": "includes/Api/ApiExpandTemplates.php",
+    "kind": "action",
+    "params": {
+      "generatexml": {
+        "deprecated": true,
+        "type": "boolean"
+      },
+      "includecomments": {
+        "default": false,
+        "type": "boolean"
+      },
+      "prop": {
+        "enum": [
+          "wikitext",
+          "categories",
+          "properties",
+          "volatile",
+          "ttl",
+          "modules",
+          "jsconfigvars",
+          "encodedjsconfigvars",
+          "parsetree"
+        ],
+        "ismulti": true,
+        "type": "enum"
+      },
+      "revid": {
+        "type": "integer"
+      },
+      "showstrategykeys": {
+        "default": false,
+        "type": "boolean"
+      },
+      "text": {
+        "required": true,
+        "type": "text"
+      },
+      "title": {
+        "type": "string"
+      }
+    },
+    "prefix": ""
+  },
+  "extlinks": {
+    "class": "ApiQueryExternalLinks",
+    "file": "includes/Api/ApiQueryExternalLinks.php",
+    "kind": "prop",
+    "params": {
+      "elcontinue": {
+        "type": "string"
+      },
+      "elexpandurl": {
+        "default": false,
+        "deprecated": true,
+        "type": "boolean"
+      },
+      "ellimit": {
+        "default": 10,
+        "param_max": 500,
+        "param_max2": 5000,
+        "param_min": 1,
+        "type": "limit"
+      },
+      "elprotocol": {
+        "default": "",
+        "dynamic_type_expr": "LinkFilter::prepareProtocols()",
+        "type": "string"
+      },
+      "elquery": {
+        "type": "string"
+      }
+    },
+    "prefix": "el"
+  },
+  "exturlusage": {
+    "class": "ApiQueryExtLinksUsage",
+    "file": "includes/Api/ApiQueryExtLinksUsage.php",
+    "kind": "list",
+    "params": {
+      "eucontinue": {
+        "type": "string"
+      },
+      "euexpandurl": {
+        "default": false,
+        "deprecated": true,
+        "type": "boolean"
+      },
+      "eulimit": {
+        "default": 10,
+        "param_max": 500,
+        "param_max2": 5000,
+        "param_min": 1,
+        "type": "limit"
+      },
+      "eunamespace": {
+        "ismulti": true,
+        "type": "namespace"
+      },
+      "euprop": {
+        "default": "ids|title|url",
+        "enum": [
+          "ids",
+          "title",
+          "url"
+        ],
+        "ismulti": true,
+        "type": "enum"
+      },
+      "euprotocol": {
+        "default": "",
+        "dynamic_type_expr": "LinkFilter::prepareProtocols()",
+        "type": "string"
+      },
+      "euquery": {
+        "type": "string"
+      }
+    },
+    "prefix": "eu"
+  },
+  "feedcontributions": {
+    "class": "ApiFeedContributions",
+    "file": "includes/Api/ApiFeedContributions.php",
+    "kind": "action",
+    "params": {
+      "deletedonly": {
+        "default": false,
+        "type": "boolean"
+      },
+      "feedformat": {
+        "default": "rss",
+        "dynamic_type_expr": "$feedFormatNames",
+        "type": "string"
+      },
+      "hideminor": {
+        "default": false,
+        "type": "boolean"
+      },
+      "month": {
+        "type": "integer"
+      },
+      "namespace": {
+        "type": "namespace"
+      },
+      "newonly": {
+        "default": false,
+        "type": "boolean"
+      },
+      "showsizediff": {
+        "default": false,
+        "type": "string"
+      },
+      "tagfilter": {
+        "default": "",
+        "dynamic_type_expr": "array_values( MediaWikiServices::getInstance()\n\t\t\t\t\t->getChangeTagsStore()->listDefinedTags()\n\t\t\t\t)",
+        "ismulti": true,
+        "type": "string"
+      },
+      "toponly": {
+        "default": false,
+        "type": "boolean"
+      },
+      "user": {
+        "required": true,
+        "type": "user"
+      },
+      "year": {
+        "type": "integer"
+      }
+    },
+    "prefix": ""
+  },
+  "feedrecentchanges": {
+    "class": "ApiFeedRecentChanges",
+    "file": "includes/Api/ApiFeedRecentChanges.php",
+    "kind": "action",
+    "params": {
+      "associated": {
+        "default": false,
+        "type": "boolean"
+      },
+      "days": {
+        "default": 7,
+        "param_min": 1,
+        "type": "integer"
+      },
+      "feedformat": {
+        "default": "rss",
+        "dynamic_type_expr": "$feedFormatNames",
+        "type": "string"
+      },
+      "from": {
+        "type": "timestamp"
+      },
+      "hideanons": {
+        "default": false,
+        "type": "string"
+      },
+      "hidebots": {
+        "default": false,
+        "type": "boolean"
+      },
+      "hidecategorization": {
+        "default": false,
+        "type": "boolean"
+      },
+      "hideliu": {
+        "default": false,
+        "type": "boolean"
+      },
+      "hideminor": {
+        "default": false,
+        "type": "boolean"
+      },
+      "hidemyself": {
+        "default": false,
+        "type": "boolean"
+      },
+      "hidepatrolled": {
+        "default": false,
+        "type": "boolean"
+      },
+      "invert": {
+        "default": false,
+        "type": "boolean"
+      },
+      "inverttags": {
+        "default": false,
+        "type": "boolean"
+      },
+      "limit": {
+        "default": 50,
+        "param_min": 1,
+        "type": "integer"
+      },
+      "namespace": {
+        "type": "namespace"
+      },
+      "showlinkedto": {
+        "default": false,
+        "type": "boolean"
+      },
+      "tagfilter": {
+        "type": "string"
+      },
+      "target": {
+        "type": "string"
+      }
+    },
+    "prefix": ""
+  },
+  "feedwatchlist": {
+    "class": "ApiFeedWatchlist",
+    "file": "includes/Api/ApiFeedWatchlist.php",
+    "kind": "action",
+    "params": {
+      "feedformat": {
+        "default": "rss",
+        "dynamic_type_expr": "$feedFormatNames",
+        "type": "string"
+      },
+      "hours": {
+        "default": 24,
+        "param_max": 72,
+        "param_min": 1,
+        "type": "integer"
+      },
+      "linktosections": {
+        "default": false,
+        "type": "boolean"
+      }
+    },
+    "prefix": ""
+  },
+  "filearchive": {
+    "class": "ApiQueryFilearchive",
+    "file": "includes/Api/ApiQueryFilearchive.php",
+    "kind": "list",
+    "params": {
+      "facontinue": {
+        "type": "string"
+      },
+      "fadir": {
+        "default": "ascending",
+        "enum": [
+          "ascending",
+          "descending"
+        ],
+        "type": "enum"
+      },
+      "fafrom": {
+        "type": "string"
+      },
+      "falimit": {
+        "default": 10,
+        "param_max": 500,
+        "param_max2": 5000,
+        "param_min": 1,
+        "type": "limit"
+      },
+      "faprefix": {
+        "type": "string"
+      },
+      "faprop": {
+        "default": "timestamp",
+        "enum": [
+          "sha1",
+          "timestamp",
+          "user",
+          "size",
+          "dimensions",
+          "description",
+          "parseddescription",
+          "mime",
+          "mediatype",
+          "metadata",
+          "bitdepth",
+          "archivename"
+        ],
+        "ismulti": true,
+        "type": "enum"
+      },
+      "fasha1": {
+        "type": "string"
+      },
+      "fasha1base36": {
+        "type": "string"
+      },
+      "fato": {
+        "type": "string"
+      }
+    },
+    "prefix": "fa"
+  },
+  "filerepoinfo": {
+    "class": "ApiQueryFileRepoInfo",
+    "file": "includes/Api/ApiQueryFileRepoInfo.php",
+    "kind": "meta",
+    "params": {
+      "friprop": {
+        "default": {
+          "__dynamic__": "implode( '|', $props )"
+        },
+        "dynamic_type_expr": "$props",
+        "ismulti": true,
+        "type": "string"
+      }
+    },
+    "prefix": "fri"
+  },
+  "filerevert": {
+    "class": "ApiFileRevert",
+    "file": "includes/Api/ApiFileRevert.php",
+    "kind": "action",
+    "params": {
+      "archivename": {
+        "required": true,
+        "type": "string"
+      },
+      "comment": {
+        "default": "",
+        "type": "string"
+      },
+      "filename": {
+        "required": true,
+        "type": "string"
+      },
+      "token": {
+        "note": "sensitive; injected by ApiBase::getFinalParams() via needsToken(), not declared in getAllowedParams()",
+        "type": "string"
+      }
+    },
+    "prefix": ""
+  },
+  "fileusage": {
+    "class": "ApiQueryBacklinksprop",
+    "file": "includes/Api/ApiQueryBacklinksprop.php",
+    "kind": "prop",
+    "params": {
+      "fucontinue": {
+        "type": "string"
+      },
+      "fulimit": {
+        "default": 10,
+        "param_max": 500,
+        "param_max2": 5000,
+        "param_min": 1,
+        "type": "limit"
+      },
+      "funamespace": {
+        "ismulti": true,
+        "type": "namespace"
+      },
+      "fuprop": {
+        "default": "pageid|title",
+        "enum": [
+          "pageid",
+          "title"
+        ],
+        "ismulti": true,
+        "type": "enum"
+      },
+      "fushow": {
+        "type": "string"
+      }
+    },
+    "prefix": "fu"
+  },
+  "help": {
+    "class": "ApiHelp",
+    "file": "includes/Api/ApiHelp.php",
+    "kind": "action",
+    "params": {
+      "modules": {
+        "default": "main",
+        "ismulti": true,
+        "type": "string"
+      },
+      "recursivesubmodules": {
+        "default": false,
+        "type": "boolean"
+      },
+      "submodules": {
+        "default": false,
+        "type": "boolean"
+      },
+      "toc": {
+        "default": false,
+        "type": "boolean"
+      },
+      "wrap": {
+        "default": false,
+        "type": "boolean"
+      }
+    },
+    "prefix": ""
+  },
+  "imageinfo": {
+    "class": "ApiQueryImageInfo",
+    "file": "includes/Api/ApiQueryImageInfo.php",
+    "kind": "prop",
+    "params": {
+      "iibadfilecontexttitle": {
+        "type": "string"
+      },
+      "iicontinue": {
+        "type": "string"
+      },
+      "iiend": {
+        "type": "timestamp"
+      },
+      "iiextmetadatafilter": {
+        "ismulti": true,
+        "type": "string"
+      },
+      "iiextmetadatalanguage": {
+        "default": {
+          "__dynamic__": "$this->contentLanguage->getCode()"
+        },
+        "type": "string"
+      },
+      "iiextmetadatamultilang": {
+        "default": false,
+        "type": "boolean"
+      },
+      "iilimit": {
+        "default": 1,
+        "param_max": 500,
+        "param_max2": 5000,
+        "param_min": 1,
+        "type": "limit"
+      },
+      "iilocalonly": {
+        "default": false,
+        "type": "boolean"
+      },
+      "iimetadataversion": {
+        "default": "1",
+        "type": "string"
+      },
+      "iiprop": {
+        "default": "timestamp|user",
+        "dynamic_type_expr": "static::getPropertyNames()",
+        "ismulti": true,
+        "type": "string"
+      },
+      "iistart": {
+        "type": "timestamp"
+      },
+      "iiurlheight": {
+        "default": -1,
+        "type": "integer"
+      },
+      "iiurlparam": {
+        "default": "",
+        "type": "string"
+      },
+      "iiurlwidth": {
+        "default": -1,
+        "type": "integer"
+      }
+    },
+    "prefix": "ii"
+  },
+  "imagerotate": {
+    "class": "ApiImageRotate",
+    "file": "includes/Api/ApiImageRotate.php",
+    "kind": "action",
+    "params": {
+      "continue": {
+        "type": "string"
+      },
+      "rotation": {
+        "enum": [
+          "90",
+          "180",
+          "270"
+        ],
+        "required": true,
+        "type": "enum"
+      },
+      "tags": {
+        "ismulti": true,
+        "type": "tags"
+      },
+      "token": {
+        "note": "sensitive; injected by ApiBase::getFinalParams() via needsToken(), not declared in getAllowedParams()",
+        "type": "string"
+      }
+    },
+    "prefix": ""
+  },
+  "images": {
+    "class": "ApiQueryImages",
+    "file": "includes/Api/ApiQueryImages.php",
+    "kind": "prop",
+    "params": {
+      "imcontinue": {
+        "type": "string"
+      },
+      "imdir": {
+        "default": "ascending",
+        "enum": [
+          "ascending",
+          "descending"
+        ],
+        "type": "enum"
+      },
+      "imimages": {
+        "ismulti": true,
+        "type": "string"
+      },
+      "imlimit": {
+        "default": 10,
+        "param_max": 500,
+        "param_max2": 5000,
+        "param_min": 1,
+        "type": "limit"
+      }
+    },
+    "prefix": "im"
+  },
+  "imageusage": {
+    "class": "ApiQueryBacklinks",
+    "file": "includes/Api/ApiQueryBacklinks.php",
+    "kind": "list",
+    "params": {
+      "iucontinue": {
+        "type": "string"
+      },
+      "iudir": {
+        "default": "ascending",
+        "enum": [
+          "ascending",
+          "descending"
+        ],
+        "type": "enum"
+      },
+      "iufilterredir": {
+        "default": "all",
+        "enum": [
+          "all",
+          "redirects",
+          "nonredirects"
+        ],
+        "type": "enum"
+      },
+      "iulimit": {
+        "default": 10,
+        "param_max": 500,
+        "param_max2": 5000,
+        "param_min": 1,
+        "type": "limit"
+      },
+      "iunamespace": {
+        "ismulti": true,
+        "type": "namespace"
+      },
+      "iupageid": {
+        "type": "integer"
+      },
+      "iutitle": {
+        "type": "string"
+      }
+    },
+    "prefix": "iu"
+  },
+  "import": {
+    "class": "ApiImport",
+    "file": "includes/Api/ApiImport.php",
+    "kind": "action",
+    "params": {
+      "assignknownusers": {
+        "default": false,
+        "type": "boolean"
+      },
+      "fullhistory": {
+        "default": false,
+        "type": "boolean"
+      },
+      "interwikipage": {
+        "type": "string"
+      },
+      "interwikiprefix": {
+        "type": "string"
+      },
+      "interwikisource": {
+        "dynamic_type_expr": "$this->getAllowedImportSources()",
+        "type": "string"
+      },
+      "namespace": {
+        "type": "namespace"
+      },
+      "rootpage": {
+        "type": "string"
+      },
+      "summary": {
+        "type": "string"
+      },
+      "tags": {
+        "ismulti": true,
+        "type": "tags"
+      },
+      "templates": {
+        "default": false,
+        "type": "boolean"
+      },
+      "token": {
+        "note": "sensitive; injected by ApiBase::getFinalParams() via needsToken(), not declared in getAllowedParams()",
+        "type": "string"
+      },
+      "xml": {
+        "type": "upload"
+      }
+    },
+    "prefix": ""
+  },
+  "info": {
+    "class": "ApiQueryInfo",
+    "file": "includes/Api/ApiQueryInfo.php",
+    "kind": "prop",
+    "params": {
+      "incontinue": {
+        "type": "string"
+      },
+      "indefaultlinkcaption": {
+        "default": false,
+        "type": "boolean"
+      },
+      "ineditintrocustom": {
+        "type": "string"
+      },
+      "ineditintroskip": {
+        "ismulti": true,
+        "type": "string"
+      },
+      "ineditintrostyle": {
+        "default": "moreframes",
+        "enum": [
+          "lessframes",
+          "moreframes"
+        ],
+        "type": "enum"
+      },
+      "inlinkcontext": {
+        "default": {
+          "__dynamic__": "$this->titleFactory->newMainPage()->getPrefixedText()"
+        },
+        "type": "title"
+      },
+      "inpreloadcustom": {
+        "type": "string"
+      },
+      "inpreloadnewsection": {
+        "default": false,
+        "type": "boolean"
+      },
+      "inpreloadparams": {
+        "ismulti": true,
+        "type": "string"
+      },
+      "inprop": {
+        "enum": [
+          "protection",
+          "talkid",
+          "watched",
+          "watchlistlabels",
+          "watchers",
+          "visitingwatchers",
+          "notificationtimestamp",
+          "subjectid",
+          "associatedpage",
+          "url",
+          "readable",
+          "preload",
+          "preloadcontent",
+          "editintro",
+          "displaytitle",
+          "varianttitles",
+          "linkclasses"
+        ],
+        "ismulti": true,
+        "type": "enum"
+      },
+      "intestactions": {
+        "ismulti": true,
+        "type": "string"
+      },
+      "intestactionsautocreate": {
+        "default": false,
+        "type": "boolean"
+      },
+      "intestactionsdetail": {
+        "default": "boolean",
+        "enum": [
+          "boolean",
+          "full",
+          "quick"
+        ],
+        "type": "enum"
+      }
+    },
+    "prefix": "in"
+  },
+  "iwbacklinks": {
+    "class": "ApiQueryIWBacklinks",
+    "file": "includes/Api/ApiQueryIWBacklinks.php",
+    "kind": "list",
+    "params": {
+      "iwblcontinue": {
+        "type": "string"
+      },
+      "iwbldir": {
+        "default": "ascending",
+        "enum": [
+          "ascending",
+          "descending"
+        ],
+        "type": "enum"
+      },
+      "iwbllimit": {
+        "default": 10,
+        "param_max": 500,
+        "param_max2": 5000,
+        "param_min": 1,
+        "type": "limit"
+      },
+      "iwblprefix": {
+        "type": "string"
+      },
+      "iwblprop": {
+        "default": "",
+        "enum": [
+          "iwprefix",
+          "iwtitle"
+        ],
+        "ismulti": true,
+        "type": "enum"
+      },
+      "iwbltitle": {
+        "type": "string"
+      }
+    },
+    "prefix": "iwbl"
+  },
+  "iwlinks": {
+    "class": "ApiQueryIWLinks",
+    "file": "includes/Api/ApiQueryIWLinks.php",
+    "kind": "prop",
+    "params": {
+      "iwcontinue": {
+        "type": "string"
+      },
+      "iwdir": {
+        "default": "ascending",
+        "enum": [
+          "ascending",
+          "descending"
+        ],
+        "type": "enum"
+      },
+      "iwlimit": {
+        "default": 10,
+        "param_max": 500,
+        "param_max2": 5000,
+        "param_min": 1,
+        "type": "limit"
+      },
+      "iwprefix": {
+        "type": "string"
+      },
+      "iwprop": {
+        "enum": [
+          "url"
+        ],
+        "ismulti": true,
+        "type": "enum"
+      },
+      "iwtitle": {
+        "type": "string"
+      },
+      "iwurl": {
+        "default": false,
+        "deprecated": true,
+        "type": "string"
+      }
+    },
+    "prefix": "iw"
+  },
+  "langbacklinks": {
+    "class": "ApiQueryLangBacklinks",
+    "file": "includes/Api/ApiQueryLangBacklinks.php",
+    "kind": "list",
+    "params": {
+      "lblcontinue": {
+        "type": "string"
+      },
+      "lbldir": {
+        "default": "ascending",
+        "enum": [
+          "ascending",
+          "descending"
+        ],
+        "type": "enum"
+      },
+      "lbllang": {
+        "type": "string"
+      },
+      "lbllimit": {
+        "default": 10,
+        "param_max": 500,
+        "param_max2": 5000,
+        "param_min": 1,
+        "type": "limit"
+      },
+      "lblprop": {
+        "default": "",
+        "enum": [
+          "lllang",
+          "lltitle"
+        ],
+        "ismulti": true,
+        "type": "enum"
+      },
+      "lbltitle": {
+        "type": "string"
+      }
+    },
+    "prefix": "lbl"
+  },
+  "langlinks": {
+    "class": "ApiQueryLangLinks",
+    "file": "includes/Api/ApiQueryLangLinks.php",
+    "kind": "prop",
+    "params": {
+      "llcontinue": {
+        "type": "string"
+      },
+      "lldir": {
+        "default": "ascending",
+        "enum": [
+          "ascending",
+          "descending"
+        ],
+        "type": "enum"
+      },
+      "llinlanguagecode": {
+        "type": "string"
+      },
+      "lllang": {
+        "type": "string"
+      },
+      "lllimit": {
+        "default": 10,
+        "param_max": 500,
+        "param_max2": 5000,
+        "param_min": 1,
+        "type": "limit"
+      },
+      "llprop": {
+        "enum": [
+          "url",
+          "langname",
+          "autonym"
+        ],
+        "ismulti": true,
+        "type": "enum"
+      },
+      "lltitle": {
+        "type": "string"
+      },
+      "llurl": {
+        "default": false,
+        "deprecated": true,
+        "type": "string"
+      }
+    },
+    "prefix": "ll"
+  },
+  "languageinfo": {
+    "class": "ApiQueryLanguageinfo",
+    "file": "includes/Api/ApiQueryLanguageinfo.php",
+    "kind": "meta",
+    "params": {
+      "licode": {
+        "default": "*",
+        "ismulti": true,
+        "type": "string"
+      },
+      "licontinue": {
+        "type": "string"
+      },
+      "liprop": {
+        "default": "code",
+        "enum": [
+          "code",
+          "bcp47",
+          "dir",
+          "autonym",
+          "name",
+          "variantnames",
+          "fallbacks",
+          "variants"
+        ],
+        "ismulti": true,
+        "type": "enum"
+      }
+    },
+    "prefix": "li"
+  },
+  "languagesearch": {
+    "class": "ApiLanguageSearch",
+    "file": "includes/Api/ApiLanguageSearch.php",
+    "kind": "action",
+    "params": {
+      "search": {
+        "required": true,
+        "type": "string"
+      },
+      "typos": {
+        "default": 1,
+        "required": false,
+        "type": "integer"
+      }
+    },
+    "prefix": ""
+  },
+  "linkaccount": {
+    "class": "ApiLinkAccount",
+    "file": "includes/Api/ApiLinkAccount.php",
+    "kind": "action",
+    "params": {
+      "token": {
+        "note": "sensitive; injected by ApiBase::getFinalParams() via needsToken(), not declared in getAllowedParams()",
+        "type": "string"
+      }
+    },
+    "prefix": ""
+  },
+  "links": {
+    "class": "ApiQueryLinks",
+    "file": "includes/Api/ApiQueryLinks.php",
+    "kind": "prop",
+    "params": {
+      "plcontinue": {
+        "type": "string"
+      },
+      "pldir": {
+        "default": "ascending",
+        "enum": [
+          "ascending",
+          "descending"
+        ],
+        "type": "enum"
+      },
+      "pllimit": {
+        "default": 10,
+        "param_max": 500,
+        "param_max2": 5000,
+        "param_min": 1,
+        "type": "limit"
+      },
+      "plnamespace": {
+        "ismulti": true,
+        "type": "namespace"
+      }
+    },
+    "prefix": "pl"
+  },
+  "linkshere": {
+    "class": "ApiQueryBacklinksprop",
+    "file": "includes/Api/ApiQueryBacklinksprop.php",
+    "kind": "prop",
+    "params": {
+      "lhcontinue": {
+        "type": "string"
+      },
+      "lhlimit": {
+        "default": 10,
+        "param_max": 500,
+        "param_max2": 5000,
+        "param_min": 1,
+        "type": "limit"
+      },
+      "lhnamespace": {
+        "ismulti": true,
+        "type": "namespace"
+      },
+      "lhprop": {
+        "default": "pageid|title",
+        "enum": [
+          "pageid",
+          "title"
+        ],
+        "ismulti": true,
+        "type": "enum"
+      },
+      "lhshow": {
+        "type": "string"
+      }
+    },
+    "prefix": "lh"
+  },
+  "logevents": {
+    "class": "ApiQueryLogEvents",
+    "file": "includes/Api/ApiQueryLogEvents.php",
+    "kind": "list",
+    "params": {
+      "leaction": {
+        "dynamic_type_expr": "$logActions",
+        "type": "string"
+      },
+      "lecontinue": {
+        "type": "string"
+      },
+      "ledir": {
+        "default": "older",
+        "enum": [
+          "newer",
+          "older"
+        ],
+        "type": "enum"
+      },
+      "leend": {
+        "type": "timestamp"
+      },
+      "leids": {
+        "ismulti": true,
+        "type": "integer"
+      },
+      "lelimit": {
+        "default": 10,
+        "param_max": 500,
+        "param_max2": 5000,
+        "param_min": 1,
+        "type": "limit"
+      },
+      "lenamespace": {
+        "type": "namespace"
+      },
+      "leprefix": {
+        "type": "string"
+      },
+      "leprop": {
+        "default": "ids|title|type|user|timestamp|comment|details",
+        "enum": [
+          "ids",
+          "title",
+          "type",
+          "user",
+          "userid",
+          "timestamp",
+          "comment",
+          "parsedcomment",
+          "details",
+          "tags"
+        ],
+        "ismulti": true,
+        "type": "enum"
+      },
+      "lestart": {
+        "type": "timestamp"
+      },
+      "letag": {
+        "type": "string"
+      },
+      "letitle": {
+        "type": "string"
+      },
+      "letype": {
+        "dynamic_type_expr": "LogPage::validTypes()",
+        "type": "string"
+      },
+      "leuser": {
+        "type": "user"
+      }
+    },
+    "prefix": "le"
+  },
+  "login": {
+    "class": "ApiLogin",
+    "file": "includes/Api/ApiLogin.php",
+    "kind": "action",
+    "params": {
+      "domain": {
+        "type": "string"
+      },
+      "name": {
+        "type": "string"
+      },
+      "password": {
+        "type": "password"
+      },
+      "token": {
+        "required": false,
+        "type": "string"
+      }
+    },
+    "prefix": ""
+  },
+  "logout": {
+    "class": "ApiLogout",
+    "file": "includes/Api/ApiLogout.php",
+    "kind": "action",
+    "params": {
+      "token": {
+        "note": "sensitive; injected by ApiBase::getFinalParams() via needsToken(), not declared in getAllowedParams()",
+        "type": "string"
+      }
+    },
+    "prefix": ""
+  },
+  "managetags": {
+    "class": "ApiManageTags",
+    "file": "includes/Api/ApiManageTags.php",
+    "kind": "action",
+    "params": {
+      "ignorewarnings": {
+        "default": false,
+        "type": "boolean"
+      },
+      "operation": {
+        "enum": [
+          "create",
+          "delete",
+          "activate",
+          "deactivate"
+        ],
+        "required": true,
+        "type": "enum"
+      },
+      "reason": {
+        "default": "",
+        "type": "string"
+      },
+      "tag": {
+        "required": true,
+        "type": "string"
+      },
+      "tags": {
+        "ismulti": true,
+        "type": "tags"
+      },
+      "token": {
+        "note": "sensitive; injected by ApiBase::getFinalParams() via needsToken(), not declared in getAllowedParams()",
+        "type": "string"
+      }
+    },
+    "prefix": ""
+  },
+  "mergehistory": {
+    "class": "ApiMergeHistory",
+    "file": "includes/Api/ApiMergeHistory.php",
+    "kind": "action",
+    "params": {
+      "from": {
+        "type": "string"
+      },
+      "fromid": {
+        "type": "integer"
+      },
+      "reason": {
+        "default": "",
+        "type": "string"
+      },
+      "starttimestamp": {
+        "type": "string"
+      },
+      "timestamp": {
+        "type": "string"
+      },
+      "to": {
+        "type": "string"
+      },
+      "toid": {
+        "type": "integer"
+      },
+      "token": {
+        "note": "sensitive; injected by ApiBase::getFinalParams() via needsToken(), not declared in getAllowedParams()",
+        "type": "string"
+      }
+    },
+    "prefix": ""
+  },
+  "move": {
+    "class": "ApiMove",
+    "file": "includes/Api/ApiMove.php",
+    "kind": "action",
+    "params": {
+      "from": {
+        "type": "string"
+      },
+      "fromid": {
+        "type": "integer"
+      },
+      "ignorewarnings": {
+        "default": false,
+        "type": "boolean"
+      },
+      "movesubpages": {
+        "default": false,
+        "type": "boolean"
+      },
+      "movetalk": {
+        "default": false,
+        "type": "boolean"
+      },
+      "noredirect": {
+        "default": false,
+        "type": "boolean"
+      },
+      "reason": {
+        "default": "",
+        "type": "string"
+      },
+      "tags": {
+        "ismulti": true,
+        "type": "tags"
+      },
+      "to": {
+        "required": true,
+        "type": "string"
+      },
+      "token": {
+        "note": "sensitive; injected by ApiBase::getFinalParams() via needsToken(), not declared in getAllowedParams()",
+        "type": "string"
+      }
+    },
+    "prefix": ""
+  },
+  "mystashedfiles": {
+    "class": "ApiQueryMyStashedFiles",
+    "file": "includes/Api/ApiQueryMyStashedFiles.php",
+    "kind": "list",
+    "params": {
+      "msfcontinue": {
+        "type": "string"
+      },
+      "msflimit": {
+        "default": 10,
+        "param_max": 500,
+        "param_max2": 5000,
+        "param_min": 1,
+        "type": "limit"
+      },
+      "msfprop": {
+        "default": "",
+        "enum": [
+          "size",
+          "type"
+        ],
+        "ismulti": true,
+        "type": "enum"
+      }
+    },
+    "prefix": "msf"
+  },
+  "opensearch": {
+    "class": "ApiOpenSearch",
+    "file": "includes/Api/ApiOpenSearch.php",
+    "kind": "action",
+    "params": {
+      "format": {
+        "default": "json",
+        "enum": [
+          "json",
+          "jsonfm",
+          "xml",
+          "xmlfm"
+        ],
+        "type": "enum"
+      },
+      "limit": {
+        "type": "limit"
+      },
+      "namespace": {
+        "type": "namespace"
+      },
+      "offset": {
+        "type": "integer"
+      },
+      "redirects": {
+        "enum": [
+          "return",
+          "resolve"
+        ],
+        "type": "enum"
+      },
+      "search": {
+        "required": true,
+        "type": "string"
+      },
+      "suggest": {
+        "default": false,
+        "deprecated": true,
+        "type": "string"
+      },
+      "warningsaserror": {
+        "default": false,
+        "type": "boolean"
+      }
+    },
+    "prefix": ""
+  },
+  "options": {
+    "class": "ApiOptions",
+    "file": "includes/Api/ApiOptions.php",
+    "kind": "action",
+    "params": {
+      "change": {
+        "ismulti": true,
+        "type": "string"
+      },
+      "global": {
+        "default": "ignore",
+        "enum": [
+          "ignore",
+          "update",
+          "override",
+          "create"
+        ],
+        "type": "enum"
+      },
+      "optionname": {
+        "type": "string"
+      },
+      "optionvalue": {
+        "type": "string"
+      },
+      "reset": {
+        "default": false,
+        "type": "boolean"
+      },
+      "resetkinds": {
+        "default": "all",
+        "dynamic_type_expr": "$optionKinds",
+        "ismulti": true,
+        "type": "string"
+      },
+      "token": {
+        "note": "sensitive; injected by ApiBase::getFinalParams() via needsToken(), not declared in getAllowedParams()",
+        "type": "string"
+      }
+    },
+    "prefix": ""
+  },
+  "pagepropnames": {
+    "class": "ApiQueryPagePropNames",
+    "file": "includes/Api/ApiQueryPagePropNames.php",
+    "kind": "list",
+    "params": {
+      "ppncontinue": {
+        "type": "string"
+      },
+      "ppnlimit": {
+        "default": 10,
+        "param_max": 500,
+        "param_max2": 5000,
+        "param_min": 1,
+        "type": "limit"
+      }
+    },
+    "prefix": "ppn"
+  },
+  "pageprops": {
+    "class": "ApiQueryPageProps",
+    "file": "includes/Api/ApiQueryPageProps.php",
+    "kind": "prop",
+    "params": {
+      "ppcontinue": {
+        "type": "string"
+      },
+      "ppprop": {
+        "ismulti": true,
+        "type": "string"
+      }
+    },
+    "prefix": "pp"
+  },
+  "pageswithprop": {
+    "class": "ApiQueryPagesWithProp",
+    "file": "includes/Api/ApiQueryPagesWithProp.php",
+    "kind": "list",
+    "params": {
+      "pwpcontinue": {
+        "type": "string"
+      },
+      "pwpdir": {
+        "default": "ascending",
+        "enum": [
+          "ascending",
+          "descending"
+        ],
+        "type": "enum"
+      },
+      "pwplimit": {
+        "default": 10,
+        "param_max": 500,
+        "param_max2": 5000,
+        "param_min": 1,
+        "type": "limit"
+      },
+      "pwpprop": {
+        "default": "ids|title",
+        "enum": [
+          "ids",
+          "title",
+          "value"
+        ],
+        "ismulti": true,
+        "type": "enum"
+      },
+      "pwppropname": {
+        "required": true,
+        "type": "string"
+      }
+    },
+    "prefix": "pwp"
+  },
+  "paraminfo": {
+    "class": "ApiParamInfo",
+    "file": "includes/Api/ApiParamInfo.php",
+    "kind": "action",
+    "params": {
+      "formatmodules": {
+        "deprecated": true,
+        "dynamic_type_expr": "$formatmodules",
+        "ismulti": true,
+        "type": "string"
+      },
+      "helpformat": {
+        "default": "none",
+        "enum": [
+          "html",
+          "wikitext",
+          "raw",
+          "none"
+        ],
+        "type": "enum"
+      },
+      "mainmodule": {
+        "deprecated": true,
+        "type": "string"
+      },
+      "modules": {
+        "ismulti": true,
+        "type": "string"
+      },
+      "pagesetmodule": {
+        "deprecated": true,
+        "type": "string"
+      },
+      "querymodules": {
+        "deprecated": true,
+        "dynamic_type_expr": "$querymodules",
+        "ismulti": true,
+        "type": "string"
+      }
+    },
+    "prefix": ""
+  },
+  "parse": {
+    "class": "ApiParse",
+    "file": "includes/Api/ApiParse.php",
+    "kind": "action",
+    "params": {
+      "contentformat": {
+        "dynamic_type_expr": "$this->contentHandlerFactory->getAllContentFormats()",
+        "type": "string"
+      },
+      "contentmodel": {
+        "dynamic_type_expr": "$this->contentHandlerFactory->getContentModels()",
+        "type": "string"
+      },
+      "disableeditsection": {
+        "default": false,
+        "type": "boolean"
+      },
+      "disablelimitreport": {
+        "default": false,
+        "type": "boolean"
+      },
+      "disablepp": {
+        "default": false,
+        "deprecated": true,
+        "type": "string"
+      },
+      "disablestylededuplication": {
+        "default": false,
+        "type": "boolean"
+      },
+      "disabletoc": {
+        "default": false,
+        "type": "boolean"
+      },
+      "effectivelanglinks": {
+        "default": false,
+        "deprecated": true,
+        "type": "string"
+      },
+      "generatexml": {
+        "default": false,
+        "deprecated": true,
+        "type": "string"
+      },
+      "oldid": {
+        "type": "integer"
+      },
+      "onlypst": {
+        "default": false,
+        "type": "boolean"
+      },
+      "page": {
+        "type": "string"
+      },
+      "pageid": {
+        "type": "integer"
+      },
+      "parser": {
+        "default": "default",
+        "enum": [
+          "parsoid",
+          "default",
+          "legacy"
+        ],
+        "type": "enum"
+      },
+      "parsoid": {
+        "default": false,
+        "deprecated": true,
+        "type": "boolean"
+      },
+      "preview": {
+        "default": false,
+        "type": "boolean"
+      },
+      "prop": {
+        "default": "text|langlinks|categories|links|templates|",
+        "enum": [
+          "text",
+          "langlinks",
+          "categories",
+          "categorieshtml",
+          "links",
+          "templates",
+          "images",
+          "externallinks",
+          "sections",
+          "tocdata",
+          "revid",
+          "displaytitle",
+          "subtitle",
+          "headhtml",
+          "modules",
+          "jsconfigvars",
+          "encodedjsconfigvars",
+          "indicators",
+          "iwlinks",
+          "wikitext",
+          "properties",
+          "limitreportdata",
+          "limitreporthtml",
+          "parsetree",
+          "parsewarnings",
+          "parsewarningshtml",
+          "headitems"
+        ],
+        "ismulti": true,
+        "type": "enum"
+      },
+      "pst": {
+        "default": false,
+        "type": "boolean"
+      },
+      "redirects": {
+        "default": false,
+        "type": "boolean"
+      },
+      "revid": {
+        "type": "integer"
+      },
+      "section": {
+        "type": "string"
+      },
+      "sectionpreview": {
+        "default": false,
+        "type": "boolean"
+      },
+      "sectiontitle": {
+        "type": "string"
+      },
+      "showstrategykeys": {
+        "default": false,
+        "type": "boolean"
+      },
+      "summary": {
+        "type": "string"
+      },
+      "text": {
+        "type": "text"
+      },
+      "title": {
+        "type": "string"
+      },
+      "usearticle": {
+        "default": false,
+        "type": "boolean"
+      },
+      "useskin": {
+        "dynamic_type_expr": "array_keys( $this->skinFactory->getInstalledSkins() )",
+        "type": "string"
+      },
+      "wrapoutputclass": {
+        "default": "mw-parser-output",
+        "type": "string"
+      }
+    },
+    "prefix": ""
+  },
+  "patrol": {
+    "class": "ApiPatrol",
+    "file": "includes/Api/ApiPatrol.php",
+    "kind": "action",
+    "params": {
+      "rcid": {
+        "type": "integer"
+      },
+      "revid": {
+        "type": "integer"
+      },
+      "tags": {
+        "ismulti": true,
+        "type": "tags"
+      },
+      "token": {
+        "note": "sensitive; injected by ApiBase::getFinalParams() via needsToken(), not declared in getAllowedParams()",
+        "type": "string"
+      }
+    },
+    "prefix": ""
+  },
+  "prefixsearch": {
+    "class": "ApiQueryPrefixSearch",
+    "file": "includes/Api/ApiQueryPrefixSearch.php",
+    "kind": "list",
+    "params": {
+      "pslimit": {
+        "type": "limit"
+      },
+      "psnamespace": {
+        "type": "namespace"
+      },
+      "psoffset": {
+        "type": "integer"
+      },
+      "pssearch": {
+        "required": true,
+        "type": "string"
+      }
+    },
+    "prefix": "ps"
+  },
+  "protect": {
+    "class": "ApiProtect",
+    "file": "includes/Api/ApiProtect.php",
+    "kind": "action",
+    "params": {
+      "cascade": {
+        "default": false,
+        "type": "boolean"
+      },
+      "expiry": {
+        "default": "infinite",
+        "ismulti": true,
+        "type": "string"
+      },
+      "pageid": {
+        "type": "integer"
+      },
+      "protections": {
+        "ismulti": true,
+        "required": true,
+        "type": "string"
+      },
+      "reason": {
+        "default": "",
+        "type": "string"
+      },
+      "tags": {
+        "ismulti": true,
+        "type": "tags"
+      },
+      "title": {
+        "type": "string"
+      },
+      "token": {
+        "note": "sensitive; injected by ApiBase::getFinalParams() via needsToken(), not declared in getAllowedParams()",
+        "type": "string"
+      },
+      "watch": {
+        "default": false,
+        "deprecated": true,
+        "type": "string"
+      }
+    },
+    "prefix": ""
+  },
+  "protectedtitles": {
+    "class": "ApiQueryProtectedTitles",
+    "file": "includes/Api/ApiQueryProtectedTitles.php",
+    "kind": "list",
+    "params": {
+      "ptcontinue": {
+        "type": "string"
+      },
+      "ptdir": {
+        "default": "older",
+        "enum": [
+          "newer",
+          "older"
+        ],
+        "type": "enum"
+      },
+      "ptend": {
+        "type": "timestamp"
+      },
+      "ptlevel": {
+        "dynamic_type_expr": "array_diff(\n\t\t\t\t\t$this->getConfig()->get( MainConfigNames::RestrictionLevels ), [ '' ] )",
+        "ismulti": true,
+        "type": "string"
+      },
+      "ptlimit": {
+        "default": 10,
+        "param_max": 500,
+        "param_max2": 5000,
+        "param_min": 1,
+        "type": "limit"
+      },
+      "ptnamespace": {
+        "ismulti": true,
+        "type": "namespace"
+      },
+      "ptprop": {
+        "default": "timestamp|level",
+        "enum": [
+          "timestamp",
+          "user",
+          "userid",
+          "comment",
+          "parsedcomment",
+          "expiry",
+          "level"
+        ],
+        "ismulti": true,
+        "type": "enum"
+      },
+      "ptstart": {
+        "type": "timestamp"
+      }
+    },
+    "prefix": "pt"
+  },
+  "purge": {
+    "class": "ApiPurge",
+    "file": "includes/Api/ApiPurge.php",
+    "kind": "action",
+    "params": {
+      "continue": {
+        "type": "string"
+      },
+      "forcelinkupdate": {
+        "default": false,
+        "type": "boolean"
+      },
+      "forcerecursivelinkupdate": {
+        "default": false,
+        "type": "boolean"
+      }
+    },
+    "prefix": ""
+  },
+  "query": {
+    "class": "ApiQuery",
+    "file": "includes/Api/ApiQuery.php",
+    "kind": "action",
+    "params": {
+      "continue": {
+        "type": "string"
+      },
+      "export": {
+        "default": false,
+        "type": "boolean"
+      },
+      "exportnowrap": {
+        "default": false,
+        "type": "boolean"
+      },
+      "exportschema": {
+        "default": {
+          "__dynamic__": "WikiExporter::schemaVersion()"
+        },
+        "dynamic_type_expr": "XmlDumpWriter::$supportedSchemas",
+        "type": "string"
+      },
+      "indexpageids": {
+        "default": false,
+        "type": "boolean"
+      },
+      "iwurl": {
+        "default": false,
+        "type": "boolean"
+      },
+      "list": {
+        "ismulti": true,
+        "type": "submodule"
+      },
+      "meta": {
+        "ismulti": true,
+        "type": "submodule"
+      },
+      "prop": {
+        "ismulti": true,
+        "type": "submodule"
+      },
+      "rawcontinue": {
+        "default": false,
+        "type": "boolean"
+      }
+    },
+    "prefix": ""
+  },
+  "querypage": {
+    "class": "ApiQueryQueryPage",
+    "file": "includes/Api/ApiQueryQueryPage.php",
+    "kind": "list",
+    "params": {
+      "qplimit": {
+        "default": 10,
+        "param_max": 500,
+        "param_max2": 5000,
+        "param_min": 1,
+        "type": "limit"
+      },
+      "qpoffset": {
+        "default": 0,
+        "type": "string"
+      },
+      "qppage": {
+        "dynamic_type_expr": "$this->queryPages",
+        "required": true,
+        "type": "string"
+      }
+    },
+    "prefix": "qp"
+  },
+  "random": {
+    "class": "ApiQueryRandom",
+    "file": "includes/Api/ApiQueryRandom.php",
+    "kind": "list",
+    "params": {
+      "rncontentmodel": {
+        "dynamic_type_expr": "$this->contentHandlerFactory->getContentModels()",
+        "type": "string"
+      },
+      "rncontinue": {
+        "type": "string"
+      },
+      "rnfilterredir": {
+        "default": "nonredirects",
+        "enum": [
+          "all",
+          "redirects",
+          "nonredirects"
+        ],
+        "type": "enum"
+      },
+      "rnlimit": {
+        "default": 1,
+        "param_max": 500,
+        "param_max2": 5000,
+        "param_min": 1,
+        "type": "limit"
+      },
+      "rnmaxsize": {
+        "type": "integer"
+      },
+      "rnminsize": {
+        "type": "integer"
+      },
+      "rnnamespace": {
+        "ismulti": true,
+        "type": "namespace"
+      },
+      "rnredirect": {
+        "default": false,
+        "deprecated": true,
+        "type": "string"
+      }
+    },
+    "prefix": "rn"
+  },
+  "recentchanges": {
+    "class": "ApiQueryRecentChanges",
+    "file": "includes/Api/ApiQueryRecentChanges.php",
+    "kind": "list",
+    "params": {
+      "rccontinue": {
+        "type": "string"
+      },
+      "rcdir": {
+        "default": "older",
+        "enum": [
+          "newer",
+          "older"
+        ],
+        "type": "enum"
+      },
+      "rcend": {
+        "type": "timestamp"
+      },
+      "rcexcludeuser": {
+        "type": "user"
+      },
+      "rcgeneraterevisions": {
+        "default": false,
+        "type": "boolean"
+      },
+      "rclimit": {
+        "default": 10,
+        "param_max": 500,
+        "param_max2": 5000,
+        "param_min": 1,
+        "type": "limit"
+      },
+      "rcnamespace": {
+        "ismulti": true,
+        "type": "namespace"
+      },
+      "rcprop": {
+        "default": "title|timestamp|ids",
+        "enum": [
+          "user",
+          "userid",
+          "comment",
+          "parsedcomment",
+          "flags",
+          "timestamp",
+          "title",
+          "ids",
+          "sizes",
+          "redirect",
+          "patrolled",
+          "loginfo",
+          "tags",
+          "sha1"
+        ],
+        "ismulti": true,
+        "type": "enum"
+      },
+      "rcshow": {
+        "enum": [
+          "minor",
+          "!minor",
+          "bot",
+          "!bot",
+          "anon",
+          "!anon",
+          "redirect",
+          "!redirect",
+          "patrolled",
+          "!patrolled",
+          "unpatrolled",
+          "autopatrolled",
+          "!autopatrolled"
+        ],
+        "ismulti": true,
+        "type": "enum"
+      },
+      "rcslot": {
+        "dynamic_type_expr": "$slotRoles",
+        "type": "string"
+      },
+      "rcstart": {
+        "type": "timestamp"
+      },
+      "rctag": {
+        "type": "string"
+      },
+      "rctitle": {
+        "type": "string"
+      },
+      "rctoponly": {
+        "default": false,
+        "type": "boolean"
+      },
+      "rctype": {
+        "default": "edit|new|log|categorize",
+        "dynamic_type_expr": "RecentChange::getChangeTypes()",
+        "ismulti": true,
+        "type": "string"
+      },
+      "rcuser": {
+        "type": "user"
+      }
+    },
+    "prefix": "rc"
+  },
+  "redirects": {
+    "class": "ApiQueryBacklinksprop",
+    "file": "includes/Api/ApiQueryBacklinksprop.php",
+    "kind": "prop",
+    "params": {
+      "rdcontinue": {
+        "type": "string"
+      },
+      "rdlimit": {
+        "default": 10,
+        "param_max": 500,
+        "param_max2": 5000,
+        "param_min": 1,
+        "type": "limit"
+      },
+      "rdnamespace": {
+        "ismulti": true,
+        "type": "namespace"
+      },
+      "rdprop": {
+        "default": "pageid|title",
+        "enum": [
+          "pageid",
+          "title"
+        ],
+        "ismulti": true,
+        "type": "enum"
+      },
+      "rdshow": {
+        "type": "string"
+      }
+    },
+    "prefix": "rd"
+  },
+  "removeauthenticationdata": {
+    "class": "ApiRemoveAuthenticationData",
+    "file": "includes/Api/ApiRemoveAuthenticationData.php",
+    "kind": "action",
+    "params": {
+      "token": {
+        "note": "sensitive; injected by ApiBase::getFinalParams() via needsToken(), not declared in getAllowedParams()",
+        "type": "string"
+      }
+    },
+    "prefix": ""
+  },
+  "resetpassword": {
+    "class": "ApiResetPassword",
+    "file": "includes/Api/ApiResetPassword.php",
+    "kind": "action",
+    "params": {
+      "email": {
+        "type": "string"
+      },
+      "token": {
+        "note": "sensitive; injected by ApiBase::getFinalParams() via needsToken(), not declared in getAllowedParams()",
+        "type": "string"
+      },
+      "user": {
+        "type": "user"
+      }
+    },
+    "prefix": ""
+  },
+  "revisiondelete": {
+    "class": "ApiRevisionDelete",
+    "file": "includes/Api/ApiRevisionDelete.php",
+    "kind": "action",
+    "params": {
+      "hide": {
+        "enum": [
+          "content",
+          "comment",
+          "user"
+        ],
+        "ismulti": true,
+        "type": "enum"
+      },
+      "ids": {
+        "ismulti": true,
+        "required": true,
+        "type": "string"
+      },
+      "reason": {
+        "type": "string"
+      },
+      "show": {
+        "enum": [
+          "content",
+          "comment",
+          "user"
+        ],
+        "ismulti": true,
+        "type": "enum"
+      },
+      "suppress": {
+        "default": "nochange",
+        "enum": [
+          "yes",
+          "no",
+          "nochange"
+        ],
+        "type": "enum"
+      },
+      "tags": {
+        "ismulti": true,
+        "type": "tags"
+      },
+      "target": {
+        "type": "string"
+      },
+      "token": {
+        "note": "sensitive; injected by ApiBase::getFinalParams() via needsToken(), not declared in getAllowedParams()",
+        "type": "string"
+      },
+      "type": {
+        "dynamic_type_expr": "RevisionDeleter::getTypes()",
+        "required": true,
+        "type": "string"
+      }
+    },
+    "prefix": ""
+  },
+  "revisions": {
+    "class": "ApiQueryRevisions",
+    "file": "includes/Api/ApiQueryRevisions.php",
+    "kind": "prop",
+    "params": {
+      "rvcontentformat": {
+        "deprecated": true,
+        "dynamic_type_expr": "$this->contentHandlerFactory->getAllContentFormats()",
+        "type": "string"
+      },
+      "rvcontentformat-{slot}": {
+        "dynamic_type_expr": "$this->contentHandlerFactory->getAllContentFormats()",
+        "type": "string"
+      },
+      "rvcontinue": {
+        "type": "string"
+      },
+      "rvdiffto": {
+        "deprecated": true,
+        "type": "string"
+      },
+      "rvdifftotext": {
+        "deprecated": true,
+        "type": "string"
+      },
+      "rvdifftotextpst": {
+        "default": false,
+        "deprecated": true,
+        "type": "string"
+      },
+      "rvdir": {
+        "default": "older",
+        "enum": [
+          "newer",
+          "older"
+        ],
+        "type": "enum"
+      },
+      "rvend": {
+        "type": "timestamp"
+      },
+      "rvendid": {
+        "type": "integer"
+      },
+      "rvexcludeuser": {
+        "type": "user"
+      },
+      "rvexpandtemplates": {
+        "default": false,
+        "deprecated": true,
+        "type": "string"
+      },
+      "rvgeneratexml": {
+        "default": false,
+        "deprecated": true,
+        "type": "string"
+      },
+      "rvlimit": {
+        "param_max": 500,
+        "param_max2": 5000,
+        "param_min": 1,
+        "type": "limit"
+      },
+      "rvparse": {
+        "default": false,
+        "deprecated": true,
+        "type": "string"
+      },
+      "rvprop": {
+        "default": "ids|timestamp|flags|comment|user",
+        "enum": [
+          "ids",
+          "flags",
+          "timestamp",
+          "user",
+          "userid",
+          "size",
+          "slotsize",
+          "sha1",
+          "slotsha1",
+          "contentmodel",
+          "comment",
+          "parsedcomment",
+          "content",
+          "tags",
+          "roles",
+          "parsetree"
+        ],
+        "ismulti": true,
+        "type": "enum"
+      },
+      "rvsection": {
+        "type": "string"
+      },
+      "rvslots": {
+        "dynamic_type_expr": "$slotRoles",
+        "ismulti": true,
+        "type": "string"
+      },
+      "rvstart": {
+        "type": "timestamp"
+      },
+      "rvstartid": {
+        "type": "integer"
+      },
+      "rvtag": {
+        "type": "string"
+      },
+      "rvuser": {
+        "type": "user"
+      }
+    },
+    "prefix": "rv"
+  },
+  "rollback": {
+    "class": "ApiRollback",
+    "file": "includes/Api/ApiRollback.php",
+    "kind": "action",
+    "params": {
+      "markbot": {
+        "default": false,
+        "type": "boolean"
+      },
+      "pageid": {
+        "type": "integer"
+      },
+      "summary": {
+        "default": "",
+        "type": "string"
+      },
+      "tags": {
+        "ismulti": true,
+        "type": "tags"
+      },
+      "title": {
+        "type": "string"
+      },
+      "token": {
+        "type": "string"
+      },
+      "user": {
+        "required": true,
+        "type": "user"
+      }
+    },
+    "prefix": ""
+  },
+  "rsd": {
+    "class": "ApiRsd",
+    "file": "includes/Api/ApiRsd.php",
+    "kind": "action",
+    "params": {},
+    "prefix": ""
+  },
+  "search": {
+    "class": "ApiQuerySearch",
+    "file": "includes/Api/ApiQuerySearch.php",
+    "kind": "list",
+    "params": {
+      "srenablerewrites": {
+        "default": false,
+        "type": "boolean"
+      },
+      "srinfo": {
+        "default": "totalhits|suggestion|rewrittenquery",
+        "enum": [
+          "totalhits",
+          "suggestion",
+          "rewrittenquery"
+        ],
+        "ismulti": true,
+        "type": "enum"
+      },
+      "srinterwiki": {
+        "default": false,
+        "type": "boolean"
+      },
+      "srlimit": {
+        "type": "limit"
+      },
+      "srnamespace": {
+        "type": "namespace"
+      },
+      "sroffset": {
+        "type": "integer"
+      },
+      "srprop": {
+        "default": "size|wordcount|timestamp|snippet",
+        "enum": [
+          "size",
+          "wordcount",
+          "timestamp",
+          "snippet",
+          "titlesnippet",
+          "redirecttitle",
+          "redirectsnippet",
+          "sectiontitle",
+          "sectionsnippet",
+          "isfilematch",
+          "categorysnippet",
+          "score",
+          "hasrelated",
+          "extensiondata"
+        ],
+        "ismulti": true,
+        "type": "enum"
+      },
+      "srsearch": {
+        "required": true,
+        "type": "string"
+      },
+      "srsort": {
+        "default": {
+          "__dynamic__": "SearchEngine::DEFAULT_SORT"
+        },
+        "dynamic_type_expr": "$this->searchEngineFactory->create()->getValidSorts()",
+        "type": "string"
+      },
+      "srwhat": {
+        "enum": [
+          "title",
+          "text",
+          "nearmatch"
+        ],
+        "type": "enum"
+      }
+    },
+    "prefix": "sr"
+  },
+  "setnotificationtimestamp": {
+    "class": "ApiSetNotificationTimestamp",
+    "file": "includes/Api/ApiSetNotificationTimestamp.php",
+    "kind": "action",
+    "params": {
+      "continue": {
+        "type": "string"
+      },
+      "entirewatchlist": {
+        "type": "boolean"
+      },
+      "newerthanrevid": {
+        "type": "integer"
+      },
+      "timestamp": {
+        "type": "timestamp"
+      },
+      "token": {
+        "note": "sensitive; injected by ApiBase::getFinalParams() via needsToken(), not declared in getAllowedParams()",
+        "type": "string"
+      },
+      "torevid": {
+        "type": "integer"
+      }
+    },
+    "prefix": ""
+  },
+  "setpagelanguage": {
+    "class": "ApiSetPageLanguage",
+    "file": "includes/Api/ApiSetPageLanguage.php",
+    "kind": "action",
+    "params": {
+      "lang": {
+        "enum": [
+          "default"
+        ],
+        "required": true,
+        "type": "enum"
+      },
+      "pageid": {
+        "type": "integer"
+      },
+      "reason": {
+        "type": "string"
+      },
+      "tags": {
+        "ismulti": true,
+        "type": "tags"
+      },
+      "title": {
+        "type": "string"
+      },
+      "token": {
+        "note": "sensitive; injected by ApiBase::getFinalParams() via needsToken(), not declared in getAllowedParams()",
+        "type": "string"
+      }
+    },
+    "prefix": ""
+  },
+  "siteinfo": {
+    "class": "ApiQuerySiteinfo",
+    "file": "includes/Api/ApiQuerySiteinfo.php",
+    "kind": "meta",
+    "params": {
+      "sifilteriw": {
+        "enum": [
+          "local",
+          "!local"
+        ],
+        "type": "enum"
+      },
+      "siinlanguagecode": {
+        "type": "string"
+      },
+      "sinumberingroup": {
+        "default": false,
+        "type": "boolean"
+      },
+      "siprop": {
+        "default": "general",
+        "enum": [
+          "general",
+          "namespaces",
+          "namespacealiases",
+          "specialpagealiases",
+          "magicwords",
+          "interwikimap",
+          "dbrepllag",
+          "statistics",
+          "usergroups",
+          "autocreatetempuser",
+          "clientlibraries",
+          "libraries",
+          "extensions",
+          "fileextensions",
+          "rightsinfo",
+          "restrictions",
+          "languages",
+          "languagevariants",
+          "skins",
+          "extensiontags",
+          "functionhooks",
+          "showhooks",
+          "variables",
+          "doubleunderscores",
+          "protocols",
+          "defaultoptions",
+          "uploaddialog",
+          "autopromote",
+          "autopromoteonce",
+          "copyuploaddomains",
+          "sbom"
+        ],
+        "ismulti": true,
+        "type": "enum"
+      },
+      "sishowalldb": {
+        "default": false,
+        "type": "boolean"
+      }
+    },
+    "prefix": "si"
+  },
+  "stashedit": {
+    "class": "ApiStashEdit",
+    "file": "includes/Api/ApiStashEdit.php",
+    "kind": "action",
+    "params": {
+      "baserevid": {
+        "required": true,
+        "type": "integer"
+      },
+      "contentformat": {
+        "dynamic_type_expr": "$this->contentHandlerFactory->getAllContentFormats()",
+        "required": true,
+        "type": "string"
+      },
+      "contentmodel": {
+        "dynamic_type_expr": "$this->contentHandlerFactory->getContentModels()",
+        "required": true,
+        "type": "string"
+      },
+      "section": {
+        "type": "string"
+      },
+      "sectiontitle": {
+        "type": "string"
+      },
+      "stashedtexthash": {
+        "default": null,
+        "type": "string"
+      },
+      "summary": {
+        "default": "",
+        "type": "string"
+      },
+      "text": {
+        "default": null,
+        "type": "text"
+      },
+      "title": {
+        "required": true,
+        "type": "string"
+      },
+      "token": {
+        "note": "sensitive; injected by ApiBase::getFinalParams() via needsToken(), not declared in getAllowedParams()",
+        "type": "string"
+      }
+    },
+    "prefix": ""
+  },
+  "stashimageinfo": {
+    "class": "ApiQueryStashImageInfo",
+    "file": "includes/Api/ApiQueryStashImageInfo.php",
+    "kind": "prop",
+    "params": {
+      "siifilekey": {
+        "ismulti": true,
+        "type": "string"
+      },
+      "siiprop": {
+        "default": "timestamp|url",
+        "dynamic_type_expr": "self::getPropertyNames()",
+        "ismulti": true,
+        "type": "string"
+      },
+      "siisessionkey": {
+        "deprecated": true,
+        "ismulti": true,
+        "type": "string"
+      },
+      "siiurlheight": {
+        "default": -1,
+        "type": "integer"
+      },
+      "siiurlparam": {
+        "default": "",
+        "type": "string"
+      },
+      "siiurlwidth": {
+        "default": -1,
+        "type": "integer"
+      }
+    },
+    "prefix": "sii"
+  },
+  "tag": {
+    "class": "ApiTag",
+    "file": "includes/Api/ApiTag.php",
+    "kind": "action",
+    "params": {
+      "add": {
+        "ismulti": true,
+        "type": "tags"
+      },
+      "logid": {
+        "ismulti": true,
+        "type": "integer"
+      },
+      "rcid": {
+        "ismulti": true,
+        "type": "integer"
+      },
+      "reason": {
+        "default": "",
+        "type": "string"
+      },
+      "remove": {
+        "ismulti": true,
+        "type": "string"
+      },
+      "revid": {
+        "ismulti": true,
+        "type": "integer"
+      },
+      "tags": {
+        "ismulti": true,
+        "type": "tags"
+      },
+      "token": {
+        "note": "sensitive; injected by ApiBase::getFinalParams() via needsToken(), not declared in getAllowedParams()",
+        "type": "string"
+      }
+    },
+    "prefix": ""
+  },
+  "tags": {
+    "class": "ApiQueryTags",
+    "file": "includes/Api/ApiQueryTags.php",
+    "kind": "list",
+    "params": {
+      "tgcontinue": {
+        "type": "string"
+      },
+      "tglimit": {
+        "default": 10,
+        "param_max": 500,
+        "param_max2": 5000,
+        "param_min": 1,
+        "type": "limit"
+      },
+      "tgprop": {
+        "default": "",
+        "enum": [
+          "displayname",
+          "description",
+          "hitcount",
+          "defined",
+          "source",
+          "active"
+        ],
+        "ismulti": true,
+        "type": "enum"
+      }
+    },
+    "prefix": "tg"
+  },
+  "templates": {
+    "class": "ApiQueryLinks",
+    "file": "includes/Api/ApiQueryLinks.php",
+    "kind": "prop",
+    "params": {
+      "tlcontinue": {
+        "type": "string"
+      },
+      "tldir": {
+        "default": "ascending",
+        "enum": [
+          "ascending",
+          "descending"
+        ],
+        "type": "enum"
+      },
+      "tllimit": {
+        "default": 10,
+        "param_max": 500,
+        "param_max2": 5000,
+        "param_min": 1,
+        "type": "limit"
+      },
+      "tlnamespace": {
+        "ismulti": true,
+        "type": "namespace"
+      }
+    },
+    "prefix": "tl"
+  },
+  "tokens": {
+    "class": "ApiQueryTokens",
+    "file": "includes/Api/ApiQueryTokens.php",
+    "kind": "meta",
+    "params": {
+      "type": {
+        "default": "csrf",
+        "dynamic_type_expr": "array_keys( self::getTokenTypeSalts() )",
+        "ismulti": true,
+        "type": "string"
+      }
+    },
+    "prefix": ""
+  },
+  "trackingcategories": {
+    "class": "ApiQueryTrackingCategories",
+    "file": "includes/Api/ApiQueryTrackingCategories.php",
+    "kind": "list",
+    "params": {
+      "tccontinue": {
+        "type": "string"
+      },
+      "tclimit": {
+        "default": 10,
+        "param_max": 500,
+        "param_max2": 5000,
+        "param_min": 1,
+        "type": "limit"
+      },
+      "tcmax": {
+        "type": "integer"
+      },
+      "tcmin": {
+        "type": "integer"
+      },
+      "tcprop": {
+        "default": "",
+        "enum": [
+          "size",
+          "hidden"
+        ],
+        "ismulti": true,
+        "type": "enum"
+      },
+      "tctrackingcatname": {
+        "ismulti": true,
+        "type": "string"
+      }
+    },
+    "prefix": "tc"
+  },
+  "transcludedin": {
+    "class": "ApiQueryBacklinksprop",
+    "file": "includes/Api/ApiQueryBacklinksprop.php",
+    "kind": "prop",
+    "params": {
+      "ticontinue": {
+        "type": "string"
+      },
+      "tilimit": {
+        "default": 10,
+        "param_max": 500,
+        "param_max2": 5000,
+        "param_min": 1,
+        "type": "limit"
+      },
+      "tinamespace": {
+        "ismulti": true,
+        "type": "namespace"
+      },
+      "tiprop": {
+        "default": "pageid|title",
+        "enum": [
+          "pageid",
+          "title"
+        ],
+        "ismulti": true,
+        "type": "enum"
+      },
+      "tishow": {
+        "type": "string"
+      }
+    },
+    "prefix": "ti"
+  },
+  "unblock": {
+    "class": "ApiUnblock",
+    "file": "includes/Api/ApiUnblock.php",
+    "kind": "action",
+    "params": {
+      "id": {
+        "type": "integer"
+      },
+      "reason": {
+        "default": "",
+        "type": "string"
+      },
+      "tags": {
+        "ismulti": true,
+        "type": "tags"
+      },
+      "token": {
+        "note": "sensitive; injected by ApiBase::getFinalParams() via needsToken(), not declared in getAllowedParams()",
+        "type": "string"
+      },
+      "user": {
+        "type": "user"
+      },
+      "userid": {
+        "deprecated": true,
+        "type": "integer"
+      },
+      "watchlistexpiry": {
+        "type": "expiry"
+      },
+      "watchuser": {
+        "default": false,
+        "type": "boolean"
+      }
+    },
+    "prefix": ""
+  },
+  "undelete": {
+    "class": "ApiUndelete",
+    "file": "includes/Api/ApiUndelete.php",
+    "kind": "action",
+    "params": {
+      "fileids": {
+        "ismulti": true,
+        "type": "integer"
+      },
+      "reason": {
+        "default": "",
+        "type": "string"
+      },
+      "tags": {
+        "ismulti": true,
+        "type": "tags"
+      },
+      "timestamps": {
+        "ismulti": true,
+        "type": "timestamp"
+      },
+      "title": {
+        "required": true,
+        "type": "string"
+      },
+      "token": {
+        "note": "sensitive; injected by ApiBase::getFinalParams() via needsToken(), not declared in getAllowedParams()",
+        "type": "string"
+      },
+      "undeletetalk": {
+        "default": false,
+        "type": "boolean"
+      }
+    },
+    "prefix": ""
+  },
+  "unlinkaccount": {
+    "class": "ApiRemoveAuthenticationData",
+    "file": "includes/Api/ApiRemoveAuthenticationData.php",
+    "kind": "action",
+    "params": {
+      "token": {
+        "note": "sensitive; injected by ApiBase::getFinalParams() via needsToken(), not declared in getAllowedParams()",
+        "type": "string"
+      }
+    },
+    "prefix": ""
+  },
+  "upload": {
+    "class": "ApiUpload",
+    "file": "includes/Api/ApiUpload.php",
+    "kind": "action",
+    "params": {
+      "async": {
+        "default": false,
+        "type": "boolean"
+      },
+      "checkstatus": {
+        "default": false,
+        "type": "boolean"
+      },
+      "chunk": {
+        "type": "upload"
+      },
+      "comment": {
+        "default": "",
+        "type": "string"
+      },
+      "file": {
+        "type": "upload"
+      },
+      "filekey": {
+        "type": "string"
+      },
+      "filename": {
+        "type": "string"
+      },
+      "filesize": {
+        "param_min": 0,
+        "type": "integer"
+      },
+      "ignorewarnings": {
+        "default": false,
+        "type": "boolean"
+      },
+      "offset": {
+        "param_min": 0,
+        "type": "integer"
+      },
+      "sessionkey": {
+        "deprecated": true,
+        "type": "string"
+      },
+      "stash": {
+        "default": false,
+        "type": "boolean"
+      },
+      "tags": {
+        "ismulti": true,
+        "type": "tags"
+      },
+      "text": {
+        "type": "text"
+      },
+      "token": {
+        "note": "sensitive; injected by ApiBase::getFinalParams() via needsToken(), not declared in getAllowedParams()",
+        "type": "string"
+      },
+      "url": {
+        "type": "string"
+      },
+      "watch": {
+        "default": false,
+        "deprecated": true,
+        "type": "string"
+      }
+    },
+    "prefix": ""
+  },
+  "usercontribs": {
+    "class": "ApiQueryUserContribs",
+    "file": "includes/Api/ApiQueryUserContribs.php",
+    "kind": "list",
+    "params": {
+      "uccontinue": {
+        "type": "string"
+      },
+      "ucdir": {
+        "default": "older",
+        "enum": [
+          "newer",
+          "older"
+        ],
+        "type": "enum"
+      },
+      "ucend": {
+        "type": "timestamp"
+      },
+      "uciprange": {
+        "type": "string"
+      },
+      "uclimit": {
+        "default": 10,
+        "param_max": 500,
+        "param_max2": 5000,
+        "param_min": 1,
+        "type": "limit"
+      },
+      "ucnamespace": {
+        "ismulti": true,
+        "type": "namespace"
+      },
+      "ucprop": {
+        "default": "ids|title|timestamp|comment|size|flags",
+        "enum": [
+          "ids",
+          "title",
+          "timestamp",
+          "comment",
+          "parsedcomment",
+          "size",
+          "sizediff",
+          "flags",
+          "patrolled",
+          "tags"
+        ],
+        "ismulti": true,
+        "type": "enum"
+      },
+      "ucshow": {
+        "enum": [
+          "minor",
+          "!minor",
+          "patrolled",
+          "!patrolled",
+          "autopatrolled",
+          "!autopatrolled",
+          "top",
+          "!top",
+          "new",
+          "!new"
+        ],
+        "ismulti": true,
+        "type": "enum"
+      },
+      "ucstart": {
+        "type": "timestamp"
+      },
+      "uctag": {
+        "type": "string"
+      },
+      "uctoponly": {
+        "default": false,
+        "deprecated": true,
+        "type": "string"
+      },
+      "ucuser": {
+        "ismulti": true,
+        "type": "user"
+      },
+      "ucuserids": {
+        "ismulti": true,
+        "type": "integer"
+      },
+      "ucuserprefix": {
+        "type": "string"
+      }
+    },
+    "prefix": "uc"
+  },
+  "userinfo": {
+    "class": "ApiQueryUserInfo",
+    "file": "includes/Api/ApiQueryUserInfo.php",
+    "kind": "meta",
+    "params": {
+      "uiattachedwiki": {
+        "type": "string"
+      },
+      "uiprop": {
+        "enum": [
+          "blockinfo",
+          "hasmsg",
+          "groups",
+          "groupmemberships",
+          "implicitgroups",
+          "rights",
+          "changeablegroups",
+          "options",
+          "editcount",
+          "ratelimits",
+          "theoreticalratelimits",
+          "email",
+          "realname",
+          "acceptlang",
+          "registrationdate",
+          "unreadcount",
+          "watchlistlabels",
+          "centralids",
+          "latestcontrib",
+          "cancreateaccount"
+        ],
+        "ismulti": true,
+        "type": "enum"
+      }
+    },
+    "prefix": "ui"
+  },
+  "userrights": {
+    "class": "ApiUserrights",
+    "file": "includes/Api/ApiUserrights.php",
+    "kind": "action",
+    "params": {
+      "add": {
+        "dynamic_type_expr": "$allGroups",
+        "ismulti": true,
+        "type": "string"
+      },
+      "expiry": {
+        "default": "infinite",
+        "ismulti": true,
+        "type": "string"
+      },
+      "reason": {
+        "default": "",
+        "type": "string"
+      },
+      "remove": {
+        "dynamic_type_expr": "$allGroups",
+        "ismulti": true,
+        "type": "string"
+      },
+      "tags": {
+        "ismulti": true,
+        "type": "tags"
+      },
+      "token": {
+        "type": "string"
+      },
+      "user": {
+        "type": "user"
+      },
+      "userid": {
+        "deprecated": true,
+        "type": "integer"
+      },
+      "watchlistexpiry": {
+        "type": "expiry"
+      },
+      "watchuser": {
+        "default": false,
+        "type": "boolean"
+      }
+    },
+    "prefix": ""
+  },
+  "users": {
+    "class": "ApiQueryUsers",
+    "file": "includes/Api/ApiQueryUsers.php",
+    "kind": "list",
+    "params": {
+      "usattachedwiki": {
+        "type": "string"
+      },
+      "usprop": {
+        "enum": [
+          "blockinfo",
+          "groups",
+          "groupmemberships",
+          "implicitgroups",
+          "rights",
+          "editcount",
+          "registration",
+          "emailable",
+          "gender",
+          "centralids",
+          "cancreate",
+          "tempexpired"
+        ],
+        "ismulti": true,
+        "type": "enum"
+      },
+      "ususerids": {
+        "ismulti": true,
+        "type": "integer"
+      },
+      "ususers": {
+        "ismulti": true,
+        "type": "string"
+      }
+    },
+    "prefix": "us"
+  },
+  "validatepassword": {
+    "class": "ApiValidatePassword",
+    "file": "includes/Api/ApiValidatePassword.php",
+    "kind": "action",
+    "params": {
+      "email": {
+        "type": "string"
+      },
+      "password": {
+        "required": true,
+        "type": "password"
+      },
+      "realname": {
+        "type": "string"
+      },
+      "user": {
+        "type": "user"
+      }
+    },
+    "prefix": ""
+  },
+  "watch": {
+    "class": "ApiWatch",
+    "file": "includes/Api/ApiWatch.php",
+    "kind": "action",
+    "params": {
+      "continue": {
+        "type": "string"
+      },
+      "expiry": {
+        "type": "expiry"
+      },
+      "labels": {
+        "ismulti": true,
+        "type": "integer"
+      },
+      "title": {
+        "deprecated": true,
+        "type": "string"
+      },
+      "token": {
+        "note": "sensitive; injected by ApiBase::getFinalParams() via needsToken(), not declared in getAllowedParams()",
+        "type": "string"
+      },
+      "unwatch": {
+        "default": false,
+        "type": "boolean"
+      }
+    },
+    "prefix": ""
+  },
+  "watchlist": {
+    "class": "ApiQueryWatchlist",
+    "file": "includes/Api/ApiQueryWatchlist.php",
+    "kind": "list",
+    "params": {
+      "wlallrev": {
+        "default": false,
+        "type": "boolean"
+      },
+      "wlcontinue": {
+        "type": "string"
+      },
+      "wldir": {
+        "default": "older",
+        "enum": [
+          "newer",
+          "older"
+        ],
+        "type": "enum"
+      },
+      "wlend": {
+        "type": "timestamp"
+      },
+      "wlexcludeuser": {
+        "type": "user"
+      },
+      "wllabels": {
+        "ismulti": true,
+        "type": "integer"
+      },
+      "wllimit": {
+        "default": 10,
+        "param_max": 500,
+        "param_max2": 5000,
+        "param_min": 1,
+        "type": "limit"
+      },
+      "wlnamespace": {
+        "ismulti": true,
+        "type": "namespace"
+      },
+      "wlowner": {
+        "type": "user"
+      },
+      "wlprop": {
+        "default": "ids|title|flags",
+        "enum": [
+          "ids",
+          "title",
+          "flags",
+          "user",
+          "userid",
+          "comment",
+          "parsedcomment",
+          "timestamp",
+          "patrol",
+          "sizes",
+          "notificationtimestamp",
+          "loginfo",
+          "tags",
+          "expiry",
+          "labels"
+        ],
+        "ismulti": true,
+        "type": "enum"
+      },
+      "wlshow": {
+        "enum": [
+          "minor",
+          "!minor",
+          "bot",
+          "!bot",
+          "anon",
+          "!anon",
+          "patrolled",
+          "!patrolled",
+          "autopatrolled",
+          "!autopatrolled",
+          "unread",
+          "!unread"
+        ],
+        "ismulti": true,
+        "type": "enum"
+      },
+      "wlstart": {
+        "type": "timestamp"
+      },
+      "wltoken": {
+        "type": "string"
+      },
+      "wltype": {
+        "default": "edit|new|log|categorize",
+        "dynamic_type_expr": "RecentChange::getChangeTypes()",
+        "ismulti": true,
+        "type": "string"
+      },
+      "wluser": {
+        "type": "user"
+      }
+    },
+    "prefix": "wl"
+  },
+  "watchlistraw": {
+    "class": "ApiQueryWatchlistRaw",
+    "file": "includes/Api/ApiQueryWatchlistRaw.php",
+    "kind": "list",
+    "params": {
+      "wrcontinue": {
+        "type": "string"
+      },
+      "wrdir": {
+        "default": "ascending",
+        "enum": [
+          "ascending",
+          "descending"
+        ],
+        "type": "enum"
+      },
+      "wrfromtitle": {
+        "type": "string"
+      },
+      "wrlimit": {
+        "default": 10,
+        "param_max": 500,
+        "param_max2": 5000,
+        "param_min": 1,
+        "type": "limit"
+      },
+      "wrnamespace": {
+        "ismulti": true,
+        "type": "namespace"
+      },
+      "wrowner": {
+        "type": "user"
+      },
+      "wrprop": {
+        "enum": [
+          "changed"
+        ],
+        "ismulti": true,
+        "type": "enum"
+      },
+      "wrshow": {
+        "ismulti": true,
+        "type": "string"
+      },
+      "wrtoken": {
+        "type": "string"
+      },
+      "wrtotitle": {
+        "type": "string"
+      }
+    },
+    "prefix": "wr"
+  }
+}

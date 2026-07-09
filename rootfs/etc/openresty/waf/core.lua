@@ -416,6 +416,71 @@ local function check_headers(app, route)
   return true
 end
 
+-- Reads the full request body, whether it landed in memory or spilled to a
+-- temp file (exceeded client_body_buffer_size).  Assumes ngx.req.read_body()
+-- has already been called.
+local function read_full_body()
+  local body = ngx.req.get_body_data()
+  if not body then
+    local fname = ngx.req.get_body_file()
+    if fname then
+      local f = io.open(fname, "r")
+      if f then body = f:read("*all"); f:close() end
+    end
+  end
+  return body or ""
+end
+
+-- Buffered multipart/form-data parser.  MediaWiki-style edit forms (and most
+-- app forms in general) are small enough to fit comfortably under max_body,
+-- so unlike a streaming upload handler this simply parses the whole body at
+-- once — consistent with how the JSON branch already buffers full bodies.
+-- File parts (a "filename" attribute on Content-Disposition) are recorded as
+-- their filename string rather than their raw bytes; validating uploaded
+-- file *content* is out of scope for this parser.
+local function parse_multipart(body, boundary)
+  local fields = {}
+  if body == "" or not boundary or boundary == "" then return fields end
+
+  local delim = "--" .. boundary
+  local pos = 1
+  while true do
+    local s = body:find(delim, pos, true)
+    if not s then break end
+    local part_start = s + #delim
+    if body:sub(part_start, part_start + 1) == "--" then break end  -- final boundary
+
+    local next_at = body:find(delim, part_start, true)
+    local part_end = next_at or (#body + 1)
+    local part = body:sub(part_start, part_end - 1)
+
+    local head, content = part:match("^\r?\n(.-)\r?\n\r?\n(.*)$")
+    if head then
+      content = content:gsub("\r?\n$", "")
+      local name = head:match('name="([^"]*)"')
+      -- A part with a filename= attribute is a real file upload - its
+      -- "content" is the raw file body, which can be many MB and was never
+      -- meant to be schema-validated as a normal string field (see the
+      -- module comment above). Record just the filename instead, matching
+      -- what the rest of this file already assumes file fields look like.
+      local filename = head:match('filename="([^"]*)"')
+      if filename then content = filename end
+      if name then
+        if fields[name] ~= nil then
+          if type(fields[name]) ~= "table" then fields[name] = { fields[name] } end
+          fields[name][#fields[name] + 1] = content
+        else
+          fields[name] = content
+        end
+      end
+    end
+
+    pos = part_end
+  end
+
+  return fields
+end
+
 local function check_body(app, route)
   local max_body     = route.max_body or (app.defaults and app.defaults.max_body)
   local json_schemas = route.json_schemas or route.json
@@ -441,17 +506,7 @@ local function check_body(app, route)
 
   if json_schemas then
     ngx.req.read_body()
-    local body = ngx.req.get_body_data()
-    if not body then
-      -- Body spilled to a temp file (exceeded client_body_buffer_size).
-      local fname = ngx.req.get_body_file()
-      if fname then
-        local f = io.open(fname, "r")
-        if f then body = f:read("*all"); f:close() end
-      end
-    end
-    body = body or ""
-    local obj, err = cjson.decode(body)
+    local obj, err = cjson.decode(read_full_body())
     if not obj then
       deny(app, 400, "route '" .. (route.name or "?") ..
                      "': invalid JSON: " .. tostring(err))
@@ -470,7 +525,21 @@ local function check_body(app, route)
 
   if form_schemas then
     ngx.req.read_body()
-    local args = ngx.req.get_post_args(200)
+    local content_type = ngx.req.get_headers()["content-type"] or ""
+    local args
+    if content_type:find("multipart/form-data", 1, true) then
+      local boundary = content_type:match('boundary="?([^";]+)"?')
+      args = parse_multipart(read_full_body(), boundary)
+    else
+      -- ngx.req.get_post_args() only works when the body stayed in nginx's
+      -- in-memory buffer; a body larger than client_body_buffer_size (an
+      -- 8-16K default, easily exceeded by a real wikitext edit) gets spilled
+      -- to a temp file instead, and get_post_args() then fails outright
+      -- rather than falling back to it - silently turning every such
+      -- request into a deny. Parsing the raw body text ourselves sidesteps
+      -- that entirely: read_full_body() already has the temp-file fallback.
+      args = ngx.decode_args(read_full_body(), 200)
+    end
     local ok, verr = validate_any_schema(form_schemas, args, "$")
     if not ok then
       local prefix = "route '" .. (route.name or "?") .. "': "

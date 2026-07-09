@@ -1,0 +1,160 @@
+{
+  "class": "EditPage",
+  "fields": {
+    "bot": {
+      "type": "string"
+    },
+    "editRevId": {
+      "type": "string"
+    },
+    "editintro": {
+      "type": "string"
+    },
+    "format": {
+      "type": "string"
+    },
+    "minor": {
+      "type": "string"
+    },
+    "mode": {
+      "type": "string"
+    },
+    "model": {
+      "type": "string"
+    },
+    "nosummary": {
+      "type": "string"
+    },
+    "oldid": {
+      "type": "string"
+    },
+    "parentRevId": {
+      "type": "string"
+    },
+    "preload": {
+      "type": "string"
+    },
+    "preloadparams": {
+      "type": "string"
+    },
+    "preloadtitle": {
+      "type": "string"
+    },
+    "preview": {
+      "type": "string"
+    },
+    "redlink": {
+      "type": "string"
+    },
+    "section": {
+      "type": "string"
+    },
+    "summary": {
+      "type": "string"
+    },
+    "undo": {
+      "type": "string"
+    },
+    "undoafter": {
+      "type": "string"
+    },
+    "watchthis": {
+      "type": "string"
+    },
+    "wpAllowedProblematicRedirectTarget": {
+      "type": "string"
+    },
+    "wpAntispam": {
+      "type": "string"
+    },
+    "wpAutoSummary": {
+      "type": "string"
+    },
+    "wpChangeTags": {
+      "type": "string"
+    },
+    "wpChangeTagsAfterPreview": {
+      "type": "string"
+    },
+    "wpDiff": {
+      "type": "string"
+    },
+    "wpEditToken": {
+      "type": "string"
+    },
+    "wpEdittime": {
+      "type": "string"
+    },
+    "wpExtraQueryRedirect": {
+      "type": "string"
+    },
+    "wpIgnoreBlankArticle": {
+      "type": "string"
+    },
+    "wpIgnoreBlankSummary": {
+      "type": "string"
+    },
+    "wpIgnoreProblematicRedirects": {
+      "type": "string"
+    },
+    "wpIgnoreRevisionDeleted": {
+      "type": "string"
+    },
+    "wpMinoredit": {
+      "type": "string"
+    },
+    "wpPreview": {
+      "type": "string"
+    },
+    "wpRecreate": {
+      "type": "string"
+    },
+    "wpSave": {
+      "type": "string"
+    },
+    "wpScrolltop": {
+      "type": "string"
+    },
+    "wpSection": {
+      "type": "string"
+    },
+    "wpSectionTitle": {
+      "type": "string"
+    },
+    "wpStarttime": {
+      "type": "string"
+    },
+    "wpSummary": {
+      "type": "string"
+    },
+    "wpTextbox1": {
+      "type": "string"
+    },
+    "wpTextbox2": {
+      "type": "string"
+    },
+    "wpUltimateParam": {
+      "type": "string"
+    },
+    "wpUndidRevision": {
+      "type": "string"
+    },
+    "wpUndoAfter": {
+      "type": "string"
+    },
+    "wpUnicodeCheck": {
+      "type": "string"
+    },
+    "wpWatchlistExpiry": {
+      "type": "string"
+    },
+    "wpWatchlistLabels": {
+      "type": "string"
+    },
+    "wpWatchthis": {
+      "type": "string"
+    }
+  },
+  "file": "includes/EditPage/EditPage.php",
+  "method": "heuristic"
+}

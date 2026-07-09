@@ -1,0 +1,17 @@
+look in:
+	app-sources/mediawiki/mediawiki-1.46.0/includes/Specials/
+
+for files like:
+
+	app-sources/mediawiki/mediawiki-1.46.0/includes/Specials/SpecialWatchlist.php
+
+Call all of these functions to get parameter info:
+
+	
+	getSubpagesForPrefixSearch() 
+ 	getExtraFilterFactoryConfig()
+	getExtraFilterGroupDefinitions()
+	getFilterDefaultOverrides()
+	getDefaultOptions()
+	fetchOptionsFromRequest( $opts )
+	

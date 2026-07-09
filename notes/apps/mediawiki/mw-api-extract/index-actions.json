@@ -1,0 +1,244 @@
+{
+  "DeleteAction": {
+    "action": "delete",
+    "fields": {
+      "wpConfirmB": {
+        "type": "string"
+      },
+      "wpConfirmationRevId": {
+        "type": "string"
+      },
+      "wpDeleteReasonList": {
+        "type": "string"
+      },
+      "wpDeleteTalk": {
+        "type": "boolean"
+      },
+      "wpReason": {
+        "type": "string"
+      },
+      "wpSuppress": {
+        "type": "boolean"
+      },
+      "wpWatch": {
+        "type": "boolean"
+      },
+      "wpWatchlistExpiry": {
+        "type": "string"
+      }
+    },
+    "file": "includes/Actions/DeleteAction.php",
+    "method": "form_fields"
+  },
+  "MarkpatrolledAction": {
+    "action": "markpatrolled",
+    "fields": {
+      "rcid": {
+        "type": "string"
+      }
+    },
+    "file": "includes/Actions/MarkpatrolledAction.php",
+    "method": "heuristic"
+  },
+  "McrRestoreAction": {
+    "action": "mcrrestore",
+    "fields": {
+      "wpSummary": {
+        "type": "string"
+      },
+      "wpdiff": {
+        "type": "string"
+      },
+      "wpsummarypreview": {
+        "type": "string"
+      }
+    },
+    "file": "includes/Actions/McrUndoAction.php",
+    "method": "form_fields"
+  },
+  "McrUndoAction": {
+    "action": "mcrundo",
+    "fields": {
+      "wpSummary": {
+        "type": "string"
+      },
+      "wpdiff": {
+        "type": "string"
+      },
+      "wpsummarypreview": {
+        "type": "string"
+      }
+    },
+    "file": "includes/Actions/McrUndoAction.php",
+    "method": "form_fields"
+  },
+  "ProtectAction": {
+    "action": "protect",
+    "fields": {
+      "mwProtect-cascade": {
+        "type": "string"
+      },
+      "mwProtect-expiry-create": {
+        "type": "string"
+      },
+      "mwProtect-expiry-edit": {
+        "type": "string"
+      },
+      "mwProtect-expiry-move": {
+        "type": "string"
+      },
+      "mwProtect-expiry-upload": {
+        "type": "string"
+      },
+      "mwProtect-level-create": {
+        "type": "string"
+      },
+      "mwProtect-level-edit": {
+        "type": "string"
+      },
+      "mwProtect-level-move": {
+        "type": "string"
+      },
+      "mwProtect-level-upload": {
+        "type": "string"
+      },
+      "mwProtect-reason": {
+        "type": "string"
+      },
+      "mwProtectWatch": {
+        "type": "string"
+      },
+      "wpEditToken": {
+        "type": "string"
+      },
+      "wpProtectExpirySelection-create": {
+        "type": "string"
+      },
+      "wpProtectExpirySelection-edit": {
+        "type": "string"
+      },
+      "wpProtectExpirySelection-move": {
+        "type": "string"
+      },
+      "wpProtectExpirySelection-upload": {
+        "type": "string"
+      },
+      "wpProtectReasonSelection": {
+        "type": "string"
+      }
+    },
+    "file": "includes/Page/ProtectionForm.php",
+    "method": "heuristic"
+  },
+  "PurgeAction": {
+    "action": "purge",
+    "fields": {
+      "wpintro": {
+        "type": "string"
+      }
+    },
+    "file": "includes/Actions/PurgeAction.php",
+    "method": "form_fields"
+  },
+  "RevertAction": {
+    "action": "revert",
+    "fields": {
+      "wpcomment": {
+        "type": "string"
+      },
+      "wpintro": {
+        "type": "string"
+      }
+    },
+    "file": "includes/Actions/RevertAction.php",
+    "method": "form_fields"
+  },
+  "RollbackAction": {
+    "action": "rollback",
+    "fields": {
+      "wpintro": {
+        "type": "string"
+      }
+    },
+    "file": "includes/Actions/RollbackAction.php",
+    "method": "form_fields"
+  },
+  "UnprotectAction": {
+    "action": "unprotect",
+    "fields": {
+      "mwProtect-cascade": {
+        "type": "string"
+      },
+      "mwProtect-expiry-create": {
+        "type": "string"
+      },
+      "mwProtect-expiry-edit": {
+        "type": "string"
+      },
+      "mwProtect-expiry-move": {
+        "type": "string"
+      },
+      "mwProtect-expiry-upload": {
+        "type": "string"
+      },
+      "mwProtect-level-create": {
+        "type": "string"
+      },
+      "mwProtect-level-edit": {
+        "type": "string"
+      },
+      "mwProtect-level-move": {
+        "type": "string"
+      },
+      "mwProtect-level-upload": {
+        "type": "string"
+      },
+      "mwProtect-reason": {
+        "type": "string"
+      },
+      "mwProtectWatch": {
+        "type": "string"
+      },
+      "wpEditToken": {
+        "type": "string"
+      },
+      "wpProtectExpirySelection-create": {
+        "type": "string"
+      },
+      "wpProtectExpirySelection-edit": {
+        "type": "string"
+      },
+      "wpProtectExpirySelection-move": {
+        "type": "string"
+      },
+      "wpProtectExpirySelection-upload": {
+        "type": "string"
+      },
+      "wpProtectReasonSelection": {
+        "type": "string"
+      }
+    },
+    "file": "includes/Page/ProtectionForm.php",
+    "method": "heuristic"
+  },
+  "UnwatchAction": {
+    "action": "unwatch",
+    "fields": {
+      "wpintro": {
+        "type": "string"
+      }
+    },
+    "file": "includes/Actions/UnwatchAction.php",
+    "method": "form_fields"
+  },
+  "WatchAction": {
+    "action": "watch",
+    "fields": {
+      "wplabels": {
+        "type": "string"
+      }
+    },
+    "file": "includes/Actions/WatchAction.php",
+    "method": "form_fields"
+  }
+}

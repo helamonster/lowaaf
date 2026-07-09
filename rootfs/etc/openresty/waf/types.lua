@@ -586,6 +586,39 @@ do
   function T.bool_query() return fn end
 end
 
+-- Numeric query/form param: values from ngx.req.get_uri_args() / get_post_args()
+-- are always strings (e.g. "10"), never a real Lua number the way a JSON body
+-- field decoded by cjson would be — T.number() requires type(v)=="number" and
+-- so is the wrong validator here. This checks that the string parses as a
+-- number (optionally integer) within range instead.
+function T.number_query(opts)
+  opts = opts or {}
+  local fn = function(v, path)
+    local verbose = ngx.ctx.waf_verbose or 0
+    if type(v) ~= "string" then
+      return fail(path .. " must be a string")
+    end
+    local n = tonumber(v)
+    if not n then
+      local msg = path .. " must be numeric"
+      if verbose >= 2 then msg = msg .. " (got: " .. val_str(v) .. ")" end
+      return fail(msg)
+    end
+    if opts.integer and n % 1 ~= 0 then
+      return fail(path .. " must be an integer")
+    end
+    if opts.min and n < opts.min then
+      return fail(path .. " too small (min " .. opts.min .. ")")
+    end
+    if opts.max and n > opts.max then
+      return fail(path .. " too large (max " .. opts.max .. ")")
+    end
+    return true
+  end
+  T._registry[fn] = { type = "number_query", opts = opts }
+  return fn
+end
+
 -- Accepts any value; use T.nullable(T.any()) to also accept null.
 do
   local fn = function(v, path) return true end

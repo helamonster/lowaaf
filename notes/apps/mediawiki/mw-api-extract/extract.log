@@ -1,0 +1,277 @@
+clientlogin (ApiClientLogin): getAllowedParams() did not resolve to a static array (dynamic construction)
+logout (ApiLogout): no getAllowedParams() found (likely takes no params)
+createaccount (ApiAMCreateAccount): getAllowedParams() did not resolve to a static array (dynamic construction)
+linkaccount (ApiLinkAccount): getAllowedParams() did not resolve to a static array (dynamic construction)
+unlinkaccount (ApiRemoveAuthenticationData): getAllowedParams() did not resolve to a static array (dynamic construction)
+changeauthenticationdata (ApiChangeAuthenticationData): getAllowedParams() did not resolve to a static array (dynamic construction)
+removeauthenticationdata (ApiRemoveAuthenticationData): getAllowedParams() did not resolve to a static array (dynamic construction)
+resetpassword: getAllowedParams() includes '$this->hasAnyRoutes()' - a parent/helper call, not statically resolved, NOT captured here
+resetpassword: getAllowedParams() includes '$this->getConfig()' - a parent/helper call, not statically resolved, NOT captured here
+query: getAllowedParams() includes '$this->getPageSet()' - a parent/helper call, not statically resolved, NOT captured here
+query.exportschema: PARAM_TYPE is dynamic ('XmlDumpWriter::$supportedSchemas'); left as generic string
+parse.useskin: PARAM_TYPE is dynamic ('array_keys( $this->skinFactory->getInstalledSkins() )'); left as generic string
+parse.contentformat: PARAM_TYPE is dynamic ('$this->contentHandlerFactory->getAllContentFormats()'); left as generic string
+parse.contentmodel: PARAM_TYPE is dynamic ('$this->contentHandlerFactory->getContentModels()'); left as generic string
+stashedit.contentmodel: PARAM_TYPE is dynamic ('$this->contentHandlerFactory->getContentModels()'); left as generic string
+stashedit.contentformat: PARAM_TYPE is dynamic ('$this->contentHandlerFactory->getAllContentFormats()'); left as generic string
+opensearch: getAllowedParams() includes '$this->buildCommonApiParams( false )' - a parent/helper call, not statically resolved, NOT captured here
+opensearch: getAllowedParams() includes '$this->getConfig()' - a parent/helper call, not statically resolved, NOT captured here
+feedcontributions: getAllowedParams() includes '$this->getConfig()' - a parent/helper call, not statically resolved, NOT captured here
+feedcontributions: getAllowedParams() includes '$this->getConfig()' - a parent/helper call, not statically resolved, NOT captured here
+feedcontributions.feedformat: PARAM_TYPE is dynamic ('$feedFormatNames'); left as generic string
+feedcontributions.tagfilter: PARAM_TYPE is dynamic ('array_values( MediaWikiServices::getInstance()\n\t\t\t\t\t->getChangeTagsStore()->listDefinedTags()\n\t\t\t\t)'); left as generic string
+feedrecentchanges: getAllowedParams() includes '$this->getConfig()' - a parent/helper call, not statically resolved, NOT captured here
+feedrecentchanges.feedformat: PARAM_TYPE is dynamic ('$feedFormatNames'); left as generic string
+feedrecentchanges.limit: PARAM_MAX is dynamic/unresolved constant '$config->get( MainConfigNames::FeedLimit )'
+feedwatchlist: getAllowedParams() assigns '$ret[$to] =' with a non-literal (variable) key, NOT captured here
+feedwatchlist: getAllowedParams() includes '$this->getConfig()' - a parent/helper call, not statically resolved, NOT captured here
+feedwatchlist: getAllowedParams() includes '$this->getWatchlistModule()' - a parent/helper call, not statically resolved, NOT captured here
+feedwatchlist.feedformat: PARAM_TYPE is dynamic ('$feedFormatNames'); left as generic string
+paraminfo: getAllowedParams() includes '$this->getMain()' - a parent/helper call, not statically resolved, NOT captured here
+paraminfo: getAllowedParams() includes '$this->getMain()' - a parent/helper call, not statically resolved, NOT captured here
+paraminfo.querymodules: PARAM_TYPE is dynamic ('$querymodules'); left as generic string
+paraminfo.formatmodules: PARAM_TYPE is dynamic ('$formatmodules'); left as generic string
+rsd (ApiRsd): no getAllowedParams() found (likely takes no params)
+compare.slots: PARAM_TYPE is dynamic ('$slotRoles'); left as generic string
+compare.difftype: PARAM_TYPE is dynamic ('$this->differenceEngine->getSupportedFormats()'); left as generic string
+checktoken.type: PARAM_TYPE is dynamic ('array_keys( ApiQueryTokens::getTokenTypeSalts() )'); left as generic string
+purge: getAllowedParams() includes '$this->getPageSet()' - a parent/helper call, not statically resolved, NOT captured here
+setnotificationtimestamp: getAllowedParams() includes '$this->getPageSet()' - a parent/helper call, not statically resolved, NOT captured here
+rollback: getAllowedParams() includes '$this->getWatchlistParams()' - a parent/helper call, not statically resolved, NOT captured here
+delete: getAllowedParams() includes '$this->getWatchlistParams()' - a parent/helper call, not statically resolved, NOT captured here
+undelete: getAllowedParams() includes '$this->getWatchlistParams()' - a parent/helper call, not statically resolved, NOT captured here
+protect: getAllowedParams() includes '$this->getWatchlistParams()' - a parent/helper call, not statically resolved, NOT captured here
+block: getAllowedParams() includes '$this->getConfig()' - a parent/helper call, not statically resolved, NOT captured here
+block.watchlistexpiry: PARAM_MAX is dynamic/unresolved constant '$this->watchlistMaxDuration'
+block.actionrestrictions: PARAM_TYPE is dynamic ('array_keys(\n\t\t\t\t\t$this->blockActionInfo->getAllBlockActions()\n\t\t\t\t)'); left as generic string
+unblock.watchlistexpiry: PARAM_MAX is dynamic/unresolved constant '$this->watchlistMaxDuration'
+move: getAllowedParams() includes '$this->getWatchlistParams()' - a parent/helper call, not statically resolved, NOT captured here
+edit: getAllowedParams() includes '$this->getWatchlistParams()' - a parent/helper call, not statically resolved, NOT captured here
+edit: getAllowedParams() includes '$this->getCreateTempUserParams()' - a parent/helper call, not statically resolved, NOT captured here
+edit.contentformat: PARAM_TYPE is dynamic ('$this->contentHandlerFactory->getAllContentFormats()'); left as generic string
+edit.contentmodel: PARAM_TYPE is dynamic ('$this->contentHandlerFactory->getContentModels()'); left as generic string
+upload: getAllowedParams() includes '$this->getWatchlistParams( [
+			'watch',
+			'preferences',
+			'nochange',
+		] )' - a parent/helper call, not statically resolved, NOT captured here
+upload.filesize: PARAM_MAX is dynamic/unresolved constant "UploadBase::getMaxUploadSize( 'file' )"
+watch: getAllowedParams() includes '$this->getPageSet()' - a parent/helper call, not statically resolved, NOT captured here
+watch.expiry: PARAM_MAX is dynamic/unresolved constant '$this->maxDuration'
+import.interwikisource: PARAM_TYPE is dynamic ('$this->getAllowedImportSources()'); left as generic string
+clearhasmsg (ApiClearHasMsg): no getAllowedParams() found (likely takes no params)
+userrights.add: PARAM_TYPE is dynamic ('$allGroups'); left as generic string
+userrights.remove: PARAM_TYPE is dynamic ('$allGroups'); left as generic string
+userrights.watchlistexpiry: PARAM_MAX is dynamic/unresolved constant '$this->watchlistMaxDuration'
+options: getAllowedParams() includes 'parent::getAllowedParams()' - a parent/helper call, not statically resolved, NOT captured here
+ApiOptionsBase(parent).resetkinds: PARAM_TYPE is dynamic ('$optionKinds'); left as generic string
+imagerotate: getAllowedParams() includes '$this->getPageSet()' - a parent/helper call, not statically resolved, NOT captured here
+revisiondelete.type: PARAM_TYPE is dynamic ('RevisionDeleter::getTypes()'); left as generic string
+setpagelanguage.lang: PARAM_TYPE array not fully static, treating as enum-of-strings with dynamic entries left out
+changecontentmodel.model: PARAM_TYPE is dynamic ('$modelOptions'); left as generic string
+acquiretempusername (ApiAcquireTempUserName): no getAllowedParams() found (likely takes no params)
+contributors: getAllowedParams() includes '$this->getPermissionManager()' - a parent/helper call, not statically resolved, NOT captured here
+contributors.group: PARAM_TYPE is dynamic ('$userGroups'); left as generic string
+contributors.excludegroup: PARAM_TYPE is dynamic ('$userGroups'); left as generic string
+contributors.rights: PARAM_TYPE is dynamic ('$userRights'); left as generic string
+contributors.excluderights: PARAM_TYPE is dynamic ('$userRights'); left as generic string
+deletedrevisions: getAllowedParams() includes 'parent::getAllowedParams()' - a parent/helper call, not statically resolved, NOT captured here
+ApiQueryRevisionsBase(parent): getAllowedParams() includes '$this->getMain()' - a parent/helper call, not statically resolved, NOT captured here
+ApiQueryRevisionsBase(parent).slots: PARAM_TYPE is dynamic ('$slotRoles'); left as generic string
+ApiQueryRevisionsBase(parent).contentformat-{slot}: PARAM_TYPE is dynamic ('$this->contentHandlerFactory->getAllContentFormats()'); left as generic string
+ApiQueryRevisionsBase(parent).contentformat: PARAM_TYPE is dynamic ('$this->contentHandlerFactory->getAllContentFormats()'); left as generic string
+extlinks.protocol: PARAM_TYPE is dynamic ('LinkFilter::prepareProtocols()'); left as generic string
+fileusage: getAllowedParams() includes '$this->getModuleName()' - a parent/helper call, not statically resolved, NOT captured here
+fileusage: getAllowedParams() includes '$this->getConfig()' - a parent/helper call, not statically resolved, NOT captured here
+imageinfo.prop: PARAM_TYPE is dynamic ('static::getPropertyNames()'); left as generic string
+links: getAllowedParams() has a parameter with a computed (non-literal) name from '$this->titlesParam', NOT captured here
+linkshere: getAllowedParams() includes '$this->getModuleName()' - a parent/helper call, not statically resolved, NOT captured here
+linkshere: getAllowedParams() includes '$this->getConfig()' - a parent/helper call, not statically resolved, NOT captured here
+langlinks.inlanguagecode: dynamic default '$this->contentLanguage->getCode()', type left generic
+redirects: getAllowedParams() includes '$this->getModuleName()' - a parent/helper call, not statically resolved, NOT captured here
+redirects: getAllowedParams() includes '$this->getConfig()' - a parent/helper call, not statically resolved, NOT captured here
+revisions: getAllowedParams() includes 'parent::getAllowedParams()' - a parent/helper call, not statically resolved, NOT captured here
+stashimageinfo.prop: PARAM_TYPE is dynamic ('self::getPropertyNames()'); left as generic string
+templates: getAllowedParams() has a parameter with a computed (non-literal) name from '$this->titlesParam', NOT captured here
+transcludedin: getAllowedParams() includes '$this->getModuleName()' - a parent/helper call, not statically resolved, NOT captured here
+transcludedin: getAllowedParams() includes '$this->getConfig()' - a parent/helper call, not statically resolved, NOT captured here
+alldeletedrevisions: getAllowedParams() includes 'parent::getAllowedParams()' - a parent/helper call, not statically resolved, NOT captured here
+alldeletedrevisions: getAllowedParams() includes '$this->getConfig()' - a parent/helper call, not statically resolved, NOT captured here
+allfileusages.prop: PARAM_TYPE array not fully static, treating as enum-of-strings with dynamic entries left out
+allimages: getAllowedParams() includes '$this->getConfig()' - a parent/helper call, not statically resolved, NOT captured here
+allimages.prop: PARAM_TYPE is dynamic ('ApiQueryImageInfo::getPropertyNames( self::PROPERTY_FILTER )'); left as generic string
+alllinks.prop: PARAM_TYPE array not fully static, treating as enum-of-strings with dynamic entries left out
+allpages: getAllowedParams() includes '$this->getConfig()' - a parent/helper call, not statically resolved, NOT captured here
+allpages.prtype: PARAM_TYPE is dynamic ('$this->restrictionStore->listAllRestrictionTypes( true )'); left as generic string
+allpages.prlevel: PARAM_TYPE is dynamic ('$this->getConfig()->get( MainConfigNames::RestrictionLevels )'); left as generic string
+allredirects.prop: PARAM_TYPE array not fully static, treating as enum-of-strings with dynamic entries left out
+allrevisions: getAllowedParams() includes 'parent::getAllowedParams()' - a parent/helper call, not statically resolved, NOT captured here
+allrevisions: getAllowedParams() includes '$this->getConfig()' - a parent/helper call, not statically resolved, NOT captured here
+alltransclusions.prop: PARAM_TYPE array not fully static, treating as enum-of-strings with dynamic entries left out
+allusers.group: PARAM_TYPE is dynamic ('$userGroups'); left as generic string
+allusers.excludegroup: PARAM_TYPE is dynamic ('$userGroups'); left as generic string
+allusers.rights: PARAM_TYPE is dynamic ('array_unique( array_merge(\n\t\t\t\t\t$this->getPermissionManager()->getAllPermissions(),\n\t\t\t\t\t$this->getPermissionManager()->getImplicitRights()\n\t\t\t\t) )'); left as generic string
+backlinks: getAllowedParams() includes '$this->getModuleName()' - a parent/helper call, not statically resolved, NOT captured here
+blocks: getAllowedParams() includes '$this->getConfig()' - a parent/helper call, not statically resolved, NOT captured here
+categorymembers: getAllowedParams() includes '$this->getConfig()' - a parent/helper call, not statically resolved, NOT captured here
+codexicons.names: PARAM_TYPE is dynamic ('array_keys( CodexModule::getIcons( null, $this->getConfig() ) )'); left as generic string
+deletedrevs: getAllowedParams() includes '$this->getMain()' - a parent/helper call, not statically resolved, NOT captured here
+embeddedin: getAllowedParams() includes '$this->getModuleName()' - a parent/helper call, not statically resolved, NOT captured here
+exturlusage: getAllowedParams() includes '$this->getConfig()' - a parent/helper call, not statically resolved, NOT captured here
+exturlusage.protocol: PARAM_TYPE is dynamic ('LinkFilter::prepareProtocols()'); left as generic string
+imageusage: getAllowedParams() includes '$this->getModuleName()' - a parent/helper call, not statically resolved, NOT captured here
+logevents: getAllowedParams() includes '$this->getConfig()' - a parent/helper call, not statically resolved, NOT captured here
+logevents: getAllowedParams() includes '$this->getAllowedLogActions()' - a parent/helper call, not statically resolved, NOT captured here
+logevents.type: PARAM_TYPE is dynamic ('LogPage::validTypes()'); left as generic string
+logevents.action: PARAM_TYPE is dynamic ('$logActions'); left as generic string
+prefixsearch: getAllowedParams() includes '$this->buildCommonApiParams()' - a parent/helper call, not statically resolved, NOT captured here
+prefixsearch (ApiQueryPrefixSearch): getAllowedParams() did not resolve to a static array (dynamic construction)
+protectedtitles.level: PARAM_TYPE is dynamic ("array_diff(\n\t\t\t\t\t$this->getConfig()->get( MainConfigNames::RestrictionLevels ), [ '' ] )"); left as generic string
+querypage.page: PARAM_TYPE is dynamic ('$this->queryPages'); left as generic string
+random.contentmodel: PARAM_TYPE is dynamic ('$this->contentHandlerFactory->getContentModels()'); left as generic string
+recentchanges.type: PARAM_TYPE is dynamic ('RecentChange::getChangeTypes()'); left as generic string
+recentchanges.slot: PARAM_TYPE is dynamic ('$slotRoles'); left as generic string
+search: getAllowedParams() includes '$this->buildCommonApiParams()' - a parent/helper call, not statically resolved, NOT captured here
+search: getAllowedParams() includes '$this->isInGeneratorMode()' - a parent/helper call, not statically resolved, NOT captured here
+search.sort: PARAM_TYPE is dynamic ('$this->searchEngineFactory->create()->getValidSorts()'); left as generic string
+watchlist.type: PARAM_TYPE is dynamic ('RecentChange::getChangeTypes()'); left as generic string
+watchlistraw.show: PARAM_TYPE array not fully static, treating as enum-of-strings with dynamic entries left out
+authmanagerinfo.requestsfor: PARAM_TYPE array not fully static, treating as enum-of-strings with dynamic entries left out
+filerepoinfo: getAllowedParams() includes '$this->getProps()' - a parent/helper call, not statically resolved, NOT captured here
+filerepoinfo.prop: PARAM_TYPE is dynamic ('$props'); left as generic string
+tokens.type: PARAM_TYPE is dynamic ('array_keys( self::getTokenTypeSalts() )'); left as generic string
+Block: getAllowedParams() includes '$this->getConfig()' - a parent/helper call, not statically resolved, NOT captured here
+Block: getAllowedParams() includes '$this->getRequest()' - a parent/helper call, not statically resolved, NOT captured here
+Block: getAllowedParams() includes '$this->getOutput()' - a parent/helper call, not statically resolved, NOT captured here
+Block: getAllowedParams() includes '$this->getUser()' - a parent/helper call, not statically resolved, NOT captured here
+Block: getAllowedParams() includes '$this->getLanguage()' - a parent/helper call, not statically resolved, NOT captured here
+Block: getAllowedParams() includes '$this->msg( 'ipb-sitewide' )' - a parent/helper call, not statically resolved, NOT captured here
+Block: getAllowedParams() includes '$this->msg( 'ipb-sitewide-help' )' - a parent/helper call, not statically resolved, NOT captured here
+Block: getAllowedParams() includes '$this->msg( 'ipb-partial' )' - a parent/helper call, not statically resolved, NOT captured here
+Block: getAllowedParams() includes '$this->msg( 'ipb-partial-help' )' - a parent/helper call, not statically resolved, NOT captured here
+Block: getAllowedParams() includes '$this->msg( 'ipb-default-expiry' )' - a parent/helper call, not statically resolved, NOT captured here
+Block: getAllowedParams() includes '$this->msg( 'ipb-default-expiry-ip' )' - a parent/helper call, not statically resolved, NOT captured here
+Block: getAllowedParams() includes '$this->msg( 'ipb-default-expiry-temporary-account' )' - a parent/helper call, not statically resolved, NOT captured here
+Block: getAllowedParams() includes '$this->msg( 'ipbreason-dropdown' )' - a parent/helper call, not statically resolved, NOT captured here
+Block: getAllowedParams() includes '$this->msg( 'htmlform-selectorother-other' )' - a parent/helper call, not statically resolved, NOT captured here
+Block: getAllowedParams() includes '$this->msg( 'ipbreason-indef-dropdown' )' - a parent/helper call, not statically resolved, NOT captured here
+Block: getAllowedParams() includes '$this->msg( 'htmlform-selectorother-other' )' - a parent/helper call, not statically resolved, NOT captured here
+Block: getAllowedParams() includes '$this->getLanguage()' - a parent/helper call, not statically resolved, NOT captured here
+Block: getAllowedParams() includes '$this->getAuthority()' - a parent/helper call, not statically resolved, NOT captured here
+Block: getAllowedParams() includes '$this->validateTarget()' - a parent/helper call, not statically resolved, NOT captured here
+Block: getAllowedParams() includes '$this->getConfig()' - a parent/helper call, not statically resolved, NOT captured here
+Block: getAllowedParams() includes '$this->getRequest()' - a parent/helper call, not statically resolved, NOT captured here
+Block: getAllowedParams() includes '$this->maybeAlterFormDefaults( $a )' - a parent/helper call, not statically resolved, NOT captured here
+Block: getAllowedParams() includes '$this->getHookRunner()' - a parent/helper call, not statically resolved, NOT captured here
+Block.wpEditingRestriction: HTMLForm 'select'/'radio' options not statically resolved, left as generic string
+Block.wpPageRestrictions: unrecognized HTMLForm type 'titlesmultiselect', left as generic string
+Block.wpNamespaceRestrictions: unrecognized HTMLForm type 'namespacesmultiselect', left as generic string
+Block.wpActionRestrictions: HTMLForm 'select'/'radio' options not statically resolved, left as generic string
+Block.wpExpiry: unrecognized HTMLForm type 'expiry', left as generic string
+Block.wpReason: unrecognized HTMLForm type 'selectandother', left as generic string
+BotPasswords: getAllowedParams() includes '$this->getUser()' - a parent/helper call, not statically resolved, NOT captured here
+BotPasswords: getAllowedParams() includes '$this->getLanguage()' - a parent/helper call, not statically resolved, NOT captured here
+BotPasswords: getAllowedParams() includes '$this->getLinkRenderer()' - a parent/helper call, not statically resolved, NOT captured here
+BotPasswords: getAllowedParams() includes '$this->getPageTitle( $row->bp_app_id )' - a parent/helper call, not statically resolved, NOT captured here
+BotPasswords: getAllowedParams() includes '$this->msg( 'word-separator' )' - a parent/helper call, not statically resolved, NOT captured here
+BotPasswords: getAllowedParams() includes '$this->msg( 'botpasswords-label-needsreset' )' - a parent/helper call, not statically resolved, NOT captured here
+BotPasswords.wpgrants: unrecognized HTMLForm type 'checkmatrix', left as generic string
+BotPasswords.wpappId: unrecognized HTMLForm type 'textwithbutton', left as generic string
+PasswordReset: getAllowedParams() includes '$this->getConfig()' - a parent/helper call, not statically resolved, NOT captured here
+PasswordReset: getAllowedParams() includes '$this->getUser()' - a parent/helper call, not statically resolved, NOT captured here
+PasswordReset: getAllowedParams() includes '$this->getUser()' - a parent/helper call, not statically resolved, NOT captured here
+Preferences.wpusername: unrecognized HTMLForm type 'info', left as generic string
+Preferences.wpusergroups: unrecognized HTMLForm type 'info', left as generic string
+Preferences.wpusergroups-disabled: unrecognized HTMLForm type 'info', left as generic string
+Preferences.wpeditcount: unrecognized HTMLForm type 'info', left as generic string
+Preferences.wpregistrationdate: unrecognized HTMLForm type 'info', left as generic string
+Preferences.wppassword: unrecognized HTMLForm type 'info', left as generic string
+Preferences.wpdownloaduserdata: unrecognized HTMLForm type 'info', left as generic string
+Preferences.wprestoreprefs: unrecognized HTMLForm type 'info', left as generic string
+Preferences.wplanguage: unrecognized HTMLForm type 'language', left as generic string
+Preferences.wpvariant: unrecognized HTMLForm type 'language', left as generic string
+Preferences.wpoldsig: unrecognized HTMLForm type 'info', left as generic string
+Preferences.wpemailaddress: unrecognized HTMLForm type 'info', left as generic string
+Preferences.wpemailauthentication: unrecognized HTMLForm type 'info', left as generic string
+Preferences.wpskin: HTMLForm 'select'/'radio' options not statically resolved, left as generic string
+Preferences.wpcustomcssjs-safemode: unrecognized HTMLForm type 'info', left as generic string
+Preferences.wpcommoncssjs: unrecognized HTMLForm type 'info', left as generic string
+Preferences.wpimagesize: HTMLForm 'select'/'radio' options not statically resolved, left as generic string
+Preferences.wpthumbsize: HTMLForm 'select'/'radio' options not statically resolved, left as generic string
+Preferences.wpdate: HTMLForm 'select'/'radio' options not statically resolved, left as generic string
+Preferences.wpnowserver: unrecognized HTMLForm type 'info', left as generic string
+Preferences.wpnowlocal: unrecognized HTMLForm type 'info', left as generic string
+Preferences.wptimecorrection: unrecognized HTMLForm type 'timezone', left as generic string
+Preferences.wpdiff-type: unrecognized HTMLForm type 'api', left as generic string
+Preferences.wpunderline: HTMLForm 'select'/'radio' options not statically resolved, left as generic string
+Preferences.wppst-cssjs: unrecognized HTMLForm type 'api', left as generic string
+Preferences.wprcfilters-rc-collapsed: unrecognized HTMLForm type 'api', left as generic string
+Preferences.wprcfilters-wl-collapsed: unrecognized HTMLForm type 'api', left as generic string
+Preferences.wprcfilters-saved-queries: unrecognized HTMLForm type 'api', left as generic string
+Preferences.wprcfilters-wl-saved-queries: unrecognized HTMLForm type 'api', left as generic string
+Preferences.wprcfilters-limit: unrecognized HTMLForm type 'api', left as generic string
+Preferences.wprcfilters-saved-queries-versionbackup: unrecognized HTMLForm type 'api', left as generic string
+Preferences.wprcfilters-wl-saved-queries-versionbackup: unrecognized HTMLForm type 'api', left as generic string
+Preferences.wpeditwatchlist: unrecognized HTMLForm type 'info', left as generic string
+Preferences.wpeditwatchlistlabels: unrecognized HTMLForm type 'info', left as generic string
+Preferences.wpwatchlisttoken: unrecognized HTMLForm type 'api', left as generic string
+Preferences.wpwatchlistlabelonboarding: unrecognized HTMLForm type 'api', left as generic string
+Preferences.wpwatchlisttoken-info: unrecognized HTMLForm type 'info', left as generic string
+Preferences.wpsearch-special-page: unrecognized HTMLForm type 'api', left as generic string
+Preferences.wpsearch-match-redirect: unrecognized HTMLForm type 'api', left as generic string
+Vector.wpvector-page-tools-pinned: unrecognized HTMLForm type 'api', left as generic string
+Vector.wpvector-main-menu-pinned: unrecognized HTMLForm type 'api', left as generic string
+Vector.wpvector-toc-pinned: unrecognized HTMLForm type 'api', left as generic string
+Vector.wpvector-appearance-pinned: unrecognized HTMLForm type 'api', left as generic string
+MinervaNeue.wpminerva-theme: unrecognized HTMLForm type 'api', left as generic string
+ResetTokens: getAllowedParams() includes '$this->getUser()' - a parent/helper call, not statically resolved, NOT captured here
+ResetTokens: getAllowedParams() includes '$this->getTokensList()' - a parent/helper call, not statically resolved, NOT captured here
+ResetTokens: getAllowedParams() includes '$this->msg( 'resettokens-token-label' )' - a parent/helper call, not statically resolved, NOT captured here
+ResetTokens: getAllowedParams() includes '$this->msg( $tok['label-message'] )' - a parent/helper call, not statically resolved, NOT captured here
+RandomInCategory: getAllowedParams() includes '$this->addHelpLink( 'Help:RandomInCategory' )' - a parent/helper call, not statically resolved, NOT captured here
+Whatlinkshere: getAllowedParams() assigns '$fields[$filter] =' with a non-literal (variable) key, NOT captured here
+Whatlinkshere: getAllowedParams() includes '$this->addHelpLink( 'Help:What links here' )' - a parent/helper call, not statically resolved, NOT captured here
+Whatlinkshere: getAllowedParams() includes '$this->getOutput()' - a parent/helper call, not statically resolved, NOT captured here
+Whatlinkshere: getAllowedParams() includes '$this->msg( 'hide' )' - a parent/helper call, not statically resolved, NOT captured here
+Whatlinkshere: getAllowedParams() includes '$this->msg( "whatlinkshere-{$filter}", $hide )' - a parent/helper call, not statically resolved, NOT captured here
+Whatlinkshere.offset: unrecognized HTMLForm type 'api', left as generic string
+Whatlinkshere.dir: unrecognized HTMLForm type 'api', left as generic string
+Whatlinkshere.from: unrecognized HTMLForm type 'api', left as generic string
+ChangeContentModel: getAllowedParams() includes '$this->getOptionsForTitle( $this->title )' - a parent/helper call, not statically resolved, NOT captured here
+ChangeContentModel.model: HTMLForm 'select'/'radio' options not statically resolved, left as generic string
+Emailuser: getAllowedParams() includes '$this->getLinkRenderer()' - a parent/helper call, not statically resolved, NOT captured here
+Emailuser: getAllowedParams() includes '$this->getUser()' - a parent/helper call, not statically resolved, NOT captured here
+Emailuser.wpFrom: unrecognized HTMLForm type 'info', left as generic string
+Emailuser.wpTo: unrecognized HTMLForm type 'info', left as generic string
+DeleteAction: getAllowedParams() includes '$this->getUser()' - a parent/helper call, not statically resolved, NOT captured here
+DeleteAction: getAllowedParams() includes '$this->getTitle()' - a parent/helper call, not statically resolved, NOT captured here
+DeleteAction: getAllowedParams() includes '$this->getArticle()' - a parent/helper call, not statically resolved, NOT captured here
+DeleteAction: getAllowedParams() includes '$this->getFormMsg( self::MSG_REASON_DROPDOWN )' - a parent/helper call, not statically resolved, NOT captured here
+DeleteAction: getAllowedParams() includes '$this->isSuppressionAllowed()' - a parent/helper call, not statically resolved, NOT captured here
+DeleteAction: getAllowedParams() includes '$this->getFormMsg( self::MSG_REASON_DROPDOWN_SUPPRESS )' - a parent/helper call, not statically resolved, NOT captured here
+DeleteAction: getAllowedParams() includes '$this->getFormMsg( self::MSG_REASON_DROPDOWN_OTHER )' - a parent/helper call, not statically resolved, NOT captured here
+DeleteAction: getAllowedParams() includes '$this->getWikiPage()' - a parent/helper call, not statically resolved, NOT captured here
+DeleteAction: getAllowedParams() includes '$this->getAuthority()' - a parent/helper call, not statically resolved, NOT captured here
+DeleteAction: getAllowedParams() includes '$this->getContext()' - a parent/helper call, not statically resolved, NOT captured here
+DeleteAction: getAllowedParams() includes '$this->isSuppressionAllowed()' - a parent/helper call, not statically resolved, NOT captured here
+DeleteAction.wpDeleteReasonList: HTMLForm 'select'/'radio' options not statically resolved, left as generic string
+DeleteAction.wpWatchlistExpiry: HTMLForm 'select'/'radio' options not statically resolved, left as generic string
+McrRestoreAction: getAllowedParams() includes '$this->getRequest()' - a parent/helper call, not statically resolved, NOT captured here
+McrRestoreAction: getAllowedParams() includes '$this->getTitle()' - a parent/helper call, not statically resolved, NOT captured here
+McrRestoreAction.wpdiff: unrecognized HTMLForm type 'info', left as generic string
+McrRestoreAction.wpsummarypreview: unrecognized HTMLForm type 'info', left as generic string
+McrUndoAction: getAllowedParams() includes '$this->getRequest()' - a parent/helper call, not statically resolved, NOT captured here
+McrUndoAction: getAllowedParams() includes '$this->getTitle()' - a parent/helper call, not statically resolved, NOT captured here
+McrUndoAction.wpdiff: unrecognized HTMLForm type 'info', left as generic string
+McrUndoAction.wpsummarypreview: unrecognized HTMLForm type 'info', left as generic string
+PurgeAction.wpintro: unrecognized HTMLForm type 'info', left as generic string
+RevertAction: getAllowedParams() includes '$this->getUser()' - a parent/helper call, not statically resolved, NOT captured here
+RevertAction: getAllowedParams() includes '$this->getLanguage()' - a parent/helper call, not statically resolved, NOT captured here
+RevertAction.wpintro: unrecognized HTMLForm type 'info', left as generic string
+RollbackAction.wpintro: unrecognized HTMLForm type 'info', left as generic string
+UnwatchAction.wpintro: unrecognized HTMLForm type 'info', left as generic string
+WatchAction: getAllowedParams() includes '$this->msg( 'confirm-watch-top' )' - a parent/helper call, not statically resolved, NOT captured here
+WatchAction: getAllowedParams() includes '$this->getUser()' - a parent/helper call, not statically resolved, NOT captured here
+WatchAction: getAllowedParams() includes '$this->getContext()' - a parent/helper call, not statically resolved, NOT captured here
+WatchAction: getAllowedParams() includes '$this->getUser()' - a parent/helper call, not statically resolved, NOT captured here
+WatchAction.wplabels: HTMLForm 'select'/'radio' options not statically resolved, left as generic string

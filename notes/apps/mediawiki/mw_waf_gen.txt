@@ -1,0 +1,43 @@
+Can you have that script also generate a mediawiki.lua file with openresty lua code to validate requests against known valid request uris/variables/values from the param info that is pulled? if the request is not valid, it should block the request (nonzero return) ?
+
+
+I’ll extend it into a generator: it will fetch paraminfo, save the JSON, and emit a Lua module with generated tables plus a validate() function for OpenResty.
+
+Thought for a couple of seconds
+
+Yes — here’s a version that generates both:
+
+mediawiki-api-paraminfo.json
+mediawiki.lua
+
+Save as mw_waf_gen.py:
+
+
+
+
+Run with:
+
+	python3 mw_waf_gen.py http://localhost:8889/
+
+Example OpenResty usage:
+
+	location / {
+	    access_by_lua_block {
+	        local mw = require "mediawiki"
+	        local rc, reason = mw.validate()
+	
+	        if rc ~= 0 then
+	            ngx.status = 403
+	            ngx.say("blocked: " .. reason)
+	            return ngx.exit(403)
+	        }
+	    }
+	
+	    proxy_pass http://mediawiki_backend;
+	}
+
+
+
+Important caveat: this is a good generated baseline, but paraminfo does not fully describe semantic constraints like valid page title syntax, token format, upload MIME rules, edit-form fields from /index.php, or extension-specific non-API routes. So I’d treat generated mediawiki.lua as the API layer, then add hand-written policies for /index.php, /load.php, /rest.php, uploads, login, and edit form POSTs.
+
+

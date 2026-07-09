@@ -1,0 +1,2548 @@
+{
+  "Activeusers": {
+    "class": "SpecialActiveUsers",
+    "extends": "SpecialPage",
+    "fields": {
+      "hidebots": {
+        "type": "string"
+      },
+      "hidesysops": {
+        "type": "string"
+      }
+    },
+    "file": "Specials/SpecialActiveUsers.php",
+    "method": "heuristic"
+  },
+  "AllMyUploads": {
+    "class": "SpecialAllMyUploads",
+    "extends": "RedirectSpecialPage",
+    "fields": {},
+    "file": "Specials/Redirects/SpecialAllMyUploads.php",
+    "method": "redirect_passthrough"
+  },
+  "Allmessages": {
+    "class": "SpecialAllMessages",
+    "extends": "SpecialPage",
+    "fields": {},
+    "file": "Specials/SpecialAllMessages.php",
+    "method": "none"
+  },
+  "Allpages": {
+    "class": "SpecialAllPages",
+    "extends": "IncludableSpecialPage",
+    "fields": {
+      "from": {
+        "type": "string"
+      },
+      "hideredirects": {
+        "type": "string"
+      },
+      "namespace": {
+        "type": "string"
+      },
+      "to": {
+        "type": "string"
+      }
+    },
+    "file": "Specials/SpecialAllPages.php",
+    "method": "heuristic"
+  },
+  "Ancientpages": {
+    "class": "SpecialAncientPages",
+    "extends": "QueryPage",
+    "fields": {},
+    "file": "Specials/SpecialAncientPages.php",
+    "method": "query_page_standard"
+  },
+  "ApiHelp": {
+    "class": "SpecialApiHelp",
+    "extends": "UnlistedSpecialPage",
+    "fields": {
+      "recursivesubmodules": {
+        "type": "string"
+      },
+      "submodules": {
+        "type": "string"
+      },
+      "title": {
+        "type": "string"
+      }
+    },
+    "file": "Specials/SpecialApiHelp.php",
+    "method": "heuristic"
+  },
+  "ApiSandbox": {
+    "class": "SpecialApiSandbox",
+    "extends": "SpecialPage",
+    "fields": {},
+    "file": "Specials/SpecialApiSandbox.php",
+    "method": "none"
+  },
+  "AuthenticationPopupSuccess": {
+    "class": "SpecialAuthenticationPopupSuccess",
+    "extends": "UnlistedSpecialPage",
+    "fields": {
+      "display": {
+        "type": "string"
+      }
+    },
+    "file": "Specials/SpecialAuthenticationPopupSuccess.php",
+    "method": "heuristic"
+  },
+  "AutoblockList": {
+    "class": "SpecialAutoblockList",
+    "extends": "SpecialPage",
+    "fields": {},
+    "file": "Specials/SpecialAutoblockList.php",
+    "method": "none"
+  },
+  "Blankpage": {
+    "class": "SpecialBlankpage",
+    "extends": "UnlistedSpecialPage",
+    "fields": {},
+    "file": "Specials/SpecialBlankpage.php",
+    "method": "none"
+  },
+  "Block": {
+    "class": "SpecialBlock",
+    "extends": "FormSpecialPage",
+    "fields": {
+      "wpActionRestrictions": {
+        "type": "string"
+      },
+      "wpAutoBlock": {
+        "type": "boolean"
+      },
+      "wpConfirm": {
+        "type": "string"
+      },
+      "wpCreateAccount": {
+        "type": "boolean"
+      },
+      "wpDisableEmail": {
+        "type": "boolean"
+      },
+      "wpDisableUTEdit": {
+        "type": "boolean"
+      },
+      "wpEditingRestriction": {
+        "type": "string"
+      },
+      "wpExpiry": {
+        "type": "string"
+      },
+      "wpHardBlock": {
+        "type": "boolean"
+      },
+      "wpHideUser": {
+        "type": "boolean"
+      },
+      "wpNamespaceRestrictions": {
+        "type": "string"
+      },
+      "wpPageRestrictions": {
+        "type": "string"
+      },
+      "wpPreviousTarget": {
+        "type": "string"
+      },
+      "wpReason": {
+        "type": "string"
+      },
+      "wpTarget": {
+        "type": "user"
+      },
+      "wpWatch": {
+        "type": "boolean"
+      }
+    },
+    "file": "Specials/SpecialBlock.php",
+    "method": "form_fields"
+  },
+  "BlockList": {
+    "class": "SpecialBlockList",
+    "extends": "SpecialPage",
+    "fields": {
+      "action": {
+        "type": "string"
+      },
+      "blockType": {
+        "type": "string"
+      },
+      "ip": {
+        "type": "string"
+      },
+      "wpOptions": {
+        "type": "string"
+      },
+      "wpTarget": {
+        "type": "string"
+      }
+    },
+    "file": "Specials/SpecialBlockList.php",
+    "method": "heuristic"
+  },
+  "Booksources": {
+    "class": "SpecialBookSources",
+    "extends": "SpecialPage",
+    "fields": {
+      "isbn": {
+        "type": "string"
+      }
+    },
+    "file": "Specials/SpecialBookSources.php",
+    "method": "heuristic"
+  },
+  "BotPasswords": {
+    "class": "SpecialBotPasswords",
+    "extends": "FormSpecialPage",
+    "fields": {
+      "wpappId": {
+        "type": "string"
+      },
+      "wpgrants": {
+        "type": "string"
+      },
+      "wpresetPassword": {
+        "type": "boolean"
+      },
+      "wprestrictions": {
+        "type": "string"
+      }
+    },
+    "file": "Specials/SpecialBotPasswords.php",
+    "method": "form_fields"
+  },
+  "BrokenRedirects": {
+    "class": "SpecialBrokenRedirects",
+    "extends": "QueryPage",
+    "fields": {},
+    "file": "Specials/SpecialBrokenRedirects.php",
+    "method": "query_page_standard"
+  },
+  "Categories": {
+    "class": "SpecialCategories",
+    "extends": "SpecialPage",
+    "fields": {
+      "from": {
+        "type": "string"
+      }
+    },
+    "file": "Specials/SpecialCategories.php",
+    "method": "heuristic"
+  },
+  "ChangeContentModel": {
+    "class": "SpecialChangeContentModel",
+    "extends": "FormSpecialPage",
+    "fields": {
+      "model": {
+        "type": "string"
+      },
+      "pagetitle": {
+        "type": "string"
+      },
+      "reason": {
+        "type": "string"
+      }
+    },
+    "file": "Specials/SpecialChangeContentModel.php",
+    "method": "form_fields"
+  },
+  "ChangeCredentials": {
+    "class": "SpecialChangeCredentials",
+    "extends": "AuthManagerSpecialPage",
+    "fields": {
+      "authAction": {
+        "type": "string"
+      },
+      "authUniqueId": {
+        "type": "string"
+      },
+      "returnto": {
+        "type": "string"
+      },
+      "returntoanchor": {
+        "type": "string"
+      },
+      "returntoquery": {
+        "type": "string"
+      },
+      "uselang": {
+        "type": "string"
+      },
+      "variant": {
+        "type": "string"
+      },
+      "wpAuthToken": {
+        "type": "string"
+      }
+    },
+    "file": "Specials/SpecialChangeCredentials.php",
+    "method": "heuristic"
+  },
+  "ChangePassword": {
+    "class": "SpecialChangePassword",
+    "extends": "SpecialRedirectToSpecial",
+    "fields": {
+      "returnto": {
+        "type": "string"
+      },
+      "returntoquery": {
+        "type": "string"
+      }
+    },
+    "file": "Specials/SpecialChangePassword.php",
+    "method": "redirect_passthrough"
+  },
+  "ComparePages": {
+    "class": "SpecialComparePages",
+    "extends": "SpecialPage",
+    "fields": {},
+    "file": "Specials/SpecialComparePages.php",
+    "method": "none"
+  },
+  "Contribute": {
+    "class": "SpecialContribute",
+    "extends": "IncludableSpecialPage",
+    "fields": {},
+    "file": "Specials/SpecialContribute.php",
+    "method": "none"
+  },
+  "Contributions": {
+    "class": "SpecialContributions",
+    "extends": "ContributionsSpecialPage",
+    "fields": {
+      "associated": {
+        "type": "string"
+      },
+      "bot": {
+        "type": "string"
+      },
+      "deletedOnly": {
+        "type": "string"
+      },
+      "end": {
+        "type": "string"
+      },
+      "feed": {
+        "type": "string"
+      },
+      "hideMinor": {
+        "type": "string"
+      },
+      "limit": {
+        "type": "string"
+      },
+      "month": {
+        "type": "string"
+      },
+      "namespace": {
+        "type": "string"
+      },
+      "newOnly": {
+        "type": "string"
+      },
+      "nsInvert": {
+        "type": "string"
+      },
+      "start": {
+        "type": "string"
+      },
+      "tagInvert": {
+        "type": "string"
+      },
+      "tagfilter": {
+        "type": "string"
+      },
+      "target": {
+        "type": "string"
+      },
+      "topOnly": {
+        "type": "string"
+      },
+      "wpfilters": {
+        "type": "string"
+      },
+      "year": {
+        "type": "string"
+      }
+    },
+    "file": "Specials/SpecialContributions.php",
+    "method": "heuristic"
+  },
+  "CreateAccount": {
+    "class": "SpecialCreateAccount",
+    "extends": "LoginSignupSpecialPage",
+    "fields": {
+      "action": {
+        "type": "string"
+      },
+      "alwaysShowLogin": {
+        "type": "string"
+      },
+      "authAction": {
+        "type": "string"
+      },
+      "authUniqueId": {
+        "type": "string"
+      },
+      "error": {
+        "type": "string"
+      },
+      "force": {
+        "type": "string"
+      },
+      "fromhttp": {
+        "type": "string"
+      },
+      "notice": {
+        "type": "string"
+      },
+      "returnto": {
+        "type": "string"
+      },
+      "returntoanchor": {
+        "type": "string"
+      },
+      "returntoquery": {
+        "type": "string"
+      },
+      "uselang": {
+        "type": "string"
+      },
+      "variant": {
+        "type": "string"
+      },
+      "warning": {
+        "type": "string"
+      },
+      "wpAuthToken": {
+        "type": "string"
+      },
+      "wpCreateaccount": {
+        "type": "string"
+      },
+      "wpCreateaccountMail": {
+        "type": "string"
+      },
+      "wpCreateaccountToken": {
+        "type": "string"
+      },
+      "wpEmail": {
+        "type": "string"
+      },
+      "wpForceHttps": {
+        "type": "string"
+      },
+      "wpFromhttp": {
+        "type": "string"
+      },
+      "wpLoginAttempt": {
+        "type": "string"
+      },
+      "wpLoginToken": {
+        "type": "string"
+      },
+      "wpName": {
+        "type": "string"
+      },
+      "wpName1": {
+        "type": "string"
+      },
+      "wpName2": {
+        "type": "string"
+      },
+      "wpPassword": {
+        "type": "string"
+      },
+      "wpPassword1": {
+        "type": "string"
+      },
+      "wpPassword2": {
+        "type": "string"
+      },
+      "wpRealName": {
+        "type": "string"
+      },
+      "wpReason": {
+        "type": "string"
+      },
+      "wpRemember": {
+        "type": "string"
+      },
+      "wpRetype": {
+        "type": "string"
+      }
+    },
+    "file": "Specials/SpecialCreateAccount.php",
+    "method": "heuristic"
+  },
+  "Deadendpages": {
+    "class": "SpecialDeadendPages",
+    "extends": "PageQueryPage",
+    "fields": {},
+    "file": "Specials/SpecialDeadendPages.php",
+    "method": "query_page_standard"
+  },
+  "DeletePage": {
+    "class": "SpecialDeletePage",
+    "extends": "SpecialRedirectWithAction",
+    "fields": {},
+    "file": "Specials/SpecialDeletePage.php",
+    "method": "redirect_passthrough"
+  },
+  "DeletedContributions": {
+    "class": "SpecialDeletedContributions",
+    "extends": "ContributionsSpecialPage",
+    "fields": {
+      "associated": {
+        "type": "string"
+      },
+      "bot": {
+        "type": "string"
+      },
+      "deletedOnly": {
+        "type": "string"
+      },
+      "end": {
+        "type": "string"
+      },
+      "feed": {
+        "type": "string"
+      },
+      "hideMinor": {
+        "type": "string"
+      },
+      "limit": {
+        "type": "string"
+      },
+      "month": {
+        "type": "string"
+      },
+      "namespace": {
+        "type": "string"
+      },
+      "newOnly": {
+        "type": "string"
+      },
+      "nsInvert": {
+        "type": "string"
+      },
+      "start": {
+        "type": "string"
+      },
+      "tagInvert": {
+        "type": "string"
+      },
+      "tagfilter": {
+        "type": "string"
+      },
+      "target": {
+        "type": "string"
+      },
+      "topOnly": {
+        "type": "string"
+      },
+      "wpfilters": {
+        "type": "string"
+      },
+      "year": {
+        "type": "string"
+      }
+    },
+    "file": "Specials/SpecialDeletedContributions.php",
+    "method": "heuristic"
+  },
+  "Diff": {
+    "class": "SpecialDiff",
+    "extends": "RedirectSpecialPage",
+    "fields": {},
+    "file": "Specials/SpecialDiff.php",
+    "method": "redirect_passthrough"
+  },
+  "DoubleRedirects": {
+    "class": "SpecialDoubleRedirects",
+    "extends": "QueryPage",
+    "fields": {},
+    "file": "Specials/SpecialDoubleRedirects.php",
+    "method": "query_page_standard"
+  },
+  "EditPage": {
+    "class": "SpecialEditPage",
+    "extends": "SpecialRedirectWithAction",
+    "fields": {},
+    "file": "Specials/SpecialEditPage.php",
+    "method": "redirect_passthrough"
+  },
+  "EditTags": {
+    "class": "SpecialEditTags",
+    "extends": "UnlistedSpecialPage",
+    "fields": {
+      "ids": {
+        "type": "string"
+      },
+      "target": {
+        "type": "string"
+      },
+      "type": {
+        "type": "string"
+      },
+      "wpEditToken": {
+        "type": "string"
+      },
+      "wpExistingTags": {
+        "type": "string"
+      },
+      "wpReason": {
+        "type": "string"
+      },
+      "wpRemoveAllTags": {
+        "type": "string"
+      },
+      "wpSubmit": {
+        "type": "string"
+      },
+      "wpTagList": {
+        "type": "string"
+      },
+      "wpTagsToRemove": {
+        "type": "string"
+      },
+      "wpfilters": {
+        "type": "string"
+      }
+    },
+    "file": "Specials/SpecialEditTags.php",
+    "method": "heuristic"
+  },
+  "EditWatchlist": {
+    "class": "SpecialEditWatchlist",
+    "extends": "UnlistedSpecialPage",
+    "fields": {
+      "action": {
+        "type": "string"
+      },
+      "limit": {
+        "type": "string"
+      },
+      "watchlistlabels": {
+        "type": "string"
+      },
+      "watchlistlabels-action": {
+        "type": "string"
+      },
+      "wpTitles": {
+        "type": "string"
+      }
+    },
+    "file": "Specials/SpecialEditWatchlist.php",
+    "method": "heuristic"
+  },
+  "Emailuser": {
+    "class": "SpecialEmailUser",
+    "extends": "SpecialPage",
+    "fields": {
+      "wpCCMe": {
+        "type": "boolean"
+      },
+      "wpFrom": {
+        "type": "string"
+      },
+      "wpSubject": {
+        "type": "string"
+      },
+      "wpTarget": {
+        "type": "string"
+      },
+      "wpText": {
+        "type": "string"
+      },
+      "wpTo": {
+        "type": "string"
+      }
+    },
+    "file": "Specials/SpecialEmailUser.php",
+    "method": "form_fields"
+  },
+  "ExpandTemplates": {
+    "class": "SpecialExpandTemplates",
+    "extends": "SpecialPage",
+    "fields": {
+      "wpContextTitle": {
+        "type": "string"
+      },
+      "wpEditToken": {
+        "type": "string"
+      },
+      "wpGenerateRawHtml": {
+        "type": "string"
+      },
+      "wpGenerateXml": {
+        "type": "string"
+      },
+      "wpInput": {
+        "type": "string"
+      },
+      "wpRemoveComments": {
+        "type": "string"
+      },
+      "wpRemoveNowiki": {
+        "type": "string"
+      }
+    },
+    "file": "Specials/SpecialExpandTemplates.php",
+    "method": "heuristic"
+  },
+  "Export": {
+    "class": "SpecialExport",
+    "extends": "SpecialPage",
+    "fields": {
+      "addcat": {
+        "type": "string"
+      },
+      "addns": {
+        "type": "string"
+      },
+      "catname": {
+        "type": "string"
+      },
+      "curonly": {
+        "type": "string"
+      },
+      "dir": {
+        "type": "string"
+      },
+      "exportall": {
+        "type": "string"
+      },
+      "history": {
+        "type": "string"
+      },
+      "limit": {
+        "type": "string"
+      },
+      "listauthors": {
+        "type": "string"
+      },
+      "nsindex": {
+        "type": "string"
+      },
+      "offset": {
+        "type": "string"
+      },
+      "pagelink-depth": {
+        "type": "string"
+      },
+      "pages": {
+        "type": "string"
+      },
+      "templates": {
+        "type": "string"
+      },
+      "wpDownload": {
+        "type": "string"
+      },
+      "wpExportTemplates": {
+        "type": "string"
+      }
+    },
+    "file": "Specials/SpecialExport.php",
+    "method": "heuristic"
+  },
+  "Fewestrevisions": {
+    "class": "SpecialFewestRevisions",
+    "extends": "QueryPage",
+    "fields": {},
+    "file": "Specials/SpecialFewestRevisions.php",
+    "method": "query_page_standard"
+  },
+  "FileDuplicateSearch": {
+    "class": "SpecialFileDuplicateSearch",
+    "extends": "SpecialPage",
+    "fields": {
+      "filename": {
+        "type": "string"
+      }
+    },
+    "file": "Specials/SpecialFileDuplicateSearch.php",
+    "method": "heuristic"
+  },
+  "Filepath": {
+    "class": "SpecialFilepath",
+    "extends": "RedirectSpecialPage",
+    "fields": {},
+    "file": "Specials/SpecialFilepath.php",
+    "method": "redirect_passthrough"
+  },
+  "GoToInterwiki": {
+    "class": "SpecialGoToInterwiki",
+    "extends": "UnlistedSpecialPage",
+    "fields": {},
+    "file": "Specials/SpecialGoToInterwiki.php",
+    "method": "none"
+  },
+  "Import": {
+    "class": "SpecialImport",
+    "extends": "SpecialPage",
+    "fields": {
+      "action": {
+        "type": "string"
+      },
+      "assignKnownUsers": {
+        "type": "string"
+      },
+      "frompage": {
+        "type": "string"
+      },
+      "interwiki": {
+        "type": "string"
+      },
+      "interwikiHistory": {
+        "type": "string"
+      },
+      "interwikiTemplates": {
+        "type": "string"
+      },
+      "log-comment": {
+        "type": "string"
+      },
+      "mapping": {
+        "type": "string"
+      },
+      "namespace": {
+        "type": "string"
+      },
+      "pagelink-depth": {
+        "type": "string"
+      },
+      "rootpage": {
+        "type": "string"
+      },
+      "source": {
+        "type": "string"
+      },
+      "subproject": {
+        "type": "string"
+      },
+      "usernamePrefix": {
+        "type": "string"
+      },
+      "wpEditToken": {
+        "type": "string"
+      }
+    },
+    "file": "Specials/SpecialImport.php",
+    "method": "heuristic"
+  },
+  "Interwiki": {
+    "class": "SpecialInterwiki",
+    "extends": "SpecialPage",
+    "fields": {
+      "action": {
+        "type": "string"
+      },
+      "prefix": {
+        "type": "string"
+      }
+    },
+    "file": "Specials/SpecialInterwiki.php",
+    "method": "heuristic"
+  },
+  "LinkAccounts": {
+    "class": "SpecialLinkAccounts",
+    "extends": "AuthManagerSpecialPage",
+    "fields": {
+      "authAction": {
+        "type": "string"
+      },
+      "authUniqueId": {
+        "type": "string"
+      },
+      "returnto": {
+        "type": "string"
+      },
+      "returntoanchor": {
+        "type": "string"
+      },
+      "returntoquery": {
+        "type": "string"
+      },
+      "uselang": {
+        "type": "string"
+      },
+      "variant": {
+        "type": "string"
+      },
+      "wpAuthToken": {
+        "type": "string"
+      }
+    },
+    "file": "Specials/SpecialLinkAccounts.php",
+    "method": "heuristic"
+  },
+  "LinkSearch": {
+    "class": "SpecialLinkSearch",
+    "extends": "QueryPage",
+    "fields": {},
+    "file": "Specials/SpecialLinkSearch.php",
+    "method": "query_page_standard"
+  },
+  "ListDuplicatedFiles": {
+    "class": "SpecialListDuplicatedFiles",
+    "extends": "QueryPage",
+    "fields": {},
+    "file": "Specials/SpecialListDuplicatedFiles.php",
+    "method": "query_page_standard"
+  },
+  "Listadmins": {
+    "class": "SpecialListAdmins",
+    "extends": "SpecialRedirectToSpecial",
+    "fields": {},
+    "file": "Specials/Redirects/SpecialListAdmins.php",
+    "method": "redirect_passthrough"
+  },
+  "Listbots": {
+    "class": "SpecialListBots",
+    "extends": "SpecialRedirectToSpecial",
+    "fields": {},
+    "file": "Specials/Redirects/SpecialListBots.php",
+    "method": "redirect_passthrough"
+  },
+  "Listfiles": {
+    "class": "SpecialListFiles",
+    "extends": "IncludableSpecialPage",
+    "fields": {
+      "ilsearch": {
+        "type": "string"
+      },
+      "ilshowall": {
+        "type": "string"
+      },
+      "user": {
+        "type": "string"
+      }
+    },
+    "file": "Specials/SpecialListFiles.php",
+    "method": "heuristic"
+  },
+  "Listgrants": {
+    "class": "SpecialListGrants",
+    "extends": "SpecialPage",
+    "fields": {},
+    "file": "Specials/SpecialListGrants.php",
+    "method": "none"
+  },
+  "Listgrouprights": {
+    "class": "SpecialListGroupRights",
+    "extends": "SpecialPage",
+    "fields": {},
+    "file": "Specials/SpecialListGroupRights.php",
+    "method": "none"
+  },
+  "Listredirects": {
+    "class": "SpecialListRedirects",
+    "extends": "QueryPage",
+    "fields": {},
+    "file": "Specials/SpecialListRedirects.php",
+    "method": "query_page_standard"
+  },
+  "Listusers": {
+    "class": "SpecialListUsers",
+    "extends": "IncludableSpecialPage",
+    "fields": {},
+    "file": "Specials/SpecialListUsers.php",
+    "method": "none"
+  },
+  "Lockdb": {
+    "class": "SpecialLockdb",
+    "extends": "FormSpecialPage",
+    "fields": {
+      "wpConfirm": {
+        "type": "boolean"
+      },
+      "wpReason": {
+        "type": "string"
+      }
+    },
+    "file": "Specials/SpecialLockdb.php",
+    "method": "form_fields"
+  },
+  "Log": {
+    "class": "SpecialLog",
+    "extends": "SpecialPage",
+    "fields": {
+      "excludetempacct": {
+        "type": "string"
+      },
+      "wpFormIdentifier": {
+        "type": "string"
+      },
+      "wpdate": {
+        "type": "string"
+      }
+    },
+    "file": "Specials/SpecialLog.php",
+    "method": "heuristic"
+  },
+  "Lonelypages": {
+    "class": "SpecialLonelyPages",
+    "extends": "PageQueryPage",
+    "fields": {},
+    "file": "Specials/SpecialLonelyPages.php",
+    "method": "query_page_standard"
+  },
+  "Longpages": {
+    "class": "SpecialLongPages",
+    "extends": "SpecialShortPages",
+    "fields": {},
+    "file": "Specials/SpecialLongPages.php",
+    "method": "query_page_standard"
+  },
+  "MIMEsearch": {
+    "class": "SpecialMIMESearch",
+    "extends": "QueryPage",
+    "fields": {},
+    "file": "Specials/SpecialMIMESearch.php",
+    "method": "query_page_standard"
+  },
+  "MediaStatistics": {
+    "class": "SpecialMediaStatistics",
+    "extends": "QueryPage",
+    "fields": {},
+    "file": "Specials/SpecialMediaStatistics.php",
+    "method": "query_page_standard"
+  },
+  "MergeHistory": {
+    "class": "SpecialMergeHistory",
+    "extends": "SpecialPage",
+    "fields": {
+      "action": {
+        "type": "string"
+      },
+      "dest": {
+        "type": "string"
+      },
+      "destID": {
+        "type": "string"
+      },
+      "mergepoint": {
+        "type": "string"
+      },
+      "mergepointold": {
+        "type": "string"
+      },
+      "submitted": {
+        "type": "string"
+      },
+      "target": {
+        "type": "string"
+      },
+      "targetID": {
+        "type": "string"
+      },
+      "wpComment": {
+        "type": "string"
+      },
+      "wpEditToken": {
+        "type": "string"
+      }
+    },
+    "file": "Specials/SpecialMergeHistory.php",
+    "method": "heuristic"
+  },
+  "Mostcategories": {
+    "class": "SpecialMostCategories",
+    "extends": "QueryPage",
+    "fields": {},
+    "file": "Specials/SpecialMostCategories.php",
+    "method": "query_page_standard"
+  },
+  "Mostimages": {
+    "class": "SpecialMostImages",
+    "extends": "ImageQueryPage",
+    "fields": {},
+    "file": "Specials/SpecialMostImages.php",
+    "method": "query_page_standard"
+  },
+  "Mostinterwikis": {
+    "class": "SpecialMostInterwikis",
+    "extends": "QueryPage",
+    "fields": {},
+    "file": "Specials/SpecialMostInterwikis.php",
+    "method": "query_page_standard"
+  },
+  "Mostlinked": {
+    "class": "SpecialMostLinked",
+    "extends": "QueryPage",
+    "fields": {},
+    "file": "Specials/SpecialMostLinked.php",
+    "method": "query_page_standard"
+  },
+  "Mostlinkedcategories": {
+    "class": "SpecialMostLinkedCategories",
+    "extends": "QueryPage",
+    "fields": {},
+    "file": "Specials/SpecialMostLinkedCategories.php",
+    "method": "query_page_standard"
+  },
+  "Mostlinkedtemplates": {
+    "class": "SpecialMostLinkedTemplates",
+    "extends": "QueryPage",
+    "fields": {},
+    "file": "Specials/SpecialMostLinkedTemplates.php",
+    "method": "query_page_standard"
+  },
+  "Mostrevisions": {
+    "class": "SpecialMostRevisions",
+    "extends": "SpecialFewestRevisions",
+    "fields": {},
+    "file": "Specials/SpecialMostRevisions.php",
+    "method": "query_page_standard"
+  },
+  "Movepage": {
+    "class": "SpecialMovePage",
+    "extends": "UnlistedSpecialPage",
+    "fields": {
+      "action": {
+        "type": "string"
+      },
+      "target": {
+        "type": "string"
+      },
+      "wpDeleteAndMove": {
+        "type": "string"
+      },
+      "wpEditToken": {
+        "type": "string"
+      },
+      "wpFixRedirects": {
+        "type": "string"
+      },
+      "wpLeaveRedirect": {
+        "type": "string"
+      },
+      "wpMove": {
+        "type": "string"
+      },
+      "wpMoveOverProtection": {
+        "type": "string"
+      },
+      "wpMoveOverSharedFile": {
+        "type": "string"
+      },
+      "wpMovesubpages": {
+        "type": "string"
+      },
+      "wpMovetalk": {
+        "type": "string"
+      },
+      "wpMovetalk-field": {
+        "type": "string"
+      },
+      "wpNewTitle": {
+        "type": "string"
+      },
+      "wpNewTitleMain": {
+        "type": "string"
+      },
+      "wpNewTitleNs": {
+        "type": "string"
+      },
+      "wpOldTitle": {
+        "type": "string"
+      },
+      "wpReason": {
+        "type": "string"
+      },
+      "wpReasonList": {
+        "type": "string"
+      },
+      "wpWatch": {
+        "type": "string"
+      },
+      "wpWatchlistExpiry": {
+        "type": "string"
+      }
+    },
+    "file": "Specials/SpecialMovePage.php",
+    "method": "heuristic"
+  },
+  "MyLanguage": {
+    "class": "SpecialMyLanguage",
+    "extends": "RedirectSpecialArticle",
+    "fields": {},
+    "file": "Specials/SpecialMyLanguage.php",
+    "method": "redirect_passthrough"
+  },
+  "Mycontributions": {
+    "class": "SpecialMycontributions",
+    "extends": "RedirectSpecialPage",
+    "fields": {},
+    "file": "Specials/Redirects/SpecialMycontributions.php",
+    "method": "redirect_passthrough"
+  },
+  "Mylog": {
+    "class": "SpecialMylog",
+    "extends": "RedirectSpecialPage",
+    "fields": {},
+    "file": "Specials/Redirects/SpecialMylog.php",
+    "method": "redirect_passthrough"
+  },
+  "Mypage": {
+    "class": "SpecialMypage",
+    "extends": "RedirectSpecialArticle",
+    "fields": {},
+    "file": "Specials/Redirects/SpecialMypage.php",
+    "method": "redirect_passthrough"
+  },
+  "Mytalk": {
+    "class": "SpecialMytalk",
+    "extends": "RedirectSpecialArticle",
+    "fields": {},
+    "file": "Specials/Redirects/SpecialMytalk.php",
+    "method": "redirect_passthrough"
+  },
+  "Myuploads": {
+    "class": "SpecialMyuploads",
+    "extends": "RedirectSpecialPage",
+    "fields": {},
+    "file": "Specials/Redirects/SpecialMyuploads.php",
+    "method": "redirect_passthrough"
+  },
+  "NamespaceInfo": {
+    "class": "SpecialNamespaceInfo",
+    "extends": "SpecialPage",
+    "fields": {},
+    "file": "Specials/SpecialNamespaceInfo.php",
+    "method": "none"
+  },
+  "NewSection": {
+    "class": "SpecialNewSection",
+    "extends": "RedirectSpecialPage",
+    "fields": {},
+    "file": "Specials/SpecialNewSection.php",
+    "method": "redirect_passthrough"
+  },
+  "Newimages": {
+    "class": "SpecialNewFiles",
+    "extends": "IncludableSpecialPage",
+    "fields": {},
+    "file": "Specials/SpecialNewFiles.php",
+    "method": "none"
+  },
+  "Newpages": {
+    "class": "SpecialNewPages",
+    "extends": "IncludableSpecialPage",
+    "fields": {},
+    "file": "Specials/SpecialNewPages.php",
+    "method": "none"
+  },
+  "PageData": {
+    "class": "SpecialPageData",
+    "extends": "UnlistedSpecialPage",
+    "fields": {},
+    "file": "Specials/SpecialPageData.php",
+    "method": "none"
+  },
+  "PageHistory": {
+    "class": "SpecialPageHistory",
+    "extends": "SpecialRedirectWithAction",
+    "fields": {},
+    "file": "Specials/SpecialPageHistory.php",
+    "method": "redirect_passthrough"
+  },
+  "PageInfo": {
+    "class": "SpecialPageInfo",
+    "extends": "SpecialRedirectWithAction",
+    "fields": {},
+    "file": "Specials/SpecialPageInfo.php",
+    "method": "redirect_passthrough"
+  },
+  "PagesWithProp": {
+    "class": "SpecialPagesWithProp",
+    "extends": "QueryPage",
+    "fields": {},
+    "file": "Specials/SpecialPagesWithProp.php",
+    "method": "query_page_standard"
+  },
+  "PasswordPolicies": {
+    "class": "SpecialPasswordPolicies",
+    "extends": "SpecialPage",
+    "fields": {},
+    "file": "Specials/SpecialPasswordPolicies.php",
+    "method": "none"
+  },
+  "PasswordReset": {
+    "class": "SpecialPasswordReset",
+    "extends": "FormSpecialPage",
+    "fields": {
+      "wpEmail": {
+        "type": "string"
+      },
+      "wpUsername": {
+        "type": "user"
+      }
+    },
+    "file": "Specials/SpecialPasswordReset.php",
+    "method": "form_fields"
+  },
+  "PermanentLink": {
+    "class": "SpecialPermanentLink",
+    "extends": "RedirectSpecialPage",
+    "fields": {},
+    "file": "Specials/SpecialPermanentLink.php",
+    "method": "redirect_passthrough"
+  },
+  "Preferences": {
+    "class": "SpecialPreferences",
+    "extends": "SpecialPage",
+    "fields": {
+      "wpServerTime": {
+        "type": "string"
+      },
+      "wpccmeonemails": {
+        "type": "boolean"
+      },
+      "wpcommoncssjs": {
+        "type": "string"
+      },
+      "wpcustomcssjs-safemode": {
+        "type": "string"
+      },
+      "wpdate": {
+        "type": "string"
+      },
+      "wpdiff-type": {
+        "type": "string"
+      },
+      "wpdiffonly": {
+        "type": "boolean"
+      },
+      "wpdisablemail": {
+        "type": "boolean"
+      },
+      "wpdownloaduserdata": {
+        "type": "string"
+      },
+      "wpeditcount": {
+        "type": "string"
+      },
+      "wpeditfont": {
+        "enum": [
+          "monospace",
+          "sans-serif",
+          "serif"
+        ],
+        "type": "enum"
+      },
+      "wpeditondblclick": {
+        "type": "boolean"
+      },
+      "wpeditrecovery": {
+        "type": "boolean"
+      },
+      "wpeditsectiononrightclick": {
+        "type": "boolean"
+      },
+      "wpeditwatchlist": {
+        "type": "string"
+      },
+      "wpeditwatchlistlabels": {
+        "type": "string"
+      },
+      "wpemail-allow-new-users": {
+        "type": "boolean"
+      },
+      "wpemail-blacklist": {
+        "type": "string"
+      },
+      "wpemailaddress": {
+        "type": "string"
+      },
+      "wpemailauthentication": {
+        "type": "string"
+      },
+      "wpenotifminoredits": {
+        "type": "boolean"
+      },
+      "wpenotifrevealaddr": {
+        "type": "boolean"
+      },
+      "wpenotifusertalkpages": {
+        "type": "boolean"
+      },
+      "wpenotifwatchlistpages": {
+        "type": "boolean"
+      },
+      "wpextendwatchlist": {
+        "type": "boolean"
+      },
+      "wpfancysig": {
+        "type": "boolean"
+      },
+      "wpforceeditsummary": {
+        "type": "boolean"
+      },
+      "wpforcesafemode": {
+        "type": "boolean"
+      },
+      "wpgender": {
+        "enum": [
+          "unknown",
+          "female",
+          "male"
+        ],
+        "type": "enum"
+      },
+      "wphidecategorization": {
+        "type": "boolean"
+      },
+      "wphideminor": {
+        "type": "boolean"
+      },
+      "wphidepatrolled": {
+        "type": "boolean"
+      },
+      "wpimagesize": {
+        "type": "string"
+      },
+      "wplanguage": {
+        "type": "string"
+      },
+      "wpminerva-theme": {
+        "type": "string"
+      },
+      "wpminordefault": {
+        "type": "boolean"
+      },
+      "wpnewpageshidepatrolled": {
+        "type": "boolean"
+      },
+      "wpnickname": {
+        "type": "string"
+      },
+      "wpnorollbackdiff": {
+        "type": "boolean"
+      },
+      "wpnowlocal": {
+        "type": "string"
+      },
+      "wpnowserver": {
+        "type": "string"
+      },
+      "wpoldsig": {
+        "type": "string"
+      },
+      "wppassword": {
+        "type": "string"
+      },
+      "wpprefershttps": {
+        "type": "boolean"
+      },
+      "wppreviewonfirst": {
+        "type": "boolean"
+      },
+      "wppreviewontop": {
+        "type": "boolean"
+      },
+      "wppst-cssjs": {
+        "type": "string"
+      },
+      "wprcdays": {
+        "type": "integer"
+      },
+      "wprcenhancedfilters-disable": {
+        "type": "boolean"
+      },
+      "wprcfilters-limit": {
+        "type": "string"
+      },
+      "wprcfilters-rc-collapsed": {
+        "type": "string"
+      },
+      "wprcfilters-saved-queries": {
+        "type": "string"
+      },
+      "wprcfilters-saved-queries-versionbackup": {
+        "type": "string"
+      },
+      "wprcfilters-wl-collapsed": {
+        "type": "string"
+      },
+      "wprcfilters-wl-saved-queries": {
+        "type": "string"
+      },
+      "wprcfilters-wl-saved-queries-versionbackup": {
+        "type": "string"
+      },
+      "wprclimit": {
+        "type": "integer"
+      },
+      "wprealname": {
+        "type": "string"
+      },
+      "wpregistrationdate": {
+        "type": "string"
+      },
+      "wprequireemail": {
+        "type": "boolean"
+      },
+      "wprestoreprefs": {
+        "type": "string"
+      },
+      "wpsearch-match-redirect": {
+        "type": "string"
+      },
+      "wpsearch-special-page": {
+        "type": "string"
+      },
+      "wpsearch-thumbnail-extra-namespaces": {
+        "type": "boolean"
+      },
+      "wpsearchlimit": {
+        "type": "integer"
+      },
+      "wpshowhiddencats": {
+        "type": "boolean"
+      },
+      "wpshownumberswatching": {
+        "type": "boolean"
+      },
+      "wpshowrollbackconfirmation": {
+        "type": "boolean"
+      },
+      "wpskin": {
+        "type": "string"
+      },
+      "wpskin-responsive": {
+        "type": "boolean"
+      },
+      "wpthumbsize": {
+        "type": "string"
+      },
+      "wptimecorrection": {
+        "type": "string"
+      },
+      "wpunderline": {
+        "type": "string"
+      },
+      "wpuseeditwarning": {
+        "type": "boolean"
+      },
+      "wpuselivepreview": {
+        "type": "boolean"
+      },
+      "wpusenewrc": {
+        "type": "boolean"
+      },
+      "wpusergroups": {
+        "type": "string"
+      },
+      "wpusergroups-disabled": {
+        "type": "string"
+      },
+      "wpusername": {
+        "type": "string"
+      },
+      "wpvariant": {
+        "type": "string"
+      },
+      "wpvector-appearance-pinned": {
+        "type": "string"
+      },
+      "wpvector-font-size": {
+        "enum": [
+          "0",
+          "1",
+          "2"
+        ],
+        "type": "enum"
+      },
+      "wpvector-limited-width": {
+        "type": "boolean"
+      },
+      "wpvector-main-menu-pinned": {
+        "type": "string"
+      },
+      "wpvector-page-tools-pinned": {
+        "type": "string"
+      },
+      "wpvector-theme": {
+        "enum": [
+          "day",
+          "night",
+          "os"
+        ],
+        "type": "enum"
+      },
+      "wpvector-toc-pinned": {
+        "type": "string"
+      },
+      "wpwatchcreations": {
+        "type": "boolean"
+      },
+      "wpwatchcreations-expiry": {
+        "type": "string"
+      },
+      "wpwatchdefault": {
+        "type": "boolean"
+      },
+      "wpwatchdefault-expiry": {
+        "type": "string"
+      },
+      "wpwatchdeletion": {
+        "type": "boolean"
+      },
+      "wpwatchlistdays": {
+        "type": "integer"
+      },
+      "wpwatchlisthideanons": {
+        "type": "boolean"
+      },
+      "wpwatchlisthidebots": {
+        "type": "boolean"
+      },
+      "wpwatchlisthidecategorization": {
+        "type": "boolean"
+      },
+      "wpwatchlisthideliu": {
+        "type": "boolean"
+      },
+      "wpwatchlisthideminor": {
+        "type": "boolean"
+      },
+      "wpwatchlisthideown": {
+        "type": "boolean"
+      },
+      "wpwatchlisthidepatrolled": {
+        "type": "boolean"
+      },
+      "wpwatchlistlabelonboarding": {
+        "type": "string"
+      },
+      "wpwatchlistreloadautomatically": {
+        "type": "boolean"
+      },
+      "wpwatchlisttoken": {
+        "type": "string"
+      },
+      "wpwatchlisttoken-info": {
+        "type": "string"
+      },
+      "wpwatchlistunwatchlinks": {
+        "type": "boolean"
+      },
+      "wpwatchmoves": {
+        "type": "boolean"
+      },
+      "wpwatchrollback": {
+        "type": "boolean"
+      },
+      "wpwatchrollback-expiry": {
+        "type": "string"
+      },
+      "wpwatchuploads": {
+        "type": "boolean"
+      },
+      "wpwlenhancedfilters-disable": {
+        "type": "boolean"
+      },
+      "wpwllimit": {
+        "type": "integer"
+      }
+    },
+    "file": "Specials/SpecialPreferences.php",
+    "method": "form_fields"
+  },
+  "Prefixindex": {
+    "class": "SpecialPrefixIndex",
+    "extends": "SpecialAllPages",
+    "fields": {
+      "from": {
+        "type": "string"
+      },
+      "hideredirects": {
+        "type": "string"
+      },
+      "namespace": {
+        "type": "string"
+      },
+      "prefix": {
+        "type": "string"
+      },
+      "stripprefix": {
+        "type": "string"
+      },
+      "to": {
+        "type": "string"
+      }
+    },
+    "file": "Specials/SpecialPrefixIndex.php",
+    "method": "heuristic"
+  },
+  "ProtectPage": {
+    "class": "SpecialProtectPage",
+    "extends": "SpecialRedirectWithAction",
+    "fields": {},
+    "file": "Specials/SpecialProtectPage.php",
+    "method": "redirect_passthrough"
+  },
+  "Protectedpages": {
+    "class": "SpecialProtectedPages",
+    "extends": "SpecialPage",
+    "fields": {
+      "level": {
+        "type": "string"
+      },
+      "namespace": {
+        "type": "string"
+      },
+      "size": {
+        "type": "string"
+      },
+      "size-mode": {
+        "type": "string"
+      },
+      "type": {
+        "type": "string"
+      },
+      "wpfilters": {
+        "type": "string"
+      }
+    },
+    "file": "Specials/SpecialProtectedPages.php",
+    "method": "heuristic"
+  },
+  "Protectedtitles": {
+    "class": "SpecialProtectedTitles",
+    "extends": "SpecialPage",
+    "fields": {
+      "level": {
+        "type": "string"
+      },
+      "namespace": {
+        "type": "string"
+      }
+    },
+    "file": "Specials/SpecialProtectedTitles.php",
+    "method": "heuristic"
+  },
+  "Purge": {
+    "class": "SpecialPurge",
+    "extends": "SpecialRedirectWithAction",
+    "fields": {},
+    "file": "Specials/SpecialPurge.php",
+    "method": "redirect_passthrough"
+  },
+  "RandomInCategory": {
+    "class": "SpecialRandomInCategory",
+    "extends": "FormSpecialPage",
+    "fields": {
+      "wpcategory": {
+        "type": "string"
+      }
+    },
+    "file": "Specials/SpecialRandomInCategory.php",
+    "method": "form_fields"
+  },
+  "Randompage": {
+    "class": "SpecialRandomPage",
+    "extends": "SpecialPage",
+    "fields": {
+      "action": {
+        "type": "string"
+      }
+    },
+    "file": "Specials/SpecialRandomPage.php",
+    "method": "heuristic"
+  },
+  "Randomredirect": {
+    "class": "SpecialRandomRedirect",
+    "extends": "SpecialRandomPage",
+    "fields": {},
+    "file": "Specials/SpecialRandomRedirect.php",
+    "method": "query_page_standard"
+  },
+  "Randomrootpage": {
+    "class": "SpecialRandomRootPage",
+    "extends": "SpecialRandomPage",
+    "fields": {},
+    "file": "Specials/SpecialRandomRootPage.php",
+    "method": "query_page_standard"
+  },
+  "Recentchanges": {
+    "class": "SpecialRecentChanges",
+    "extends": "ChangesListSpecialPage",
+    "fields": {
+      "action": {
+        "type": "string"
+      },
+      "enable_partitioning": {
+        "type": "string"
+      },
+      "feed": {
+        "type": "string"
+      },
+      "peek": {
+        "type": "string"
+      },
+      "rcfilters": {
+        "type": "string"
+      },
+      "urlversion": {
+        "type": "string"
+      }
+    },
+    "file": "Specials/SpecialRecentChanges.php",
+    "method": "heuristic"
+  },
+  "Recentchangeslinked": {
+    "class": "SpecialRecentChangesLinked",
+    "extends": "SpecialRecentChanges",
+    "fields": {
+      "action": {
+        "type": "string"
+      },
+      "enable_partitioning": {
+        "type": "string"
+      },
+      "feed": {
+        "type": "string"
+      },
+      "peek": {
+        "type": "string"
+      },
+      "rcfilters": {
+        "type": "string"
+      },
+      "urlversion": {
+        "type": "string"
+      }
+    },
+    "file": "Specials/SpecialRecentChangesLinked.php",
+    "method": "heuristic"
+  },
+  "Redirect": {
+    "class": "SpecialRedirect",
+    "extends": "FormSpecialPage",
+    "fields": {
+      "wptype": {
+        "enum": [
+          "user",
+          "page",
+          "revision",
+          "file",
+          "logid"
+        ],
+        "type": "enum"
+      },
+      "wpvalue": {
+        "type": "string"
+      }
+    },
+    "file": "Specials/SpecialRedirect.php",
+    "method": "form_fields"
+  },
+  "RemoveCredentials": {
+    "class": "SpecialRemoveCredentials",
+    "extends": "SpecialChangeCredentials",
+    "fields": {
+      "authAction": {
+        "type": "string"
+      },
+      "authUniqueId": {
+        "type": "string"
+      },
+      "returnto": {
+        "type": "string"
+      },
+      "returntoanchor": {
+        "type": "string"
+      },
+      "returntoquery": {
+        "type": "string"
+      },
+      "uselang": {
+        "type": "string"
+      },
+      "variant": {
+        "type": "string"
+      },
+      "wpAuthToken": {
+        "type": "string"
+      }
+    },
+    "file": "Specials/SpecialRemoveCredentials.php",
+    "method": "heuristic"
+  },
+  "Renameuser": {
+    "class": "SpecialRenameUser",
+    "extends": "SpecialPage",
+    "fields": {
+      "confirmaction": {
+        "type": "string"
+      },
+      "forceglobaldetach": {
+        "type": "string"
+      },
+      "movepages": {
+        "type": "string"
+      },
+      "newusername": {
+        "type": "string"
+      },
+      "oldusername": {
+        "type": "string"
+      },
+      "reason": {
+        "type": "string"
+      },
+      "suppressredirect": {
+        "type": "string"
+      },
+      "wpEditToken": {
+        "type": "string"
+      }
+    },
+    "file": "Specials/SpecialRenameUser.php",
+    "method": "heuristic"
+  },
+  "ResetTokens": {
+    "class": "SpecialResetTokens",
+    "extends": "FormSpecialPage",
+    "fields": {
+      "wptokens": {
+        "type": "string"
+      }
+    },
+    "file": "Specials/SpecialResetTokens.php",
+    "method": "form_fields"
+  },
+  "Revisiondelete": {
+    "class": "SpecialRevisionDelete",
+    "extends": "UnlistedSpecialPage",
+    "fields": {
+      "file": {
+        "type": "string"
+      },
+      "ids": {
+        "type": "string"
+      },
+      "target": {
+        "type": "string"
+      },
+      "token": {
+        "type": "string"
+      },
+      "type": {
+        "type": "string"
+      },
+      "wpEditToken": {
+        "type": "string"
+      },
+      "wpHideComment": {
+        "type": "string"
+      },
+      "wpHidePrimary": {
+        "type": "string"
+      },
+      "wpHideRestricted": {
+        "type": "string"
+      },
+      "wpHideUser": {
+        "type": "string"
+      },
+      "wpReason": {
+        "type": "string"
+      },
+      "wpReasonDropDown": {
+        "type": "string"
+      },
+      "wpRevDeleteReasonList": {
+        "type": "string"
+      },
+      "wpSubmit": {
+        "type": "string"
+      }
+    },
+    "file": "Specials/SpecialRevisionDelete.php",
+    "method": "heuristic"
+  },
+  "RunJobs": {
+    "class": "SpecialRunJobs",
+    "extends": "UnlistedSpecialPage",
+    "fields": {},
+    "file": "Specials/SpecialRunJobs.php",
+    "method": "none"
+  },
+  "Shortpages": {
+    "class": "SpecialShortPages",
+    "extends": "QueryPage",
+    "fields": {},
+    "file": "Specials/SpecialShortPages.php",
+    "method": "query_page_standard"
+  },
+  "Specialpages": {
+    "class": "SpecialSpecialPages",
+    "extends": "UnlistedSpecialPage",
+    "fields": {},
+    "file": "Specials/SpecialSpecialPages.php",
+    "method": "none"
+  },
+  "Statistics": {
+    "class": "SpecialStatistics",
+    "extends": "SpecialPage",
+    "fields": {},
+    "file": "Specials/SpecialStatistics.php",
+    "method": "none"
+  },
+  "Tags": {
+    "class": "SpecialTags",
+    "extends": "SpecialPage",
+    "fields": {
+      "tag": {
+        "type": "string"
+      }
+    },
+    "file": "Specials/SpecialTags.php",
+    "method": "heuristic"
+  },
+  "TalkPage": {
+    "class": "SpecialTalkPage",
+    "extends": "FormSpecialPage",
+    "fields": {
+      "target": {
+        "type": "string"
+      }
+    },
+    "file": "Specials/Redirects/SpecialTalkPage.php",
+    "method": "form_fields"
+  },
+  "TrackingCategories": {
+    "class": "SpecialTrackingCategories",
+    "extends": "SpecialPage",
+    "fields": {},
+    "file": "Specials/SpecialTrackingCategories.php",
+    "method": "none"
+  },
+  "Unblock": {
+    "class": "SpecialUnblock",
+    "extends": "SpecialPage",
+    "fields": {
+      "ip": {
+        "type": "string"
+      },
+      "usecodex": {
+        "type": "string"
+      },
+      "wpBlockAddress": {
+        "type": "string"
+      },
+      "wpTarget": {
+        "type": "string"
+      }
+    },
+    "file": "Specials/SpecialUnblock.php",
+    "method": "heuristic"
+  },
+  "Uncategorizedcategories": {
+    "class": "SpecialUncategorizedCategories",
+    "extends": "SpecialUncategorizedPages",
+    "fields": {},
+    "file": "Specials/SpecialUncategorizedCategories.php",
+    "method": "query_page_standard"
+  },
+  "Uncategorizedimages": {
+    "class": "SpecialUncategorizedImages",
+    "extends": "ImageQueryPage",
+    "fields": {},
+    "file": "Specials/SpecialUncategorizedImages.php",
+    "method": "query_page_standard"
+  },
+  "Uncategorizedpages": {
+    "class": "SpecialUncategorizedPages",
+    "extends": "PageQueryPage",
+    "fields": {},
+    "file": "Specials/SpecialUncategorizedPages.php",
+    "method": "query_page_standard"
+  },
+  "Uncategorizedtemplates": {
+    "class": "SpecialUncategorizedTemplates",
+    "extends": "SpecialUncategorizedPages",
+    "fields": {},
+    "file": "Specials/SpecialUncategorizedTemplates.php",
+    "method": "query_page_standard"
+  },
+  "Undelete": {
+    "class": "SpecialUndelete",
+    "extends": "SpecialPage",
+    "fields": {
+      "action": {
+        "type": "string"
+      },
+      "diff": {
+        "type": "string"
+      },
+      "diffonly": {
+        "type": "string"
+      },
+      "file": {
+        "type": "string"
+      },
+      "fuzzy": {
+        "type": "string"
+      },
+      "historyoffset": {
+        "type": "string"
+      },
+      "invert": {
+        "type": "string"
+      },
+      "prefix": {
+        "type": "string"
+      },
+      "preview": {
+        "type": "string"
+      },
+      "restore": {
+        "type": "string"
+      },
+      "revdel": {
+        "type": "string"
+      },
+      "target": {
+        "type": "string"
+      },
+      "timestamp": {
+        "type": "string"
+      },
+      "token": {
+        "type": "string"
+      },
+      "undeletetalk": {
+        "type": "string"
+      },
+      "wpComment": {
+        "type": "string"
+      },
+      "wpCommentList": {
+        "type": "string"
+      },
+      "wpEditToken": {
+        "type": "string"
+      },
+      "wpUnsuppress": {
+        "type": "string"
+      },
+      "wpWatch": {
+        "type": "string"
+      }
+    },
+    "file": "Specials/SpecialUndelete.php",
+    "method": "heuristic"
+  },
+  "UnlinkAccounts": {
+    "class": "SpecialUnlinkAccounts",
+    "extends": "AuthManagerSpecialPage",
+    "fields": {
+      "authAction": {
+        "type": "string"
+      },
+      "authUniqueId": {
+        "type": "string"
+      },
+      "returnto": {
+        "type": "string"
+      },
+      "returntoanchor": {
+        "type": "string"
+      },
+      "returntoquery": {
+        "type": "string"
+      },
+      "uselang": {
+        "type": "string"
+      },
+      "variant": {
+        "type": "string"
+      },
+      "wpAuthToken": {
+        "type": "string"
+      }
+    },
+    "file": "Specials/SpecialUnlinkAccounts.php",
+    "method": "heuristic"
+  },
+  "Unlockdb": {
+    "class": "SpecialUnlockdb",
+    "extends": "FormSpecialPage",
+    "fields": {
+      "wpConfirm": {
+        "type": "boolean"
+      }
+    },
+    "file": "Specials/SpecialUnlockdb.php",
+    "method": "form_fields"
+  },
+  "Unusedcategories": {
+    "class": "SpecialUnusedCategories",
+    "extends": "QueryPage",
+    "fields": {},
+    "file": "Specials/SpecialUnusedCategories.php",
+    "method": "query_page_standard"
+  },
+  "Unusedimages": {
+    "class": "SpecialUnusedImages",
+    "extends": "ImageQueryPage",
+    "fields": {},
+    "file": "Specials/SpecialUnusedImages.php",
+    "method": "query_page_standard"
+  },
+  "Unusedtemplates": {
+    "class": "SpecialUnusedTemplates",
+    "extends": "QueryPage",
+    "fields": {},
+    "file": "Specials/SpecialUnusedTemplates.php",
+    "method": "query_page_standard"
+  },
+  "Unwatchedpages": {
+    "class": "SpecialUnwatchedPages",
+    "extends": "QueryPage",
+    "fields": {},
+    "file": "Specials/SpecialUnwatchedPages.php",
+    "method": "query_page_standard"
+  },
+  "Upload": {
+    "class": "SpecialUpload",
+    "extends": "SpecialPage",
+    "fields": {
+      "wpCacheKey": {
+        "type": "string"
+      },
+      "wpCancelUpload": {
+        "type": "string"
+      },
+      "wpChangeTags": {
+        "type": "string"
+      },
+      "wpDestFile": {
+        "type": "string"
+      },
+      "wpDestFileWarningAck": {
+        "type": "string"
+      },
+      "wpDestUrl": {
+        "type": "string"
+      },
+      "wpEditToken": {
+        "type": "string"
+      },
+      "wpForReUpload": {
+        "type": "string"
+      },
+      "wpIgnoreWarning": {
+        "type": "string"
+      },
+      "wpLicense": {
+        "type": "string"
+      },
+      "wpReUpload": {
+        "type": "string"
+      },
+      "wpSourceType": {
+        "type": "string"
+      },
+      "wpUpload": {
+        "type": "string"
+      },
+      "wpUploadCopyStatus": {
+        "type": "string"
+      },
+      "wpUploadDescription": {
+        "type": "string"
+      },
+      "wpUploadFile": {
+        "type": "string"
+      },
+      "wpUploadIgnoreWarning": {
+        "type": "string"
+      },
+      "wpUploadSource": {
+        "type": "string"
+      },
+      "wpWatchthis": {
+        "type": "string"
+      }
+    },
+    "file": "Specials/SpecialUpload.php",
+    "method": "heuristic"
+  },
+  "UploadStash": {
+    "class": "SpecialUploadStash",
+    "extends": "UnlistedSpecialPage",
+    "fields": {},
+    "file": "Specials/SpecialUploadStash.php",
+    "method": "none"
+  },
+  "Userlogin": {
+    "class": "SpecialUserLogin",
+    "extends": "LoginSignupSpecialPage",
+    "fields": {
+      "action": {
+        "type": "string"
+      },
+      "alwaysShowLogin": {
+        "type": "string"
+      },
+      "authAction": {
+        "type": "string"
+      },
+      "authUniqueId": {
+        "type": "string"
+      },
+      "error": {
+        "type": "string"
+      },
+      "force": {
+        "type": "string"
+      },
+      "fromhttp": {
+        "type": "string"
+      },
+      "notice": {
+        "type": "string"
+      },
+      "returnto": {
+        "type": "string"
+      },
+      "returntoanchor": {
+        "type": "string"
+      },
+      "returntoquery": {
+        "type": "string"
+      },
+      "type": {
+        "type": "string"
+      },
+      "uselang": {
+        "type": "string"
+      },
+      "variant": {
+        "type": "string"
+      },
+      "warning": {
+        "type": "string"
+      },
+      "wpAuthToken": {
+        "type": "string"
+      },
+      "wpCreateaccount": {
+        "type": "string"
+      },
+      "wpCreateaccountMail": {
+        "type": "string"
+      },
+      "wpCreateaccountToken": {
+        "type": "string"
+      },
+      "wpEmail": {
+        "type": "string"
+      },
+      "wpForceHttps": {
+        "type": "string"
+      },
+      "wpFromhttp": {
+        "type": "string"
+      },
+      "wpLoginAttempt": {
+        "type": "string"
+      },
+      "wpLoginToken": {
+        "type": "string"
+      },
+      "wpName": {
+        "type": "string"
+      },
+      "wpName1": {
+        "type": "string"
+      },
+      "wpName2": {
+        "type": "string"
+      },
+      "wpPassword": {
+        "type": "string"
+      },
+      "wpPassword1": {
+        "type": "string"
+      },
+      "wpPassword2": {
+        "type": "string"
+      },
+      "wpRealName": {
+        "type": "string"
+      },
+      "wpReason": {
+        "type": "string"
+      },
+      "wpRemember": {
+        "type": "string"
+      },
+      "wpRetype": {
+        "type": "string"
+      }
+    },
+    "file": "Specials/SpecialUserLogin.php",
+    "method": "heuristic"
+  },
+  "Userlogout": {
+    "class": "SpecialUserLogout",
+    "extends": "FormSpecialPage",
+    "fields": {
+      "wasTempUser": {
+        "type": "string"
+      }
+    },
+    "file": "Specials/SpecialUserLogout.php",
+    "method": "heuristic"
+  },
+  "Userrights": {
+    "class": "SpecialUserRights",
+    "extends": "UserGroupsSpecialPage",
+    "fields": {
+      "saveusergroups": {
+        "type": "string"
+      },
+      "user": {
+        "type": "string"
+      },
+      "user-reason": {
+        "type": "string"
+      },
+      "wpEditToken": {
+        "type": "string"
+      },
+      "wpReason": {
+        "type": "string"
+      },
+      "wpWatch": {
+        "type": "string"
+      }
+    },
+    "file": "Specials/SpecialUserRights.php",
+    "method": "heuristic"
+  },
+  "Version": {
+    "class": "SpecialVersion",
+    "extends": "SpecialPage",
+    "fields": {},
+    "file": "Specials/SpecialVersion.php",
+    "method": "none"
+  },
+  "Wantedcategories": {
+    "class": "SpecialWantedCategories",
+    "extends": "WantedQueryPage",
+    "fields": {},
+    "file": "Specials/SpecialWantedCategories.php",
+    "method": "query_page_standard"
+  },
+  "Wantedfiles": {
+    "class": "SpecialWantedFiles",
+    "extends": "WantedQueryPage",
+    "fields": {},
+    "file": "Specials/SpecialWantedFiles.php",
+    "method": "query_page_standard"
+  },
+  "Wantedpages": {
+    "class": "SpecialWantedPages",
+    "extends": "WantedQueryPage",
+    "fields": {},
+    "file": "Specials/SpecialWantedPages.php",
+    "method": "query_page_standard"
+  },
+  "Wantedtemplates": {
+    "class": "SpecialWantedTemplates",
+    "extends": "WantedQueryPage",
+    "fields": {},
+    "file": "Specials/SpecialWantedTemplates.php",
+    "method": "query_page_standard"
+  },
+  "Watchlist": {
+    "class": "SpecialWatchlist",
+    "extends": "ChangesListSpecialPage",
+    "fields": {
+      "action": {
+        "type": "string"
+      },
+      "enable_partitioning": {
+        "type": "string"
+      },
+      "peek": {
+        "type": "string"
+      },
+      "rcfilters": {
+        "type": "string"
+      },
+      "reset": {
+        "type": "string"
+      },
+      "token": {
+        "type": "string"
+      },
+      "urlversion": {
+        "type": "string"
+      }
+    },
+    "file": "Specials/SpecialWatchlist.php",
+    "method": "heuristic"
+  },
+  "WatchlistLabels": {
+    "class": "SpecialWatchlistLabels",
+    "extends": "UnlistedSpecialPage",
+    "fields": {
+      "asc": {
+        "type": "string"
+      },
+      "sort": {
+        "type": "string"
+      }
+    },
+    "file": "Specials/SpecialWatchlistLabels.php",
+    "method": "heuristic"
+  },
+  "Whatlinkshere": {
+    "class": "SpecialWhatLinksHere",
+    "extends": "FormSpecialPage",
+    "fields": {
+      "dir": {
+        "type": "string"
+      },
+      "from": {
+        "type": "string"
+      },
+      "invert": {
+        "type": "boolean"
+      },
+      "limit": {
+        "type": "string"
+      },
+      "namespace": {
+        "type": "string"
+      },
+      "offset": {
+        "type": "string"
+      },
+      "target": {
+        "type": "string"
+      }
+    },
+    "file": "Specials/SpecialWhatLinksHere.php",
+    "method": "form_fields"
+  },
+  "Withoutinterwiki": {
+    "class": "SpecialWithoutInterwiki",
+    "extends": "PageQueryPage",
+    "fields": {},
+    "file": "Specials/SpecialWithoutInterwiki.php",
+    "method": "query_page_standard"
+  }
+}

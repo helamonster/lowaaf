@@ -1,0 +1,38 @@
+# WAF routes missing from vaultwarden.lua policy
+# Discovered via live traffic testing on 2026-06-26
+# Verified against app-sources/vaultwarden/clients/ and vaultwarden-1.36.0/
+# Status: FIXED — all four routes below were added to vaultwarden.lua
+
+## Registration (new two-step web vault flow + legacy)
+# Source: src/api/identity.rs (register_verification_email, register_finish, identity_register)
+POST /identity/accounts/register/send-verification-email  [ADDED]
+POST /identity/accounts/register/finish                   [ADDED]
+POST /identity/accounts/register                          [ADDED - legacy, for older clients]
+
+## Admin panel static assets
+# Source: src/api/web.rs (GET /vw_static/<filename>)
+GET  /vw_static/<filename>                                [ADDED]
+
+## -----------------------------------------------------------------------
+## Routes that appeared blocked but were already covered (false positives):
+## -----------------------------------------------------------------------
+
+# GET /api/accounts/keys           -> doesn't exist; POST /api/accounts/keys is in policy
+# GET /api/accounts/fingerprint    -> computed locally by client, no server endpoint
+# POST /api/accounts/request-delete -> doesn't exist; use /api/accounts/delete-recover
+# POST /api/two-factor/enable-authenticator -> doesn't exist; use POST/PUT /api/two-factor/authenticator
+# POST /api/two-factor/recover     -> already in policy as "2fa recover"
+# DELETE /api/devices/knowndevice  -> doesn't exist; GET /api/devices/knowndevice is in policy
+# GET/PUT/DELETE /api/collections/{id} -> standalone routes don't exist; only under /organizations/{id}/collections/
+# PUT /api/emergency-access/{id}/accept  -> already in policy (correct method is POST)
+# PUT /api/emergency-access/{id}/confirm -> already in policy (correct method is POST)
+# GET /api/emergency-access/{id}/view   -> already in policy (correct method is POST)
+# POST /api/sends/file             -> already in policy as "send create-file-v1"
+# POST /api/sends/{id}/access      -> tested wrong URL; correct is /api/sends/access/{accessId}, already in policy
+# GET /api/sends/{id}/file/{fileId} -> renewSendFileUploadUrl; server route is /sends/<id>/<fileId> (no "file/"), already in policy
+# PUT /api/sends/{id}/share        -> does not exist in Vaultwarden sends.rs
+# POST /api/ciphers/{id}/attachment -> already in policy as "attachment create-v1"
+# POST /api/accounts/register      -> wrong prefix; Vaultwarden uses /identity/, not /api/
+# POST /api/ciphers/restore        -> wrong method in test; source says PUT, already in policy as "ciphers restore-bulk"
+# GET /admin/config                -> GET doesn't exist; only POST /admin/config (settings update) is in Vaultwarden
+# GET /admin/settings/general      -> doesn't exist; settings page is rendered at GET /admin/ (already in policy)

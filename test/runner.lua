@@ -22,6 +22,14 @@ local cjson = require "cjson.safe"
 local HTTP_BASE = os.getenv("WAF_HTTP_BASE")
 local mock, http_client, core
 
+-- Route-level concurrency (HTTP mode only - see below). Off by default logic
+-- doesn't apply here since default is ON; WAF_TEST_PARALLEL=0 disables it.
+-- Offline/mock mode can't be parallelized: mock.set_request()/core.run(app)
+-- both read and mutate shared global mock state, so concurrent routes would
+-- corrupt each other's requests.
+local PARALLEL_ENABLED = (os.getenv("WAF_TEST_PARALLEL") or "1") ~= "0"
+local PARALLEL_N        = tonumber(os.getenv("WAF_TEST_PARALLEL_N")) or 16
+
 if HTTP_BASE then
   http_client = require "test.http_client"
 else
@@ -64,14 +72,44 @@ if not HTTP_BASE then
   app.mode = "block"
 end
 
+-- Positive-test enhancement (mediawiki, online mode only): log in once as
+-- the wiki's admin account so "valid variant" requests carry a real session
+-- cookie, not just anonymous requests with synthetic-but-schema-valid field
+-- values. This only verifies the WAF doesn't block an authenticated request
+-- shape - whether MediaWiki itself then succeeds/permits the action is out
+-- of scope here (see test/mw_login.lua). Never fatal: a login failure just
+-- means the rest of the run proceeds anonymous, same as before.
+local MW_LOGIN_COOKIE
+if HTTP_BASE and app_name == "mediawiki" then
+  local mw_login = require "test.mw_login"
+  local mw_user = os.getenv("MW_ADMIN_USER") or "Admin"
+  local mw_pass = os.getenv("MW_ADMIN_PASS") or "WafTestPass123!"
+  local cookie, err = mw_login.login(HTTP_BASE, mw_user, mw_pass)
+  if cookie then
+    MW_LOGIN_COOKIE = cookie
+    io.write(string.format("[%s] Logged in as %s for positive tests.\n", app_name, mw_user))
+  else
+    io.write(string.format(
+      "[%s] Could not log in as %s (continuing anonymous): %s\n", app_name, mw_user, tostring(err)))
+  end
+  io.flush()
+end
+
 -- ── Test infrastructure ───────────────────────────────────────────────────────
 
 local pass_count   = 0
 local fail_count   = 0
 local skip_count   = 0
 local results      = {}
-local route_test_n = 0   -- per-route counter, reset at start of each test_route
-local route_buf    = {}  -- per-route print buffer, flushed live after each route
+
+-- pass_count/fail_count/skip_count/results are shared across routes, but the
+-- increments/inserts below never yield mid-operation, so they stay safe even
+-- when multiple routes' test_route() calls are running concurrently as
+-- separate light threads (cooperative scheduling: only I/O calls like
+-- run_request() yield). route_test_n and the print buffer, in contrast, are
+-- per-route state - each test_route() call gets its OWN local copies (via
+-- make_recorder() below) instead of sharing one global, or concurrent routes
+-- would stomp on each other's counters and interleave print buffers.
 
 local Y  = "\027[33m"   -- yellow
 local G  = "\027[32m"   -- green
@@ -86,31 +124,6 @@ local route_fmt   = "%3d"
 -- Used in the planning pass to determine column widths cheaply.
 local planning = false
 
-local function record(route_name, label, outcome, detail)
-  route_test_n = route_test_n + 1
-  if planning then return end
-  results[#results+1] = {
-    route   = route_name,
-    label   = label,
-    outcome = outcome,
-    detail  = detail or "",
-    route_n = route_test_n,
-  }
-  if outcome == "PASS" then
-    pass_count = pass_count + 1
-  elseif outcome == "FAIL" then
-    fail_count = fail_count + 1
-  else
-    skip_count = skip_count + 1
-  end
-  route_buf[#route_buf+1] = {
-    label     = label,
-    outcome   = outcome,
-    overall_n = #results,
-    route_n   = route_test_n,
-  }
-end
-
 local DESC_WIDTH = 80
 
 local function fmt_desc(s)
@@ -120,18 +133,52 @@ local function fmt_desc(s)
   return s:sub(1, DESC_WIDTH - 3) .. "..."
 end
 
-local function flush_route(route_name)
-  for _, r in ipairs(route_buf) do
-    local mark = r.outcome == "PASS" and (G .. "✓" .. RS)
-              or r.outcome == "FAIL" and (R .. "✗" .. RS)
-              or                        (Y .. "~" .. RS)
-    io.write(string.format(
-      "%s" .. overall_fmt .. "%s. %-30s  test #%s" .. route_fmt .. "%s  %s  %s\n",
-      Y, r.overall_n, RS, route_name, Y, r.route_n, RS, fmt_desc(r.label), mark
-    ))
+-- Builds a fresh record()/flush_route() pair with their own private
+-- route_test_n/print-buffer state, for one test_route() call to use.
+local function make_recorder()
+  local route_test_n = 0
+  local route_buf    = {}
+
+  local function record(route_name, label, outcome, detail)
+    route_test_n = route_test_n + 1
+    if planning then return end
+    results[#results+1] = {
+      route   = route_name,
+      label   = label,
+      outcome = outcome,
+      detail  = detail or "",
+      route_n = route_test_n,
+    }
+    if outcome == "PASS" then
+      pass_count = pass_count + 1
+    elseif outcome == "FAIL" then
+      fail_count = fail_count + 1
+    else
+      skip_count = skip_count + 1
+    end
+    route_buf[#route_buf+1] = {
+      label     = label,
+      outcome   = outcome,
+      overall_n = #results,
+      route_n   = route_test_n,
+    }
   end
-  if #route_buf > 0 then io.flush() end
-  route_buf = {}
+
+  local function flush_route(route_name)
+    for _, r in ipairs(route_buf) do
+      local mark = r.outcome == "PASS" and (G .. "✓" .. RS)
+                or r.outcome == "FAIL" and (R .. "✗" .. RS)
+                or                        (Y .. "~" .. RS)
+      io.write(string.format(
+        "%s" .. overall_fmt .. "%s. %-30s  test #%s" .. route_fmt .. "%s  %s  %s\n",
+        Y, r.overall_n, RS, route_name, Y, r.route_n, RS, fmt_desc(r.label), mark
+      ))
+    end
+    if #route_buf > 0 then io.flush() end
+    route_buf = {}
+  end
+
+  return record, flush_route, function() return route_test_n end
 end
 
 -- Run the WAF against req; return true if WAF allowed it, false if denied.
@@ -206,16 +253,46 @@ local function encode_body(v)
   return s  -- nil on error → caller treats as unencodable
 end
 
+-- ── multipart/form-data body serialization ────────────────────────────────────
+-- The offline mock bypasses real body encoding for "form" fields (get_post_args
+-- just hands back the Lua table directly), which exercises schema-validation
+-- logic but never the real byte-level multipart parser in core.lua. Routes with
+-- a multipart content-type get one additional real-encoded request (see below)
+-- so that parser gets genuine end-to-end coverage, not just the mock bypass.
+local MULTIPART_BOUNDARY = "----waftestboundary1234567890"
+
+local function encode_multipart(fields)
+  local parts = {}
+  for k, v in pairs(fields) do
+    if type(v) == "string" then
+      parts[#parts+1] = "--" .. MULTIPART_BOUNDARY .. "\r\n"
+        .. 'Content-Disposition: form-data; name="' .. k .. '"\r\n\r\n'
+        .. v .. "\r\n"
+    end
+  end
+  parts[#parts+1] = "--" .. MULTIPART_BOUNDARY .. "--\r\n"
+  return table.concat(parts)
+end
+
+local function is_multipart_route(route)
+  local ct = route.content_types or route.content_type
+  for _, v in ipairs(type(ct) == "table" and ct or { ct }) do
+    if v == "multipart/form-data" then return true end
+  end
+  return false
+end
+
 -- ── Per-route test runner ─────────────────────────────────────────────────────
 
 local function test_route(route)
-  route_test_n = 0
+  local record, flush_route, get_route_test_n = make_recorder()
   local name    = route.name or "?"
   local uri     = gen.route_uri(route)
   local methods = route_methods(route)
   if #methods == 0 then
     record(name, "no methods defined", "SKIP")
-    return
+    flush_route(name)
+    return get_route_test_n()
   end
   local method = methods[1]
 
@@ -225,6 +302,9 @@ local function test_route(route)
                       "AppleWebKit/537.36 (KHTML, like Gecko) " ..
                       "Chrome/120.0 Safari/537.36 Bitwarden/2026.5.0",
   }
+  if MW_LOGIN_COOKIE then
+    base_headers["Cookie"] = MW_LOGIN_COOKIE
+  end
   local ct = route.content_types or route.content_type
   if ct then
     local first_ct = type(ct) == "table" and ct[1] or ct
@@ -299,6 +379,41 @@ local function test_route(route)
       else
         record(name, "valid " .. method .. " " .. uri, "FAIL",
                "valid request was denied")
+      end
+
+      if is_multipart_route(route) then
+        local mp_headers = {}
+        for k, hv in pairs(base_headers) do mp_headers[k] = hv end
+        mp_headers["Content-Type"] = "multipart/form-data; boundary=" .. MULTIPART_BOUNDARY
+
+        local mp_allowed = run_request({
+          method  = method,
+          uri     = uri,
+          headers = mp_headers,
+          body    = encode_multipart(valid_form),
+        })
+        if mp_allowed then
+          record(name, "valid multipart-encoded " .. method .. " " .. uri, "PASS")
+        else
+          record(name, "valid multipart-encoded " .. method .. " " .. uri, "FAIL",
+                 "valid multipart-encoded request was denied")
+        end
+
+        local bad_fields = {}
+        for k, fv in pairs(valid_form) do bad_fields[k] = fv end
+        bad_fields["__unexpected_field__"] = "x"
+        local mp_denied = not run_request({
+          method  = method,
+          uri     = uri,
+          headers = mp_headers,
+          body    = encode_multipart(bad_fields),
+        })
+        if mp_denied then
+          record(name, "multipart unexpected field rejected", "PASS")
+        else
+          record(name, "multipart unexpected field rejected", "FAIL",
+                 "unexpected multipart field was allowed")
+        end
       end
     end
   else
@@ -682,7 +797,24 @@ local function test_route(route)
 
   if form_schema then
     local invalids = gen.invalid_values(form_schema)
+    -- core.lua caps form parsing at ngx.req.get_post_args(200): a route whose
+    -- merged schema has more than 200 possible keys (api.php's union of every
+    -- action's + every query submodule's fields, currently 700+) can produce
+    -- a "base valid object covering every field at once" test fixture wider
+    -- than that cap. Offline mode hands the Lua table straight to the
+    -- validator and never parses a real form body, so it's unaffected; over
+    -- real HTTP, nginx's own arg-count truncation can silently drop the one
+    -- deliberately-invalid field before the WAF ever sees it - a real client
+    -- sending 200+ distinct field names in one POST isn't a realistic shape
+    -- this route needs to defend against, so - like max_body+1 above - this
+    -- is offline-only.
+    local FORM_ARG_CAP = 200
     for _, pair in ipairs(invalids) do
+      if type(pair.value) == "table" and HTTP_BASE then
+        local n = 0
+        for _ in pairs(pair.value) do n = n + 1 end
+        if n > FORM_ARG_CAP then goto next_form_invalid end
+      end
       if type(pair.value) == "table" then
         -- In HTTP mode: URL-encoding converts all primitive values to strings, so
         -- type-mismatch invalids (boolean/number in a string field) become valid
@@ -708,8 +840,8 @@ local function test_route(route)
           record(name, "form invalid: " .. pair.label, "FAIL",
                  "expected deny, got allow")
         end
-        ::next_form_invalid::
       end
+      ::next_form_invalid::
     end
   end
 
@@ -717,7 +849,16 @@ local function test_route(route)
 
   if query_schema then
     local invalids = gen.invalid_values(query_schema)
+    -- Same story as the form-invalid cap above, but for GET: core.lua caps
+    -- query parsing at ngx.req.get_uri_args(100), and api.php's merged
+    -- schema is well beyond that. Offline-only for the same reason.
+    local QUERY_ARG_CAP = 100
     for _, pair in ipairs(invalids) do
+      if type(pair.value) == "table" and HTTP_BASE then
+        local n = 0
+        for _ in pairs(pair.value) do n = n + 1 end
+        if n > QUERY_ARG_CAP then goto next_query_invalid end
+      end
       if type(pair.value) == "table" then
         -- In HTTP mode: URL-encoded query params are always strings, so
         -- boolean/number type-mismatch invalids become valid after encoding.
@@ -742,10 +883,13 @@ local function test_route(route)
           record(name, "query invalid: " .. pair.label, "FAIL",
                  "expected deny, got allow")
         end
-        ::next_query_invalid::
       end
+      ::next_query_invalid::
     end
   end
+
+  flush_route(name)
+  return get_route_test_n()
 end
 
 -- ── Run all routes ────────────────────────────────────────────────────────────
@@ -759,28 +903,62 @@ planning = true
 local planned_total = 0
 local max_per_route = 0
 for _, route in ipairs(app.routes) do
-  route_test_n = 0
-  pcall(test_route, route)
-  if route_test_n > max_per_route then max_per_route = route_test_n end
-  planned_total = planned_total + route_test_n
+  local ok, n = pcall(test_route, route)
+  local route_n = ok and n or 0
+  if route_n > max_per_route then max_per_route = route_n end
+  planned_total = planned_total + route_n
 end
 planning = false
 
 overall_fmt = string.format("%%%dd", #tostring(planned_total))
 route_fmt   = string.format("%%%dd", #tostring(max_per_route))
 
--- Execution pass: run tests live, printing each route's results immediately.
+-- Execution pass: run tests live. Sequentially, each route's results print
+-- as a contiguous block immediately after it finishes (original behavior).
+-- Concurrently (HTTP mode, default on - see PARALLEL_ENABLED above), routes
+-- still each print as one contiguous block (per-route buffering is exactly
+-- what make_recorder() exists for) but blocks appear in whichever order
+-- their route happens to finish in, not app.routes order - every line is
+-- still self-labeled with its route name, so this doesn't lose information,
+-- just reorders it.
 io.write(string.format("[%s] Running %d tests...\n", app_name, planned_total))
 io.flush()
 
-for _, route in ipairs(app.routes) do
-  route_test_n = 0
-  route_buf    = {}
+local function run_one_route(route)
   local ok, err = pcall(test_route, route)
   if not ok then
-    record(route.name or "?", "ERROR", "FAIL", tostring(err))
+    results[#results+1] = {
+      route = route.name or "?", label = "ERROR", outcome = "FAIL",
+      detail = tostring(err), route_n = 1,
+    }
+    fail_count = fail_count + 1
+    io.write(string.format("%sFAIL%s  %-30s  ERROR: %s\n", R, RS, route.name or "?", tostring(err)))
+    io.flush()
   end
-  flush_route(route.name or "?")
+end
+
+if HTTP_BASE and PARALLEL_ENABLED and PARALLEL_N > 1 then
+  local n_routes = #app.routes
+  local next_idx = 0
+  local function worker()
+    while true do
+      next_idx = next_idx + 1
+      if next_idx > n_routes then return end
+      run_one_route(app.routes[next_idx])
+    end
+  end
+  local n_workers = math.min(PARALLEL_N, n_routes)
+  local threads = {}
+  for i = 1, n_workers do
+    threads[i] = ngx.thread.spawn(worker)
+  end
+  for i = 1, n_workers do
+    ngx.thread.wait(threads[i])
+  end
+else
+  for _, route in ipairs(app.routes) do
+    run_one_route(route)
+  end
 end
 
 if not HTTP_BASE then app.mode = saved_mode end
