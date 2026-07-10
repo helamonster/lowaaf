@@ -340,3 +340,30 @@ RESOLVED (2026-07-09 21:24:41, real credentials-change attempt from browsing):
   extension enabled might.
 
 
+
+
+RESOLVED (2026-07-10, RecentChanges filter UI):
+
+2026/07/10 01:15:12 [warn] 10#10: *4984 [lua] core.lua:169: deny(): [waf:mediawiki] route 'index php get': ?.userExpLevel is not an allowed key, client: 172.18.0.1, server: localhost, request: "GET /index.php?userExpLevel=unregistered&hidebots=1&limit=50&days=7&enhanced=1&title=Special%3ARecentChanges&urlversion=2&action=render HTTP/1.1", host: "localhost:8889", referrer: "http://localhost:8889/index.php?userExpLevel=unregistered&hidebots=1&limit=50&days=7&enhanced=1&title=Special%3ARecentChanges&urlversion=2"
+172.18.0.1 [10/Jul/2026:01:15:12 +0000] "GET /index.php?userExpLevel=unregistered&hidebots=1&limit=50&days=7&enhanced=1&title=Special%3ARecentChanges&urlversion=2&action=render HTTP/1.1" 404
+2026/07/10 01:15:14 [warn] 10#10: *4984 [lua] core.lua:169: deny(): [waf:mediawiki] route 'index php get': ?.userExpLevel is not an allowed key, client: 172.18.0.1, server: localhost, request: "GET /index.php?userExpLevel=unregistered&hidebots=1&limit=50&days=7&enhanced=1&title=Special%3ARecentChanges&urlversion=2&peek=1&from=20260710011512&isAnon=false&action=render HTTP/1.1", host: "localhost:8889", referrer: "http://localhost:8889/index.php?userExpLevel=unregistered&hidebots=1&limit=50&days=7&enhanced=1&title=Special%3ARecentChanges&urlversion=2"
+
+  Same root cause class as the AuthManager entries above: userExpLevel comes
+  from ChangesListSpecialPage's filter-group registration system
+  (includes/SpecialPage/ChangesListSpecialPage.php's
+  getBaseFilterGroupDefinitions(), plus RecentChanges/Watchlist's own
+  getExtraFilterGroupDefinitions() overrides) - a structured array of
+  ChangesListStringOptionsFilterGroup/ChangesListBooleanFilterGroup objects,
+  not $request->getVal() calls the heuristic scanner can see at all.
+  hidebots (already in idx_common) comes from this exact same system, so it
+  was already being treated as universal by accident/precedent while its 13
+  siblings were entirely missing. Read the full filter-group definitions by
+  hand (shared base + RecentChanges' own 'watchlist' group + Watchlist's own
+  'extended'/'watchlistactivity' groups) and added all of them to
+  idx_common for consistency with hidebots: userExpLevel, reviewStatus,
+  watchlist, watchlistactivity (string, pipe-separated option lists) and
+  hidebyothers, hidehumans, hidemajor, hidelastrevision,
+  hidepreviousrevisions, hidepageedits, hidenewpages, hidelog,
+  hidenewuserlog, hideunpatrolled, extended (boolean-style presence flags).
+
+

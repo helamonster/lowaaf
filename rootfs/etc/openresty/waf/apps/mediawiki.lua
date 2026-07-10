@@ -103,6 +103,28 @@ local idx_common = {
   days            = T.string({ max=6 }),
   hidebots        = T.string({ max=4 }),
   enhanced        = T.string({ max=4 }),
+  -- Shared ChangesListSpecialPage filter system (RecentChanges/Watchlist/
+  -- RecentChangesLinked all use it) - registered via getBaseFilterGroupDefinitions()
+  -- / getExtraFilterGroupDefinitions() (includes/SpecialPage/ChangesListSpecialPage.php,
+  -- includes/Specials/SpecialRecentChanges.php, includes/Specials/SpecialWatchlist.php),
+  -- not $request->getVal() calls the heuristic scanner can see - confirmed live:
+  -- ?userExpLevel=unregistered on Special:RecentChanges got denied. hidebots above is
+  -- from this exact same system, already treated as universal; these are its siblings.
+  userExpLevel    = T.string({ max=128 }),  -- pipe-separated: unregistered|registered|newcomer|learner|experienced
+  reviewStatus    = T.string({ max=32 }),   -- pipe-separated: unpatrolled|manual|auto
+  watchlist       = T.string({ max=32 }),   -- pipe-separated: watched|watchednew|notwatched (RecentChanges-specific)
+  watchlistactivity = T.string({ max=16 }), -- pipe-separated: unseen|seen (Watchlist-specific)
+  hidebyothers    = T.string({ max=4 }),
+  hidehumans      = T.string({ max=4 }),
+  hidemajor       = T.string({ max=4 }),
+  hidelastrevision = T.string({ max=4 }),
+  hidepreviousrevisions = T.string({ max=4 }),
+  hidepageedits   = T.string({ max=4 }),
+  hidenewpages    = T.string({ max=4 }),
+  hidelog         = T.string({ max=4 }),
+  hidenewuserlog  = T.string({ max=4 }),
+  hideunpatrolled = T.string({ max=4 }),
+  extended        = T.string({ max=4 }),    -- Watchlist-specific
   urlversion      = T.string({ max=4 }),
   peek            = T.string({ max=4 }),
   isAnon          = T.string({ max=8 }),
@@ -1748,6 +1770,7 @@ for _, kind in ipairs({ "prop", "list" }) do
     end
   end
 end
+
 
 
 
