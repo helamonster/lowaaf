@@ -175,6 +175,9 @@
       "wpOptions": {
         "type": "string"
       },
+      "wpOptions[]": {
+        "type": "string"
+      },
       "wpTarget": {
         "type": "string"
       }
@@ -372,6 +375,9 @@
       "wpfilters": {
         "type": "string"
       },
+      "wpfilters[]": {
+        "type": "string"
+      },
       "year": {
         "type": "string"
       }
@@ -496,9 +502,14 @@
   "DeletePage": {
     "class": "SpecialDeletePage",
     "extends": "SpecialRedirectWithAction",
-    "fields": {},
+    "fields": {
+      "page": {
+        "required": true,
+        "type": "string"
+      }
+    },
     "file": "Specials/SpecialDeletePage.php",
-    "method": "redirect_passthrough"
+    "method": "form_fields"
   },
   "DeletedContributions": {
     "class": "SpecialDeletedContributions",
@@ -555,6 +566,9 @@
       "wpfilters": {
         "type": "string"
       },
+      "wpfilters[]": {
+        "type": "string"
+      },
       "year": {
         "type": "string"
       }
@@ -579,15 +593,23 @@
   "EditPage": {
     "class": "SpecialEditPage",
     "extends": "SpecialRedirectWithAction",
-    "fields": {},
+    "fields": {
+      "page": {
+        "required": true,
+        "type": "string"
+      }
+    },
     "file": "Specials/SpecialEditPage.php",
-    "method": "redirect_passthrough"
+    "method": "form_fields"
   },
   "EditTags": {
     "class": "SpecialEditTags",
     "extends": "UnlistedSpecialPage",
     "fields": {
       "ids": {
+        "type": "string"
+      },
+      "ids[]": {
         "type": "string"
       },
       "target": {
@@ -614,7 +636,13 @@
       "wpTagList": {
         "type": "string"
       },
+      "wpTagList[]": {
+        "type": "string"
+      },
       "wpTagsToRemove": {
+        "type": "string"
+      },
+      "wpTagsToRemove[]": {
         "type": "string"
       },
       "wpfilters": {
@@ -634,10 +662,10 @@
       "limit": {
         "type": "string"
       },
-      "watchlistlabels": {
+      "watchlistlabels-action": {
         "type": "string"
       },
-      "watchlistlabels-action": {
+      "watchlistlabels[]": {
         "type": "string"
       },
       "wpTitles": {
@@ -1256,16 +1284,26 @@
   "PageHistory": {
     "class": "SpecialPageHistory",
     "extends": "SpecialRedirectWithAction",
-    "fields": {},
+    "fields": {
+      "page": {
+        "required": true,
+        "type": "string"
+      }
+    },
     "file": "Specials/SpecialPageHistory.php",
-    "method": "redirect_passthrough"
+    "method": "form_fields"
   },
   "PageInfo": {
     "class": "SpecialPageInfo",
     "extends": "SpecialRedirectWithAction",
-    "fields": {},
+    "fields": {
+      "page": {
+        "required": true,
+        "type": "string"
+      }
+    },
     "file": "Specials/SpecialPageInfo.php",
-    "method": "redirect_passthrough"
+    "method": "form_fields"
   },
   "PagesWithProp": {
     "class": "SpecialPagesWithProp",
@@ -1692,9 +1730,14 @@
   "ProtectPage": {
     "class": "SpecialProtectPage",
     "extends": "SpecialRedirectWithAction",
-    "fields": {},
+    "fields": {
+      "page": {
+        "required": true,
+        "type": "string"
+      }
+    },
     "file": "Specials/SpecialProtectPage.php",
-    "method": "redirect_passthrough"
+    "method": "form_fields"
   },
   "Protectedpages": {
     "class": "SpecialProtectedPages",
@@ -1716,6 +1759,9 @@
         "type": "string"
       },
       "wpfilters": {
+        "type": "string"
+      },
+      "wpfilters[]": {
         "type": "string"
       }
     },
@@ -1739,9 +1785,14 @@
   "Purge": {
     "class": "SpecialPurge",
     "extends": "SpecialRedirectWithAction",
-    "fields": {},
+    "fields": {
+      "page": {
+        "required": true,
+        "type": "string"
+      }
+    },
     "file": "Specials/SpecialPurge.php",
-    "method": "redirect_passthrough"
+    "method": "form_fields"
   },
   "RandomInCategory": {
     "class": "SpecialRandomInCategory",
@@ -1935,6 +1986,9 @@
         "type": "string"
       },
       "ids": {
+        "type": "string"
+      },
+      "ids[]": {
         "type": "string"
       },
       "target": {

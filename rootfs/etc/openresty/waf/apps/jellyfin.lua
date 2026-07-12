@@ -28,6 +28,16 @@ local HEX32 = "[0-9a-fA-F]{32}"
 local UUID  = "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
 local ID    = "(?:" .. HEX32 .. "|" .. UUID .. ")"
 
+
+local Q = "(?:0(?:\\.\\d{0,3})?|1(?:\\.0{0,3})?)"
+local CHARSET = "(?:\\*|[A-Za-z][A-Za-z0-9._-]*)"
+
+local ACCEPT_CHARSET = [[^\s*(?:]] .. CHARSET .. [[)(?:\s*;\s*q=]] .. Q .. [[)?(?:\s*,\s*(?:]] .. CHARSET .. [[)(?:\s*;\s*q=]] .. Q .. [[)?)*\s*$]]
+
+-- use like:
+-- ngx.re.match(val, ACCEPT_CHARSET, "jo")
+
+
 -- ---------------------------------------------------------------------------
 -- User-Agent validators
 -- ---------------------------------------------------------------------------
@@ -42,11 +52,18 @@ local function ua_any()
   return T.string({ max = 512 })
 end
 
+-- Accept-Charset 
+local function accept_charset()
+  return T.string({ max = 512, match = ACCEPT_CHARSET })
+end
+
+
+
 -- ---------------------------------------------------------------------------
 
 return {
   name = "jellyfin",
-  mode = "log",   -- switch to "block" after validating against real traffic
+  mode = "block",   -- switch to "block" after validating against real traffic
 
   defaults = {
     max_body        = 10 * 1024 * 1024,
@@ -57,6 +74,8 @@ return {
       -- you are certain no mobile/desktop/TV clients connect from outside.
       -- ["User-Agent"] = ua_browser(),
       ["User-Agent"] = ua_any(),
+      ["accept-charset"] = accept_charset(),
+      ["x-requested-with"] = T.string( { max = 512 } )
     },
   },
 
@@ -274,7 +293,9 @@ return {
     { name="videos active enc",    methods={"GET","POST","DELETE"}, path=[[^/Videos/ActiveEncodings$]] },
     { name="videos subtitles",     method="POST",          path="^/Videos/" .. ID .. "/Subtitles$" },
     { name="videos stream",        method="POST",          path="^/Videos/" .. ID .. "/stream$" },
-    { name="videos stream mp4",    method="GET",           path="^/Videos/" .. HEX32 .. "/stream\\.mp4$",  no_body=true },
+    { name="videos stream mp4",    method="GET",           path="^/Videos/" .. HEX32 .. "/stream\\.mp4$",   no_body=true },
+    { name="videos stream mkv",    method="GET",           path="^/Videos/" .. HEX32 .. "/stream\\.mkv$",   no_body=true },
+    { name="videos stream webm",   method="GET",           path="^/Videos/" .. HEX32 .. "/stream\\.webm$",  no_body=true },
     -- subtitle streams
     {
       name    = "videos subtitle stream",
@@ -299,8 +320,12 @@ return {
       name    = "hls segments",
       method  = "GET",
       paths   = {
-        "^/videos/" .. ID .. "/hls1/main/[0-9]+\\.(?:ts|mp4)$",
+
+			--  /videos/c1909159-c1fa-11af-3447-9e34339ceacf/hls1/main/-1.mp4, 
+        "^/videos/" .. ID .. "/hls1/main/[0-9-]+\\.(?:ts|mp4)$",
         "^/videos/" .. ID .. "/hls/[0-9a-fA-F_-]+\\.ts$",
+
+
       },
       no_body = true,
     },

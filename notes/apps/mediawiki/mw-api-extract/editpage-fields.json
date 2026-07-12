@@ -34,7 +34,7 @@
     "preload": {
       "type": "string"
     },
-    "preloadparams": {
+    "preloadparams[]": {
       "type": "string"
     },
     "preloadtitle": {

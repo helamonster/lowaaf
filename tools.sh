@@ -66,26 +66,32 @@ Subcommands:
   mw-extract [src] [out] Re-run the MediaWiki source scan (extract_mediawiki_api.py):
                          regenerates api-params.json / special-fields.json from the
                          MediaWiki source tree in app-sources/
-  mw-gen-tiers           Regenerate mw_tiers_out.lua from api-params.json (API modules)
-  mw-integrate-tiers     Splice the regenerated API-module tiers into mediawiki.lua
-  mw-gen-all-special     Regenerate the Special: page bulk-routes array from special-fields.json
-  mw-integrate-all-special
-                         Splice the regenerated Special: page routes into mediawiki.lua
-  mw-gen-editpage-form   Regenerate index_post_form (EditPage.php edit-submission form)
-                         from editpage-fields.json
-  mw-integrate-editpage-form
-                         Splice the regenerated index_post_form into mediawiki.lua
-  mw-gen-index-actions   Regenerate index.php action=X POST forms (delete/protect/
-                         purge/rollback/watch/...) from index-actions.json
-  mw-integrate-index-actions
-                         Splice the regenerated action forms into mediawiki.lua and
-                         wire them into the 'index php post' route's form_schemas
-  mw-verify-routes       Sanity-check mediawiki.lua: no duplicate/orphaned routes, full
-                         Special: page coverage
+  mw-dump-paraminfo      Query a running instance's action=paraminfo (live introspection
+                         of every api.php action/query-submodule's real params - types,
+                         min/max, resolved enums, wire prefixes) into paraminfo.json.
+                         Requires the Docker test stack up (bash tools.sh docker-test-up).
+  mw-gen-api-schema      Regenerate apps/mediawiki/api_schema.lua from paraminfo.json.
+                         MW_WAF_API_HIGH_LIMITS=1 uses paraminfo's higher apihighlimits-
+                         privileged cap for limit-type fields instead of the default
+                         (off) lower cap - a one-time deployment-config choice, see the
+                         script's own header. A standalone Lua module mediawiki.lua
+                         `require`s, not spliced text.
+  mw-gen-special-pages   Regenerate apps/mediawiki/special_pages.lua (dedicated routes for
+                         all 132 core Special: pages) from special-fields.json. A
+                         factory function mediawiki.lua `require`s and calls with
+                         idx_common, not spliced text.
+  mw-gen-edit-forms      Regenerate apps/mediawiki/edit_forms.lua (index_post_form -
+                         EditPage.php's edit-submission form - plus one form per
+                         index.php action=X POST target) from editpage-fields.json +
+                         index-actions.json. A standalone Lua module mediawiki.lua
+                         `require`s, not spliced text.
+  mw-verify-routes       Sanity-check the real, loaded app.routes table: no duplicate
+                         route names, full Special: page coverage
   mw-verify-regression   Sanity-check api-params.json for suspicious/missing params
   mw-list-core-pages     List SpecialPageFactory::CORE_LIST page keys from special-fields.json
-  mw-regen-all           Full pipeline: mw-extract, then regenerate+integrate tiers,
-                         Special: pages, and the edit form, then verify + offline-test
+  mw-regen-all           Full pipeline: mw-extract, dump-paraminfo + gen-api-schema,
+                         gen-special-pages, gen-edit-forms, then verify + offline-test.
+                         Requires the Docker test stack up (for mw-dump-paraminfo).
 EOF
 }
 
@@ -333,45 +339,26 @@ case "$1" in
 		python3 notes/apps/mediawiki/extract_mediawiki_api.py "$@"
 	;;
 
-	"mw-gen-tiers")
-		python3 notes/apps/mediawiki/mw-api-extract/gen_all_tiers.py \
-			notes/apps/mediawiki/mw-api-extract/api-params.json \
-			> notes/apps/mediawiki/mw-api-extract/all_tiers.lua
-		echo "Wrote notes/apps/mediawiki/mw-api-extract/all_tiers.lua"
+	"mw-dump-paraminfo")
+		COMPOSE="docker compose -f docker/docker-compose.yml"
+		if ! $COMPOSE ps --status running 2>/dev/null | grep -q "openresty"; then
+			echo "ERROR: Docker stack not running. Start it first:"
+			echo "  bash tools.sh docker-test-up"
+			exit 1
+		fi
+		python3 notes/apps/mediawiki/mw-api-extract/dump_paraminfo.py
 	;;
 
-	"mw-integrate-tiers")
-		python3 notes/apps/mediawiki/mw-api-extract/integrate_api_tiers.py
+	"mw-gen-api-schema")
+		python3 notes/apps/mediawiki/mw-api-extract/gen_api_schema.py
 	;;
 
-	"mw-gen-all-special")
-		python3 notes/apps/mediawiki/mw-api-extract/gen_all_special_pages.py \
-			> notes/apps/mediawiki/mw-api-extract/all_special_pages_out.lua
-		echo "Wrote notes/apps/mediawiki/mw-api-extract/all_special_pages_out.lua"
+	"mw-gen-special-pages")
+		python3 notes/apps/mediawiki/mw-api-extract/gen_special_pages.py
 	;;
 
-	"mw-integrate-all-special")
-		python3 notes/apps/mediawiki/mw-api-extract/integrate_all_special_pages.py
-	;;
-
-	"mw-gen-editpage-form")
-		python3 notes/apps/mediawiki/mw-api-extract/gen_editpage_form.py \
-			> notes/apps/mediawiki/mw-api-extract/editpage_form_out.lua
-		echo "Wrote notes/apps/mediawiki/mw-api-extract/editpage_form_out.lua"
-	;;
-
-	"mw-integrate-editpage-form")
-		python3 notes/apps/mediawiki/mw-api-extract/integrate_editpage_form.py
-	;;
-
-	"mw-gen-index-actions")
-		python3 notes/apps/mediawiki/mw-api-extract/gen_index_actions_form.py \
-			> notes/apps/mediawiki/mw-api-extract/index_actions_form_out.lua
-		echo "Wrote notes/apps/mediawiki/mw-api-extract/index_actions_form_out.lua"
-	;;
-
-	"mw-integrate-index-actions")
-		python3 notes/apps/mediawiki/mw-api-extract/integrate_index_actions_form.py
+	"mw-gen-edit-forms")
+		python3 notes/apps/mediawiki/mw-api-extract/gen_edit_forms.py
 	;;
 
 	"mw-verify-routes")
@@ -389,14 +376,10 @@ case "$1" in
 	"mw-regen-all")
 		set -e
 		bash "$0" mw-extract
-		bash "$0" mw-gen-tiers
-		bash "$0" mw-integrate-tiers
-		bash "$0" mw-gen-all-special
-		bash "$0" mw-integrate-all-special
-		bash "$0" mw-gen-editpage-form
-		bash "$0" mw-integrate-editpage-form
-		bash "$0" mw-gen-index-actions
-		bash "$0" mw-integrate-index-actions
+		bash "$0" mw-dump-paraminfo
+		bash "$0" mw-gen-api-schema
+		bash "$0" mw-gen-special-pages
+		bash "$0" mw-gen-edit-forms
 		bash "$0" mw-verify-routes
 		bash "$0" offline-test mediawiki
 	;;

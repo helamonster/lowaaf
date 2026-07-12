@@ -27,6 +27,8 @@ import glob
 import json
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(SCRIPT_DIR, "mw-api-extract"))
+from _lib import find_repo_root  # noqa: E402
 
 # Well-known numeric constants referenced in PARAM_MIN/MAX/MAX2 instead of
 # literal numbers (see includes/Api/ApiBase.php).
@@ -835,10 +837,33 @@ _QUERY_PAGE_BASES = {
 # 'mwProtect-level-create' use hyphens, and excluding them from the class
 # silently drops the whole match rather than truncating it (cost us
 # mwProtect-reason/mwProtect-cascade the first time around).
+#
+# The method name is its own capture group (not lumped into one non-
+# capturing alternation) so extract_field_calls() below can tell getArray()/
+# getArrayOrNull() calls apart from the rest: those read a classic PHP
+# array-parameter, whose real WIRE name has a "[]" suffix the PHP-side
+# string literal never includes (e.g. SpecialProtectedPages.php calls
+# $request->getArray('wpfilters', []) but the real submitted param is
+# wpfilters[] - confirmed live: a real ProtectedPages filter-UI request got
+# denied because the extracted field name was missing the brackets).
 FIELD_CALL_RE = re.compile(
-    r"->get(?:Val|Text|Int|Bool|Check|IntOrNull|RawVal|Array|ArrayOrNull"
+    r"->get(Val|Text|Int|Bool|Check|IntOrNull|RawVal|Array|ArrayOrNull"
     r"|FileName|Upload|FileTempname|UploadError)\(\s*['\"]([A-Za-z0-9_\-\[\]]+)['\"]"
 )
+
+ARRAY_GETTER_METHODS = {"Array", "ArrayOrNull"}
+
+
+def extract_field_calls(src_text):
+    """Runs FIELD_CALL_RE over src_text and returns the set of real WIRE
+    field names - appending "[]" for getArray()/getArrayOrNull() calls
+    whose PHP-side string argument never includes it."""
+    names = set()
+    for method, name in FIELD_CALL_RE.findall(src_text):
+        if method in ARRAY_GETTER_METHODS and not name.endswith("[]"):
+            name = name + "[]"
+        names.add(name)
+    return names
 
 
 def resolve_class_const_key(dynamic_key, search_dir):
@@ -992,7 +1017,7 @@ def heuristic_scan_with_parents(hit, short, mw_src, max_depth=3):
             break
         seen.add(cur_cls)
         src_text = open(cur_file, encoding="utf-8", errors="replace").read()
-        names |= set(FIELD_CALL_RE.findall(src_text))
+        names |= extract_field_calls(src_text)
         names |= {n for n in WP_LITERAL_RE.findall(src_text) if not WP_LITERAL_EXCLUDE_RE.search(n)}
         m = re.search(r"class\s+" + re.escape(cur_cls) + r"\s+extends\s+(\w+)", src_text)
         if not m:
@@ -1042,6 +1067,29 @@ def extract_special_pages(special_factory_path, specials_dir, log):
         if form_fields:
             result[page] = {"class": short, "file": rel_file, "extends": base,
                             "method": "form_fields", "fields": form_fields}
+            continue
+
+        # 1b) SpecialRedirectWithAction-family (EditPage, PageHistory,
+        #     DeletePage, ProtectPage, PageInfo, Purge - confirmed via source
+        #     read, includes/SpecialPage/SpecialRedirectWithAction.php):
+        #     shows an HTMLForm with one hardcoded, always-identical field
+        #     ('page', a title, required) built inline in the SHARED base
+        #     class's own showForm(), then redirects to
+        #     title=<page>&action=<X> on submit. Neither of our two
+        #     heuristics can see it: FIELD_CALL_RE needs a
+        #     $request->getXxx('name') call (this reads $formData['page'],
+        #     plain array access, not a WebRequest getter), and WP_LITERAL_RE
+        #     only matches 'wpXxx'-prefixed literals ('page' isn't prefixed -
+        #     HTMLForm's own field descriptor gives it an explicit
+        #     'name' => 'page' override, same mechanism that produced
+        #     'wpusername' vs 'username' inconsistently elsewhere). Would
+        #     otherwise fall through to method=redirect_passthrough with zero
+        #     fields found - confirmed live: a real Special:ProtectPage
+        #     submission got denied on exactly this field.
+        if base == "SpecialRedirectWithAction":
+            result[page] = {"class": short, "file": rel_file, "extends": base,
+                            "method": "form_fields",
+                            "fields": {"page": {"type": "string", "required": True}}}
             continue
 
         # 2) Redirect stubs: pass-through query params from the constructor call.
@@ -1159,7 +1207,7 @@ def extract_editpage_fields(mw_src, log):
 
     rel_file = os.path.relpath(path, mw_src)
     src = open(path, encoding="utf-8", errors="replace").read()
-    names = set(FIELD_CALL_RE.findall(src))
+    names = extract_field_calls(src)
     names |= {n for n in WP_LITERAL_RE.findall(src) if not WP_LITERAL_EXCLUDE_RE.search(n)}
     heuristic = sorted(names)
     return {
@@ -1255,7 +1303,7 @@ def extract_index_actions(mw_src, log):
             continue
 
         # 2) Fallback: heuristic scan of the file that actually builds the form.
-        names = set(FIELD_CALL_RE.findall(field_src))
+        names = extract_field_calls(field_src)
         names |= {n for n in WP_LITERAL_RE.findall(field_src) if not WP_LITERAL_EXCLUDE_RE.search(n)}
         if cls in ("ProtectAction", "UnprotectAction"):
             for rt in PROTECT_RESTRICTION_TYPES:
@@ -1274,19 +1322,10 @@ def extract_index_actions(mw_src, log):
 
 # ---------------------------------------------------------------------------
 
-def _find_repo_root(start):
-    d = start
-    while d != os.path.dirname(d):
-        if os.path.isdir(os.path.join(d, "rootfs", "etc", "openresty", "waf")):
-            return d
-        d = os.path.dirname(d)
-    raise RuntimeError("could not find repo root above " + start)
-
-
 def find_default_mw_src():
     # app-sources/ lives at the repo root, not next to this script (which is
     # under notes/apps/mediawiki/).
-    repo_root = _find_repo_root(SCRIPT_DIR)
+    repo_root = find_repo_root(SCRIPT_DIR)
     candidates = sorted(
         p for p in glob.glob(os.path.join(repo_root, "app-sources", "mediawiki", "mediawiki-*"))
         if os.path.isdir(p)

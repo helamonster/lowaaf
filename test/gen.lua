@@ -29,6 +29,21 @@ local function set_ctx()
   ngx.ctx = { waf_verbose = 0, waf_log_mode = false }
 end
 
+-- pairs() iteration order over a string-keyed table is not guaranteed
+-- stable across separate Lua process starts (confirmed directly: re-running
+-- the offline suite picked a different enum member as "the base value" /
+-- "the wrong-case candidate" each time, shifting which enum member counted
+-- as an already-covered base vs. an explicitly labeled variant test - not a
+-- WAF correctness issue, but not the reproducible test output we want
+-- either). Used everywhere an enum's member set gets walked for test
+-- generation, so the same member is always picked/ordered the same way.
+local function sorted_enum_keys(enum)
+  local keys = {}
+  for k in pairs(enum) do keys[#keys + 1] = k end
+  table.sort(keys)
+  return keys
+end
+
 -- Stable (sorted-key) string representation for dedup in gen.valid_values.
 -- Not valid JSON — just a deterministic key for the seen-set.
 local function stable_enc(v)
@@ -69,7 +84,7 @@ local function raw_valid(meta)
 
   if t == "string" then
     if opts.enum then
-      for k in pairs(opts.enum) do return k end
+      return sorted_enum_keys(opts.enum)[1]
     end
     local min = opts.min or 1
     -- For match patterns we can't reverse, return the minimum-length string
@@ -182,7 +197,7 @@ local function raw_valids(meta)
 
   if t == "string" then
     if opts.enum then
-      for k in pairs(opts.enum) do add(k, "'" .. k .. "'") end
+      for _, k in ipairs(sorted_enum_keys(opts.enum)) do add(k, "'" .. k .. "'") end
     else
       -- Six-point boundary: min, min+1, max-1, max.
       -- match-pattern strings will produce values that fail the pattern and
@@ -339,11 +354,9 @@ local function raw_invalids(meta)
     end
     if opts.enum then
       add("__invalid_enum__", "value not in enum")
-      for k in pairs(opts.enum) do
-        local upper = k:upper()
-        if upper ~= k then add(upper, "wrong-case enum value '" .. upper .. "'") end
-        break
-      end
+      local k = sorted_enum_keys(opts.enum)[1]
+      local upper = k:upper()
+      if upper ~= k then add(upper, "wrong-case enum value '" .. upper .. "'") end
     end
     if opts.match and not opts.enum then
       add("!@#$%^&*()", "string failing match pattern")

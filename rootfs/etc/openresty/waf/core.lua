@@ -181,9 +181,12 @@ end
 local function find_route(app)
   local uri    = ngx.var.uri
   local method = ngx.req.get_method()
+  -- HEAD is GET-without-a-body by HTTP definition; route it against GET
+  -- entries rather than requiring every app to list HEAD on every GET route.
+  local match_method = method == "HEAD" and "GET" or method
   for _, route in ipairs(app.routes) do
-    if any_eq(method,  route.methods or route.method) and
-       any_re(uri,     route.paths   or route.path)
+    if any_eq(match_method, route.methods or route.method) and
+       any_re(uri,          route.paths   or route.path)
     then
       return route
     end
@@ -562,14 +565,17 @@ function core.run(app)
   -- to force block mode without reloading nginx.  Checked per-request so it
   -- takes effect immediately; used by online-test-full.
   local _bmf = io.open("/tmp/waf-block-mode", "r")
-  local _mode = _bmf and (_bmf:close() or "block") or (app.mode or "log")
+  local _mode = _bmf and (_bmf:close() or "block") or (app.mode or "block")
   ngx.ctx.waf_log_mode = _mode == "log"
 
   local method = ngx.req.get_method()
 
   -- 1. global method check — always stop: no meaningful further checks without a valid method
   if app.defaults and app.defaults.allowed_methods then
-    if not app.defaults.allowed_methods[method] then
+    -- HEAD rides on GET's permission (see find_route) rather than requiring
+    -- every app to list it separately.
+    local check_method = method == "HEAD" and "GET" or method
+    if not app.defaults.allowed_methods[check_method] then
       deny(app, 405, "method not globally allowed: " .. method)
       return
     end

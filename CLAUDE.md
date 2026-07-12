@@ -58,7 +58,7 @@ Returns a table `T` of factory functions. Each factory returns a `function(value
 8. Form schema validation (`route.form_schemas`) — same
 9. If no route matched → deny 404
 
-In `mode = "log"` the engine logs what would be denied but does not block. Flip to `mode = "block"` once real traffic validates the policy.
+In `mode = "log"` the engine logs what would be denied but does not block. `mode = "block"` is the project default (including the engine's own fallback when `app.mode` is unset) — a new or heavily-revised app policy should be deliberately set to `mode = "log"` first and run against real traffic until false positives stop surfacing, then switched to `block` (or have the line removed, since `block` is now the default).
 
 ### apps/<name>.lua — app policy
 
@@ -69,7 +69,7 @@ local T = require "waf.types"
 
 return {
   name = "appname",
-  mode = "log",   -- "log" | "block"
+  mode = "log",   -- "log" | "block" — default is "block"; set "log" explicitly while validating a new/changed policy
 
   defaults = {
     max_body         = 1024 * 1024,
@@ -104,7 +104,7 @@ Route fields all support **singular or plural aliases** (`method`/`methods`, `pa
 5. JSON top-level key whitelist
 6. Nested JSON schema validation
 7. Value-level restrictions (enums, length limits, regex formats)
-8. Run in `mode = "log"` against real traffic, then flip to `mode = "block"`
+8. Run in `mode = "log"` against real traffic, then flip to `mode = "block"` (the project default)
 
 
 ## Existing proof-of-concept
