@@ -3,3 +3,7 @@ ChatGPT_Openresty-WAAAPI-Firewall-Vaultwarden_files/
 get_from_server.sh
 *.swp
 *.swo
+
+# Raw log excerpts pasted while triaging false positives - may contain live
+# credentials/tokens/session data from real production traffic, never git-tracked.
+false-positives/
