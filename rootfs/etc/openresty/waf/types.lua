@@ -459,6 +459,13 @@ local _common_request_headers = {
   "sec-websocket-version",
   "sec-websocket-extensions",
   "sec-websocket-protocol",
+  -- Service Worker spec (https://w3c.github.io/ServiceWorker/#service-worker-script-request) -
+  -- browsers send this on the request that fetches/updates a site's own
+  -- service worker script; confirmed live: a real Jellyfin web client's
+  -- GET /web/serviceworker.js got denied for it. Not app-specific - any
+  -- app serving a service worker (a growing pattern for self-hosted PWAs)
+  -- would hit the same false positive.
+  "service-worker",
 }
 
 function T.common_request_headers()

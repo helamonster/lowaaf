@@ -75,7 +75,10 @@ return {
       -- ["User-Agent"] = ua_browser(),
       ["User-Agent"] = ua_any(),
       ["accept-charset"] = accept_charset(),
-      ["x-requested-with"] = T.string( { max = 512 } )
+      ["x-requested-with"] = T.string( { max = 512 } ),
+      -- Per spec this is always exactly "script" - browsers never send any
+      -- other value on a service-worker-script fetch.
+      ["service-worker"] = T.string({ max = 8, enum = { script = true } }),
     },
   },
 
