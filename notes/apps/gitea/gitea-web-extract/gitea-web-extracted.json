@@ -1,0 +1,5233 @@
+{
+  "routes": [
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/sitemap.xml",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/.well-known/openid-configuration",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/.well-known/nodeinfo",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/.well-known/webfinger",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/.well-known/change-password",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/.well-known/passkey-endpoints",
+      "form": null
+    },
+    {
+      "methods": [
+        "GET",
+        "HEAD"
+      ],
+      "path": "/.well-known/*",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/markup",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/web-banner/dismiss",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/-/web-theme/list",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/web-theme/apply",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/explore",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/explore/repos",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/explore/repos/sitemap-{idx}.xml",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/explore/users",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/explore/users/sitemap-{idx}.xml",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/explore/organizations",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/explore/code",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/explore/topics/search",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/issues",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/issues/search",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/pulls",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/milestones",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/user/login",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/login",
+      "form": "SignInForm"
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/user/sign_up",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/sign_up",
+      "form": "RegisterForm"
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/user/link_account",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/link_account_signin",
+      "form": "SignInForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/link_account_signup",
+      "form": "RegisterForm"
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/user/two_factor",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/two_factor",
+      "form": "TwoFactorAuthForm"
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/user/two_factor/scratch",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/two_factor/scratch",
+      "form": "TwoFactorScratchAuthForm"
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/user/webauthn",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/user/webauthn/passkey/assertion",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/webauthn/passkey/login",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/user/webauthn/assertion",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/webauthn/assertion",
+      "form": null
+    },
+    {
+      "methods": [
+        "Any"
+      ],
+      "path": "/user/events",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/login/oauth/authorize",
+      "form": "AuthorizationForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/login/oauth/grant",
+      "form": "GrantApplicationForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/login/oauth/authorize",
+      "form": "AuthorizationForm"
+    },
+    {
+      "methods": [
+        "GET",
+        "POST",
+        "OPTIONS"
+      ],
+      "path": "/login/oauth/userinfo",
+      "form": null
+    },
+    {
+      "methods": [
+        "POST",
+        "OPTIONS"
+      ],
+      "path": "/login/oauth/access_token",
+      "form": "AccessTokenForm"
+    },
+    {
+      "methods": [
+        "GET",
+        "OPTIONS"
+      ],
+      "path": "/login/oauth/keys",
+      "form": null
+    },
+    {
+      "methods": [
+        "POST",
+        "OPTIONS"
+      ],
+      "path": "/login/oauth/introspect",
+      "form": "IntrospectTokenForm"
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/user/settings",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings",
+      "form": "UpdateProfileForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/update_preferences",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/user/settings/change_password",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/change_password",
+      "form": "MustChangePasswordForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/avatar",
+      "form": "AvatarForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/avatar/delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/user/settings/account",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/account",
+      "form": "ChangePasswordForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/account/email",
+      "form": "AddEmailForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/account/email/delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/account/delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/user/settings/appearance",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/appearance/language",
+      "form": "UpdateLanguageForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/appearance/hidden_comments",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/appearance/theme",
+      "form": "UpdateThemeForm"
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/user/settings/notifications",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/notifications/email",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/notifications/actions",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/user/settings/security",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/security/two_factor/regenerate_scratch",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/security/two_factor/disable",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/user/settings/security/two_factor/enroll",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/security/two_factor/enroll",
+      "form": "TwoFactorAuthForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/security/webauthn/request_register",
+      "form": "WebauthnRegistrationForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/security/webauthn/register",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/security/webauthn/delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/security/openid",
+      "form": "AddOpenIDForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/security/openid/delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/security/openid/toggle_visibility",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/security/account_link",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/user/settings/applications/oauth2/{id}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/applications/oauth2/{id}",
+      "form": "EditOAuth2ApplicationForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/applications/oauth2/{id}/regenerate_secret",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/applications/oauth2",
+      "form": "EditOAuth2ApplicationForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/applications/oauth2/{id}/delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/applications/oauth2/{id}/revoke/{grantId}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/user/settings/applications",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/applications/delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/user/settings/keys",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/keys/delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/user/settings/packages",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/user/settings/packages/rules/add",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/packages/rules/add",
+      "form": "PackageCleanupRuleForm"
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/user/settings/packages/rules/{id}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/packages/rules/{id}",
+      "form": "PackageCleanupRuleForm"
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/user/settings/packages/rules/{id}/preview",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/packages/cargo/initialize",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/packages/cargo/rebuild",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/packages/chef/regenerate_keypair",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/user/settings/actions",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/user/settings/actions/general",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/actions/general",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/user/settings/actions/runners",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/user/settings/actions/runners/{runnerid}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/actions/runners/{runnerid}/update-runner",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/actions/runners/{runnerid}/delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/actions/runners/reset_registration_token",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/user/settings/actions/secrets",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/actions/secrets",
+      "form": "AddSecretForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/actions/secrets/delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/user/settings/actions/variables",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/actions/variables/new",
+      "form": "EditVariableForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/actions/variables/{variable_id}/edit",
+      "form": "EditVariableForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/actions/variables/{variable_id}/delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/user/settings/actions/scoped-workflows",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/actions/scoped-workflows/add",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/actions/scoped-workflows/required",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/actions/scoped-workflows/remove",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/user/settings/organization",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/user/settings/repos",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/repos/unadopted",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/user/settings/hooks",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/hooks/delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/user/settings/hooks/{type}/new",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/hooks/gitea/new",
+      "form": "NewWebhookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/hooks/gogs/new",
+      "form": "NewGogshookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/hooks/slack/new",
+      "form": "NewSlackHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/hooks/discord/new",
+      "form": "NewDiscordHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/hooks/dingtalk/new",
+      "form": "NewDingtalkHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/hooks/telegram/new",
+      "form": "NewTelegramHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/hooks/matrix/new",
+      "form": "NewMatrixHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/hooks/msteams/new",
+      "form": "NewMSTeamsHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/hooks/feishu/new",
+      "form": "NewFeishuHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/hooks/wechatwork/new",
+      "form": "NewWechatWorkHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/hooks/packagist/new",
+      "form": "NewPackagistHookForm"
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/user/settings/hooks/{id}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/hooks/{id}/replay/{uuid}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/hooks/gitea/{id}",
+      "form": "NewWebhookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/hooks/gogs/{id}",
+      "form": "NewGogshookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/hooks/slack/{id}",
+      "form": "NewSlackHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/hooks/discord/{id}",
+      "form": "NewDiscordHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/hooks/dingtalk/{id}",
+      "form": "NewDingtalkHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/hooks/telegram/{id}",
+      "form": "NewTelegramHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/hooks/matrix/{id}",
+      "form": "NewMatrixHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/hooks/msteams/{id}",
+      "form": "NewMSTeamsHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/hooks/feishu/{id}",
+      "form": "NewFeishuHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/hooks/wechatwork/{id}",
+      "form": "NewWechatWorkHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/hooks/packagist/{id}",
+      "form": "NewPackagistHookForm"
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/user/settings/blocked_users",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/settings/blocked_users",
+      "form": "BlockUserForm"
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/user/activate",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/activate",
+      "form": null
+    },
+    {
+      "methods": [
+        "Any"
+      ],
+      "path": "/user/activate_email",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/user/avatar/{username}/{size}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/user/recover_account",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/recover_account",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/user/forgot_password",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/user/forgot_password",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/user/logout",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/user/stopwatches",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/user/search_candidates",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/user/oauth2/{provider}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/user/oauth2/{provider}/callback",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/avatar/{hash}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/-/admin",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/-/admin/system_status",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin",
+      "form": "AdminDashboardForm"
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/-/admin/self_check",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/self_check",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/-/admin/config",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/config",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/config/test_mail",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/config/test_cache",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/-/admin/config/settings",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/-/admin/monitor/stats",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/-/admin/monitor/cron",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/-/admin/monitor/perftrace",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/-/admin/monitor/stacktrace",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/monitor/stacktrace/cancel/{pid}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/-/admin/monitor/queue",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/-/admin/monitor/queue/{qid}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/monitor/queue/{qid}/set",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/monitor/queue/{qid}/remove-all-items",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/-/admin/monitor/diagnosis",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/-/admin/users",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/-/admin/users/new",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/users/new",
+      "form": "AdminCreateUserForm"
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/-/admin/users/{userid}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/-/admin/users/{userid}/edit",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/users/{userid}/edit",
+      "form": "AdminEditUserForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/users/{userid}/delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/users/{userid}/avatar",
+      "form": "AvatarForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/users/{userid}/avatar/delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/-/admin/badges",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/-/admin/badges/new",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/badges/new",
+      "form": "AdminCreateBadgeForm"
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/-/admin/badges/slug/{badge_slug}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/-/admin/badges/slug/{badge_slug}/edit",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/badges/slug/{badge_slug}/edit",
+      "form": "AdminEditBadgeForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/badges/slug/{badge_slug}/delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/-/admin/badges/slug/{badge_slug}/users",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/badges/slug/{badge_slug}/users",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/badges/slug/{badge_slug}/users/delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/-/admin/emails",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/emails/activate",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/emails/delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/-/admin/orgs",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/-/admin/repos",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/-/admin/repos/unadopted",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/repos/unadopted",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/repos/delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/-/admin/packages",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/packages/delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/packages/cleanup",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/-/admin/hooks",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/hooks/delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/-/admin/hooks/{id}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/hooks/{id}/replay/{uuid}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/hooks/gitea/{id}",
+      "form": "NewWebhookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/hooks/gogs/{id}",
+      "form": "NewGogshookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/hooks/slack/{id}",
+      "form": "NewSlackHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/hooks/discord/{id}",
+      "form": "NewDiscordHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/hooks/dingtalk/{id}",
+      "form": "NewDingtalkHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/hooks/telegram/{id}",
+      "form": "NewTelegramHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/hooks/matrix/{id}",
+      "form": "NewMatrixHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/hooks/msteams/{id}",
+      "form": "NewMSTeamsHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/hooks/feishu/{id}",
+      "form": "NewFeishuHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/hooks/wechatwork/{id}",
+      "form": "NewWechatWorkHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/hooks/packagist/{id}",
+      "form": "NewPackagistHookForm"
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/-/admin/{configType:default-hooks|system-hooks}/{type}/new",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/{configType:default-hooks|system-hooks}/gitea/new",
+      "form": "NewWebhookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/{configType:default-hooks|system-hooks}/gogs/new",
+      "form": "NewGogshookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/{configType:default-hooks|system-hooks}/slack/new",
+      "form": "NewSlackHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/{configType:default-hooks|system-hooks}/discord/new",
+      "form": "NewDiscordHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/{configType:default-hooks|system-hooks}/dingtalk/new",
+      "form": "NewDingtalkHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/{configType:default-hooks|system-hooks}/telegram/new",
+      "form": "NewTelegramHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/{configType:default-hooks|system-hooks}/matrix/new",
+      "form": "NewMatrixHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/{configType:default-hooks|system-hooks}/msteams/new",
+      "form": "NewMSTeamsHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/{configType:default-hooks|system-hooks}/feishu/new",
+      "form": "NewFeishuHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/{configType:default-hooks|system-hooks}/wechatwork/new",
+      "form": "NewWechatWorkHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/{configType:default-hooks|system-hooks}/packagist/new",
+      "form": "NewPackagistHookForm"
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/-/admin/auths",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/-/admin/auths/new",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/auths/new",
+      "form": "AuthenticationForm"
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/-/admin/auths/{authid}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/auths/{authid}/delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/-/admin/notices",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/notices/delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/notices/empty",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/-/admin/applications",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/applications/oauth2",
+      "form": "EditOAuth2ApplicationForm"
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/-/admin/applications/oauth2/{id}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/applications/oauth2/{id}",
+      "form": "EditOAuth2ApplicationForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/applications/oauth2/{id}/regenerate_secret",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/applications/oauth2/{id}/delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/-/admin/actions",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/-/admin/actions/runners",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/-/admin/actions/runners/{runnerid}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/actions/runners/{runnerid}/update-runner",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/actions/runners/{runnerid}/delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/actions/runners/reset_registration_token",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/actions/runners/bulk",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/-/admin/actions/variables",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/actions/variables/new",
+      "form": "EditVariableForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/actions/variables/{variable_id}/edit",
+      "form": "EditVariableForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/actions/variables/{variable_id}/delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/-/admin/actions/scoped-workflows",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/actions/scoped-workflows/add",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/actions/scoped-workflows/required",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/-/admin/actions/scoped-workflows/remove",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}",
+      "form": null
+    },
+    {
+      "methods": [
+        "GET",
+        "OPTIONS"
+      ],
+      "path": "/attachments/{uuid}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/org/{org}/members",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/org/create",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/org/create",
+      "form": "CreateOrgForm"
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/org/invite/{token}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/org/invite/{token}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/org/{org}/dashboard",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/org/{org}/dashboard/{team}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/org/{org}/dashboard/-/heatmap",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/org/{org}/dashboard/-/heatmap/{team}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/org/{org}/issues",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/org/{org}/issues/{team}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/org/{org}/pulls",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/org/{org}/pulls/{team}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/org/{org}/milestones",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/org/{org}/milestones/{team}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/org/{org}/members/action/{action}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/org/{org}/teams",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/org/{org}/teams/{team}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/org/{org}/teams/{team}/repositories",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/org/{org}/teams/{team}/action/{action}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/org/{org}/teams/{team}/action/repo/{action}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/org/{org}/teams/-/search",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/org/{org}/teams/new",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/org/{org}/teams/new",
+      "form": "CreateTeamForm"
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/org/{org}/teams/{team}/edit",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/org/{org}/teams/{team}/edit",
+      "form": "CreateTeamForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/org/{org}/teams/{team}/delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/org/{org}/worktime",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/org/{org}/settings",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/org/{org}/settings/avatar",
+      "form": "AvatarForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/org/{org}/settings/avatar/delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/org/{org}/settings/applications",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/org/{org}/settings/applications/oauth2",
+      "form": "EditOAuth2ApplicationForm"
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/org/{org}/settings/applications/oauth2/{id}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/org/{org}/settings/applications/oauth2/{id}",
+      "form": "EditOAuth2ApplicationForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/org/{org}/settings/applications/oauth2/{id}/regenerate_secret",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/org/{org}/settings/applications/oauth2/{id}/delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/org/{org}/settings/hooks",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/org/{org}/settings/hooks/delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/org/{org}/settings/hooks/{type}/new",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/org/{org}/settings/hooks/gitea/new",
+      "form": "NewWebhookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/org/{org}/settings/hooks/gogs/new",
+      "form": "NewGogshookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/org/{org}/settings/hooks/slack/new",
+      "form": "NewSlackHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/org/{org}/settings/hooks/discord/new",
+      "form": "NewDiscordHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/org/{org}/settings/hooks/dingtalk/new",
+      "form": "NewDingtalkHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/org/{org}/settings/hooks/telegram/new",
+      "form": "NewTelegramHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/org/{org}/settings/hooks/matrix/new",
+      "form": "NewMatrixHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/org/{org}/settings/hooks/msteams/new",
+      "form": "NewMSTeamsHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/org/{org}/settings/hooks/feishu/new",
+      "form": "NewFeishuHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/org/{org}/settings/hooks/wechatwork/new",
+      "form": "NewWechatWorkHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/org/{org}/settings/hooks/packagist/new",
+      "form": "NewPackagistHookForm"
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/org/{org}/settings/hooks/{id}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/org/{org}/settings/hooks/{id}/replay/{uuid}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/org/{org}/settings/hooks/gitea/{id}",
+      "form": "NewWebhookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/org/{org}/settings/hooks/gogs/{id}",
+      "form": "NewGogshookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/org/{org}/settings/hooks/slack/{id}",
+      "form": "NewSlackHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/org/{org}/settings/hooks/discord/{id}",
+      "form": "NewDiscordHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/org/{org}/settings/hooks/dingtalk/{id}",
+      "form": "NewDingtalkHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/org/{org}/settings/hooks/telegram/{id}",
+      "form": "NewTelegramHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/org/{org}/settings/hooks/matrix/{id}",
+      "form": "NewMatrixHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/org/{org}/settings/hooks/msteams/{id}",
+      "form": "NewMSTeamsHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/org/{org}/settings/hooks/feishu/{id}",
+      "form": "NewFeishuHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/org/{org}/settings/hooks/wechatwork/{id}",
+      "form": "NewWechatWorkHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/org/{org}/settings/hooks/packagist/{id}",
+      "form": "NewPackagistHookForm"
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/org/{org}/settings/labels",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/org/{org}/settings/labels/new",
+      "form": "CreateLabelForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/org/{org}/settings/labels/edit",
+      "form": "CreateLabelForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/org/{org}/settings/labels/delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/org/{org}/settings/labels/initialize",
+      "form": "InitializeLabelsForm"
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/org/{org}/settings/actions",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/org/{org}/settings/actions/general",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/org/{org}/settings/actions/general",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/org/{org}/settings/actions/runners",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/org/{org}/settings/actions/runners/{runnerid}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/org/{org}/settings/actions/runners/{runnerid}/update-runner",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/org/{org}/settings/actions/runners/{runnerid}/delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/org/{org}/settings/actions/runners/reset_registration_token",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/org/{org}/settings/actions/secrets",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/org/{org}/settings/actions/secrets",
+      "form": "AddSecretForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/org/{org}/settings/actions/secrets/delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/org/{org}/settings/actions/variables",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/org/{org}/settings/actions/variables/new",
+      "form": "EditVariableForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/org/{org}/settings/actions/variables/{variable_id}/edit",
+      "form": "EditVariableForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/org/{org}/settings/actions/variables/{variable_id}/delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/org/{org}/settings/actions/scoped-workflows",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/org/{org}/settings/actions/scoped-workflows/add",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/org/{org}/settings/actions/scoped-workflows/required",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/org/{org}/settings/actions/scoped-workflows/remove",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/org/{org}/settings/rename",
+      "form": "RenameOrgForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/org/{org}/settings/delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/org/{org}/settings/visibility",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/org/{org}/settings/packages",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/org/{org}/settings/packages/rules/add",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/org/{org}/settings/packages/rules/add",
+      "form": "PackageCleanupRuleForm"
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/org/{org}/settings/packages/rules/{id}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/org/{org}/settings/packages/rules/{id}",
+      "form": "PackageCleanupRuleForm"
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/org/{org}/settings/packages/rules/{id}/preview",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/org/{org}/settings/packages/cargo/initialize",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/org/{org}/settings/packages/cargo/rebuild",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/org/{org}/settings/blocked_users",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/org/{org}/settings/blocked_users",
+      "form": "BlockUserForm"
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/repo/create",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/repo/create",
+      "form": "CreateRepoForm"
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/repo/migrate",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/repo/migrate",
+      "form": "MigrateRepoForm"
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/repo/search",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/-/mentions-in-owner",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/-/repositories",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/-/heatmap",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/-/projects",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/-/projects/{id}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/-/projects/new",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/-/projects/new",
+      "form": "CreateProjectForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/-/projects/{id}/delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/-/projects/{id}/edit",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/-/projects/{id}/edit",
+      "form": "CreateProjectForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/-/projects/{id}/{action:open|close}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/-/projects/{id}/move",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/-/projects/{id}/columns/new",
+      "form": "EditProjectColumnForm"
+    },
+    {
+      "methods": [
+        "Put"
+      ],
+      "path": "/{username}/-/projects/{id}/{columnID}",
+      "form": "EditProjectColumnForm"
+    },
+    {
+      "methods": [
+        "Delete"
+      ],
+      "path": "/{username}/-/projects/{id}/{columnID}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/-/projects/{id}/{columnID}/default",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/-/projects/{id}/{columnID}/move",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/-/code",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/-/migrate/status",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/-/mentions-in-repo",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/settings",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/settings/avatar",
+      "form": "AvatarForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/settings/avatar/delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/settings/public_access",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/settings/public_access",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/settings/collaboration",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/settings/collaboration",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/settings/collaboration/access_mode",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/settings/collaboration/delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/settings/collaboration/team",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/settings/collaboration/team/delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/settings/branches/",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/settings/branches/",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/settings/branches/edit",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/settings/branches/{id}/delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/settings/branches/priority",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/settings/tags",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/settings/tags",
+      "form": "ProtectTagForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/settings/tags/delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/settings/tags/{id}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/settings/tags/{id}",
+      "form": "ProtectTagForm"
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/settings/hooks/git",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/settings/hooks/git/{name}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/settings/hooks",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/settings/hooks/delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/settings/hooks/{type}/new",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/settings/hooks/gitea/new",
+      "form": "NewWebhookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/settings/hooks/gogs/new",
+      "form": "NewGogshookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/settings/hooks/slack/new",
+      "form": "NewSlackHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/settings/hooks/discord/new",
+      "form": "NewDiscordHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/settings/hooks/dingtalk/new",
+      "form": "NewDingtalkHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/settings/hooks/telegram/new",
+      "form": "NewTelegramHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/settings/hooks/matrix/new",
+      "form": "NewMatrixHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/settings/hooks/msteams/new",
+      "form": "NewMSTeamsHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/settings/hooks/feishu/new",
+      "form": "NewFeishuHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/settings/hooks/wechatwork/new",
+      "form": "NewWechatWorkHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/settings/hooks/packagist/new",
+      "form": "NewPackagistHookForm"
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/settings/hooks/{id}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/settings/hooks/{id}/test",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/settings/hooks/{id}/replay/{uuid}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/settings/hooks/gitea/{id}",
+      "form": "NewWebhookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/settings/hooks/gogs/{id}",
+      "form": "NewGogshookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/settings/hooks/slack/{id}",
+      "form": "NewSlackHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/settings/hooks/discord/{id}",
+      "form": "NewDiscordHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/settings/hooks/dingtalk/{id}",
+      "form": "NewDingtalkHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/settings/hooks/telegram/{id}",
+      "form": "NewTelegramHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/settings/hooks/matrix/{id}",
+      "form": "NewMatrixHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/settings/hooks/msteams/{id}",
+      "form": "NewMSTeamsHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/settings/hooks/feishu/{id}",
+      "form": "NewFeishuHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/settings/hooks/wechatwork/{id}",
+      "form": "NewWechatWorkHookForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/settings/hooks/packagist/{id}",
+      "form": "NewPackagistHookForm"
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/settings/keys",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/settings/keys/delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/settings/lfs/",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/settings/lfs/show/{oid}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/settings/lfs/delete/{oid}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/settings/lfs/pointers",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/settings/lfs/pointers/associate",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/settings/lfs/find",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/settings/lfs/locks/",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/settings/lfs/locks/",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/settings/lfs/locks/{lid}/unlock",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/settings/actions/general",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/settings/actions/general/actions_unit",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/settings/actions",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/settings/actions/runners",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/settings/actions/runners/{runnerid}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/settings/actions/runners/{runnerid}/update-runner",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/settings/actions/runners/{runnerid}/delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/settings/actions/runners/reset_registration_token",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/settings/actions/secrets",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/settings/actions/secrets",
+      "form": "AddSecretForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/settings/actions/secrets/delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/settings/actions/variables",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/settings/actions/variables/new",
+      "form": "EditVariableForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/settings/actions/variables/{variable_id}/edit",
+      "form": "EditVariableForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/settings/actions/variables/{variable_id}/delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/settings/actions/general/collaborative_owner/add",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/settings/actions/general/collaborative_owner/delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/settings/actions/general/token_permissions",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/settings/migrate/retry",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/settings/migrate/cancel",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/markup",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/tree-list/branch/*",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/tree-list/tag/*",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/tree-list/commit/*",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/tree-view/branch/*",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/tree-view/tag/*",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/tree-view/commit/*",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/compare",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/pulls/new/*",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/{type:issues}/posters",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/{type:issues}/{index}/info",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/{type:issues}/{index}/attachments",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/{type:issues}/{index}/attachments/{uuid}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/{type:issues}/{index}/content-history/overview",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/{type:issues}/{index}/content-history/list",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/{type:issues}/{index}/content-history/detail",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/{type:pulls}/posters",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/{type:pulls}/{index}/info",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/{type:pulls}/{index}/attachments",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/{type:pulls}/{index}/attachments/{uuid}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/{type:pulls}/{index}/content-history/overview",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/{type:pulls}/{index}/content-history/list",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/{type:pulls}/{index}/content-history/detail",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/comments/{id}/attachments",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/labels",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/milestones",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/milestone/{id}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/issues/suggestions",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/{type:issues}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/{type:issues}/{index}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/issues/new",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/issues/new/choose",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/issues/search",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:issues}/{index}/title",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:issues}/{index}/content",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:issues}/{index}/deadline",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:issues}/{index}/watch",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:issues}/{index}/ref",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:issues}/{index}/pin",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:issues}/{index}/viewed-files",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:issues}/{index}/dependency/add",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:issues}/{index}/dependency/delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:issues}/{index}/comments",
+      "form": "CreateCommentForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:issues}/{index}/times/add",
+      "form": "AddTimeManuallyForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:issues}/{index}/times/{timeid}/delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:issues}/{index}/times/stopwatch/start",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:issues}/{index}/times/stopwatch/stop",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:issues}/{index}/times/stopwatch/cancel",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:issues}/{index}/time_estimate",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:issues}/{index}/reactions/{action}",
+      "form": "ReactionForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:issues}/{index}/lock",
+      "form": "IssueLockForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:issues}/{index}/unlock",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:issues}/{index}/delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:issues}/{index}/content-history/soft-delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:issues}/attachments",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:issues}/attachments/remove",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:issues}/labels",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:issues}/milestone",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:issues}/projects",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:issues}/projects/column",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:issues}/assignee",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:issues}/status",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:issues}/delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Delete"
+      ],
+      "path": "/{username}/{reponame}/{type:issues}/unpin/{index}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:issues}/move_pin",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:pulls}/{index}/title",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:pulls}/{index}/content",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:pulls}/{index}/deadline",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:pulls}/{index}/watch",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:pulls}/{index}/ref",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:pulls}/{index}/pin",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:pulls}/{index}/viewed-files",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:pulls}/{index}/dependency/add",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:pulls}/{index}/dependency/delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:pulls}/{index}/comments",
+      "form": "CreateCommentForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:pulls}/{index}/times/add",
+      "form": "AddTimeManuallyForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:pulls}/{index}/times/{timeid}/delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:pulls}/{index}/times/stopwatch/start",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:pulls}/{index}/times/stopwatch/stop",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:pulls}/{index}/times/stopwatch/cancel",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:pulls}/{index}/time_estimate",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:pulls}/{index}/reactions/{action}",
+      "form": "ReactionForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:pulls}/{index}/lock",
+      "form": "IssueLockForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:pulls}/{index}/unlock",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:pulls}/{index}/delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:pulls}/{index}/content-history/soft-delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:pulls}/attachments",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:pulls}/attachments/remove",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:pulls}/labels",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:pulls}/milestone",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:pulls}/projects",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:pulls}/projects/column",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:pulls}/assignee",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:pulls}/status",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:pulls}/delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Delete"
+      ],
+      "path": "/{username}/{reponame}/{type:pulls}/unpin/{index}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:pulls}/move_pin",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/comments/{id}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/comments/{id}/delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/comments/{id}/reactions/{action}",
+      "form": "ReactionForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/labels/new",
+      "form": "CreateLabelForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/labels/edit",
+      "form": "CreateLabelForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/labels/delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/labels/initialize",
+      "form": "InitializeLabelsForm"
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/milestones/new",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/milestones/{id}/edit",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/milestones/{id}/edit",
+      "form": "CreateMilestoneForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/milestones/{id}/{action}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/milestones/delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/issues/request_review",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/issues/dismiss_review",
+      "form": "DismissReviewForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/issues/resolve_conversation",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/pull/{index}/target_branch",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/_preview/*",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/_fork/*",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/upload-file",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/upload-remove",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/branches/_new/branch/*",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/branches/_new/tag/*",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/branches/_new/commit/*",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/branches/delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/branches/restore",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/branches/rename",
+      "form": "RenameBranchForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/branches/merge-upstream",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/fork",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/fork",
+      "form": "CreateRepoForm"
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/tags",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/tags.rss",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/tags.atom",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/tags/list",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/tags/delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/releases",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/releases.rss",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/releases.atom",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/releases/tag/*",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/releases/latest",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/releases/attachments/{uuid}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/releases/download/{vTag}/{fileName}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/releases/new",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/releases/new",
+      "form": "NewReleaseForm"
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/releases/edit/*",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/releases/edit/*",
+      "form": "EditReleaseForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/releases/generate-notes",
+      "form": "GenerateReleaseNotesForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/releases/delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/releases/attachments",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/releases/attachments/remove",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/attachments/{uuid}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/topics",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/projects",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/projects/{id}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/projects/new",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/projects/new",
+      "form": "CreateProjectForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/projects/{id}/delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/projects/{id}/edit",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/projects/{id}/edit",
+      "form": "CreateProjectForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/projects/{id}/{action:open|close}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/projects/{id}/move",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/projects/{id}/columns/new",
+      "form": "EditProjectColumnForm"
+    },
+    {
+      "methods": [
+        "Put"
+      ],
+      "path": "/{username}/{reponame}/projects/{id}/{columnID}",
+      "form": "EditProjectColumnForm"
+    },
+    {
+      "methods": [
+        "Delete"
+      ],
+      "path": "/{username}/{reponame}/projects/{id}/{columnID}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/projects/{id}/{columnID}/default",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/projects/{id}/{columnID}/move",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/actions",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/actions/disable",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/actions/enable",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/actions/run",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/actions/workflow-dispatch-inputs",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/actions/approve-all-checks",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/actions/runs/{run}/jobs/{job}/rerun",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/actions/runs/{run}/jobs/{job}/logs",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/actions/runs/{run}/workflow",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/actions/runs/{run}/cancel",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/actions/runs/{run}/approve",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/actions/runs/{run}/delete",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/actions/runs/{run}/artifacts/{artifact_name}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Delete"
+      ],
+      "path": "/{username}/{reponame}/actions/runs/{run}/artifacts/{artifact_name}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/actions/runs/{run}/rerun",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/actions/runs/{run}/rerun-failed",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/actions/workflows/{workflow_name}/badge.svg",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/wiki/blob_excerpt/{sha}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/wiki/commit/{sha:[a-f0-9]{7,64}}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/wiki/commit/{sha:[a-f0-9]{7,64}}.{ext:patch|diff}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/wiki/raw/*",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/activity",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/activity/{period}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/activity/contributors",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/activity/contributors/data",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/activity/code-frequency",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/activity/code-frequency/data",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/activity/recent-commits",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/activity/recent-commits/data",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/{type:pulls}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/{type:pulls}/{index}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/{type:pulls}/{index}.diff",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/{type:pulls}/{index}.patch",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/{type:pulls}/{index}/merge_box",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/{type:pulls}/{index}/commits",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/{type:pulls}/{index}/commits/list",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/{type:pulls}/{index}/commits/{sha:[a-f0-9]{7,64}}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:pulls}/{index}/merge",
+      "form": "MergePullRequestForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:pulls}/{index}/cancel_auto_merge",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:pulls}/{index}/update",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:pulls}/{index}/set_allow_maintainer_edit",
+      "form": "UpdateAllowEditsForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:pulls}/{index}/cleanup",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/{type:pulls}/{index}/files",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/{type:pulls}/{index}/files/{shaFrom:[a-f0-9]{7,64}}..{shaTo:[a-f0-9]{7,64}}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/{type:pulls}/{index}/files/reviews/new_comment",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:pulls}/{index}/files/reviews/comments",
+      "form": "CodeCommentForm"
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/{type:pulls}/{index}/files/reviews/submit",
+      "form": "SubmitReviewForm"
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/activity_author_data",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/activity_author_data/{period}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/archive/*",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/archive/*",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/branches/list",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/branches",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/media/blob/{sha}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/media/branch/*",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/media/tag/*",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/media/commit/*",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/media/*",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/raw/blob/{sha}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/raw/branch/*",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/raw/tag/*",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/raw/commit/*",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/raw/*",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/render/branch/*",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/render/tag/*",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/render/commit/*",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/render/blob/{sha}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/commits/branch/*",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/commits/tag/*",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/commits/commit/*",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/commits/*",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/blame/branch/*",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/blame/tag/*",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/blame/commit/*",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/blob_excerpt/{sha}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/graph",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/commit/{sha:([a-f0-9]{7,64})$}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/commit/{sha:([a-f0-9]{7,64})$}/load-branches-and-tags",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/cherry-pick/{sha:([a-f0-9]{7,64})$}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/rss/branch/*",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/atom/branch/*",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/src",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/src/branch/*",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/src/tag/*",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/src/commit/*",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/src/*",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/tree/*",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/blob/*",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/forks",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/commit/{sha:([a-f0-9]{7,64})}.{ext:patch|diff}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/lastcommit/*",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/stars",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/watchers",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/{username}/{reponame}/search",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/action/{action:star|unstar}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/action/{action:watch|unwatch}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/{username}/{reponame}/action/{action:accept_transfer|reject_transfer}",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/notifications",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/notifications/subscriptions",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/notifications/watching",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/notifications/status",
+      "form": null
+    },
+    {
+      "methods": [
+        "Post"
+      ],
+      "path": "/notifications/purge",
+      "form": null
+    },
+    {
+      "methods": [
+        "Get"
+      ],
+      "path": "/notifications/new",
+      "form": null
+    }
+  ]
+}

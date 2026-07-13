@@ -106,9 +106,21 @@ Subcommands:
                          one route per (method, swagger path), no MediaWiki-style
                          cross-action union needed (each REST path is already unique).
   gitea-verify-routes    Sanity-check the real, loaded app.routes table: no duplicate
-                         route names, route count matches the extracted operation count.
-  gitea-regen-all        Full pipeline: extract-swagger, gen-api-schema, verify-routes,
-                         then offline-test. No Docker dependency (unlike mw-regen-all).
+                         route names, generated (Phase 1) route count matches the
+                         extracted operation count.
+
+  -- Gitea Phase 2 (web UI) pipeline: notes/apps/gitea/gitea-web-extract/.
+  -- A brace/paren-depth-aware scanner over routers/web/web.go's
+  -- registerWebRoutes(), cross-referenced against services/forms/*.go for
+  -- bound-form field validation.
+  gitea-extract-web-routes  Scan routers/web/web.go into gitea-web-extracted.json
+                         (method/path/bound-form per route).
+  gitea-gen-web-routes   Regenerate apps/gitea/web_routes.lua from
+                         gitea-web-extracted.json + services/forms/*.go binding tags.
+
+  gitea-regen-all        Full pipeline: extract-swagger, gen-api-schema,
+                         extract-web-routes, gen-web-routes, verify-routes, then
+                         offline-test. No Docker dependency (unlike mw-regen-all).
 EOF
 }
 
@@ -450,10 +462,20 @@ case "$1" in
 		python3 notes/apps/gitea/gitea-api-extract/verify_gitea_routes.py
 	;;
 
+	"gitea-extract-web-routes")
+		python3 notes/apps/gitea/gitea-web-extract/extract_web_routes.py
+	;;
+
+	"gitea-gen-web-routes")
+		python3 notes/apps/gitea/gitea-web-extract/gen_web_routes.py
+	;;
+
 	"gitea-regen-all")
 		set -e
 		bash "$0" gitea-extract-swagger
 		bash "$0" gitea-gen-api-schema
+		bash "$0" gitea-extract-web-routes
+		bash "$0" gitea-gen-web-routes
 		bash "$0" gitea-verify-routes
 		bash "$0" offline-test gitea
 	;;

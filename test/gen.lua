@@ -672,6 +672,10 @@ function gen.path_from_pattern(pat)
   p = p:gsub("%[%^/%]%{[^}]*%}", "testval") -- [^/]{n,m}
   p = p:gsub("%[%^/%]%+",        "testval") -- [^/]+
   p = p:gsub("%[%^/%]%*",        "")        -- [^/]*
+  -- Any other negated-class-star (zero-or-more) - e.g. gitea's
+  -- "[^\x00-\x1f]*" for a chi "*" wildcard (matches everything including
+  -- slashes, so "" is a safe zero-length resolution, same as [^/]* above).
+  p = p:gsub("%[%^[^%]]-%]%*",   "")
   p = p:gsub("%.%+",             "testval") -- .+
   -- Resolve any remaining one-or-more character class (e.g. `[0-9.]+`,
   -- `[0-9A-Za-z_.-]+`) into a single representative character.
