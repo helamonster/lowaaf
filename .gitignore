@@ -3,7 +3,16 @@ ChatGPT_Openresty-WAAAPI-Firewall-Vaultwarden_files/
 get_from_server.sh
 *.swp
 *.swo
+__pycache__/
+*.pyc
 
 # Raw log excerpts pasted while triaging false positives - may contain live
 # credentials/tokens/session data from real production traffic, never git-tracked.
 false-positives/
+
+# docker/gitea's live container state (bind-mounted, unlike vaultwarden/mediawiki
+# which use named Docker volumes living outside the repo tree entirely) -
+# includes a JWT signing private key, an SSH host private key, the SQLite DB,
+# and app.ini (which carries an auto-generated SECRET_KEY/INTERNAL_TOKEN).
+docker/gitea/data/
+docker/gitea/config/

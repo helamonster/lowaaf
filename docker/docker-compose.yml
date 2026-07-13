@@ -46,6 +46,7 @@ services:
       - "8443:443"   # HTTPS — bw CLI and browser
       - "8888:8888"  # HTTP WAF (no TLS) — online-test-full (vaultwarden)
       - "8889:8889"  # HTTP WAF (no TLS) — online-test-full (mediawiki)
+      - "8890:8890"  # HTTP WAF (no TLS) — online-test-full (gitea)
     volumes:
       # WAF code — bind-mounted read-only; nginx -s reload picks up changes.
       - ../rootfs/etc/openresty/waf:/etc/openresty/waf:ro

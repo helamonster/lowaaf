@@ -1,0 +1,41 @@
+services:
+  server:
+    image: docker.gitea.com/gitea:1.26.4-rootless
+    container_name: gitea
+    restart: unless-stopped
+    environment:
+      - USER_UID=1000
+      - USER_GID=1000
+      # Unattended boot straight into a usable instance (no web installer
+      # step) - same intent as MediaWiki's MW_ADMIN_USER/MW_ADMIN_PASS-driven
+      # entrypoint.sh, just via Gitea's own GITEA__section__KEY env-var
+      # convention (maps directly onto app.ini) instead of a custom
+      # Dockerfile/entrypoint. ROOT_URL points at the WAF-fronted port
+      # (:8890, see docker/nginx.conf) so redirects/canonical links come out
+      # right when accessed through the WAF the way online-test-full does -
+      # mirrors MW_SERVER's role for mediawiki.
+      - GITEA__security__INSTALL_LOCK=true
+      - GITEA__server__ROOT_URL=${GITEA_ROOT_URL:-http://localhost:8890/}
+      - GITEA__server__HTTP_PORT=3000
+      - GITEA__database__DB_TYPE=sqlite3
+    volumes:
+      - ./data:/var/lib/gitea
+      - ./config:/etc/gitea
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    ports:
+      - "3000:3000"
+      - "2222:2222"
+    networks:
+      - waf-test
+
+networks:
+  # The main WAF test stack's network (docker/docker-compose.yml), joined
+  # as external rather than duplicated so openresty can proxy_pass to this
+  # container by name ("gitea", from container_name above) - see
+  # "GITEA WAF POLICY" / "Wiring gitea into the shared WAF test stack" in
+  # TODO.txt for why this lives in its own compose file instead of being
+  # folded into docker/docker-compose.yml directly.
+  waf-test:
+    name: docker_waf-test
+    external: true

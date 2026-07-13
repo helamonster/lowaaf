@@ -39,7 +39,19 @@ end
 local function kv_encode(t)
   local parts = {}
   for k, v in pairs(t) do
-    parts[#parts + 1] = url_encode(k) .. "=" .. url_encode(v)
+    if type(v) == "table" then
+      -- Array-valued query param (e.g. a swagger `type: array` query
+      -- parameter, confirmed live: gitea's status-types/subject-type on
+      -- GET /notifications) - ngx.req.get_uri_args() parses repeated keys
+      -- into a Lua array server-side, so that's what a real HTTP request
+      -- needs to send; a bare tostring(table) here previously produced the
+      -- literal text "table: 0x..." in the query string.
+      for _, item in ipairs(v) do
+        parts[#parts + 1] = url_encode(k) .. "=" .. url_encode(item)
+      end
+    else
+      parts[#parts + 1] = url_encode(k) .. "=" .. url_encode(v)
+    end
   end
   table.sort(parts)   -- stable order
   return table.concat(parts, "&")
@@ -138,10 +150,16 @@ local function try_once(scheme, host, port, raw, want_keepalive, want_body_drain
   -- the WAF runs. 414 (Request-URI Too Large): same thing for an oversized
   -- QUERY STRING - confirmed live for a >1MB query value (a heuristic-scan
   -- field, e.g. ExpandTemplates' wpContextTitle, exposed on GET after the
-  -- Special: page GET-widening fix). Both are nginx's own protections firing
-  -- ahead of the Lua WAF, not a WAF miss - functionally equivalent to a WAF
-  -- denial for this test's purposes.
-  local final = (waf_blocked or status == 413 or status == 414) and -2 or status
+  -- Special: page GET-widening fix). 405 (Method Not Allowed): nginx itself
+  -- refuses to forward TRACE (and other methods it doesn't recognize) to
+  -- access_by_lua_block at all - confirmed live: gitea's "wrong method"
+  -- test picks TRACE (the only remaining globally-blocked candidate once
+  -- PATCH is genuinely allowed and HEAD rides on GET), and nginx 405s it
+  -- before the WAF's own Lua code ever runs, no X-WAF header attached.
+  -- All three are nginx's own protections firing ahead of the Lua WAF, not
+  -- a WAF miss - functionally equivalent to a WAF denial for this test's
+  -- purposes (the request never reached the app either way).
+  local final = (waf_blocked or status == 413 or status == 414 or status == 405) and -2 or status
   return final, reused
 end
 

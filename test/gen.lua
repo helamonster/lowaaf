@@ -649,13 +649,24 @@ function gen.path_from_pattern(pat)
   if T_uuid_re   then p = plain_sub(p, T_uuid_re,   PATH_UUID)   end
   if T_fileid_re then p = plain_sub(p, T_fileid_re, PATH_FILEID) end
   -- Resolve any other quantified character class (e.g. a bare hex-32 id
-  -- pattern like `[0-9a-fA-F]{32}`) into a concrete string of the required
-  -- length, using a representative character from the class. Negated
-  -- classes (`[^/]{n,m}` etc.) are left for the specific rules below.
-  p = p:gsub("%[([^%]]-)%]%{(%d+)[^}]-%}", function(class, n)
-    if class:sub(1, 1) == "^" then return nil end
+  -- pattern like `[0-9a-fA-F]{32}`, or a `{min,max}` range like `{0,99}`)
+  -- into a concrete string, using a representative character from the
+  -- class repeated `max(min,1)` times - a `{0,N}` quantifier's min-count
+  -- reads as 0 reps (an empty string) if taken literally, which produces
+  -- an empty path segment for a required identifier; at least 1 rep keeps
+  -- the reversed path structurally valid. Only the specific negated-slash
+  -- family (`[^/]{n,m}` etc.) is left for the dedicated rules right below -
+  -- other negated classes (e.g. `[^?#\x00-\x1f]{1,512}`, excluding query
+  -- separators/control chars rather than just '/') are handled generically
+  -- right here: pick any representative char from the class text itself
+  -- (occasionally imprecise for a negated class, but good enough for a
+  -- stand-in test value - it only needs to structurally match the route).
+  p = p:gsub("%[([^%]]-)%]%{(%d*),?(%d*)%}", function(class, lo, hi)
+    if class:sub(1, 2) == "^/" then return nil end
     local ch = class:match("%d") or class:match("%a") or class:sub(1, 1)
-    return ch:rep(tonumber(n))
+    local n = tonumber(lo) or tonumber(hi) or 1
+    if n < 1 then n = 1 end
+    return ch:rep(n)
   end)
   -- Common remaining patterns (Lua pattern substitution on what's left):
   p = p:gsub("%[%^/%]%{[^}]*%}", "testval") -- [^/]{n,m}
@@ -679,6 +690,14 @@ function gen.path_from_pattern(pat)
   end)
   p = p:gsub("[%(%)%|%?]", "")           -- stray alternation chars (fallback)
   p = p:gsub("%{[^}]*%}", "")            -- remaining {n} quantifiers (fallback)
+  -- A bare, un-quantified character class (implicitly "exactly one char",
+  -- e.g. the leading `[0-9a-zA-Z]` of a "[first-char class][continuation
+  -- class]{0,N}" identifier pattern) - resolve to one representative char.
+  -- Runs last (nothing downstream still needs a negated class preserved),
+  -- so unlike the rules above this one resolves negated classes too.
+  p = p:gsub("%[([^%]]-)%]", function(class)
+    return class:match("%d") or class:match("%a") or class:sub(1, 1)
+  end)
   return p
 end
 

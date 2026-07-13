@@ -1,0 +1,28 @@
+
+Gitea github page:
+
+	https://github.com/go-gitea/gitea
+
+This is now the WAF test-stack instance (rebuilt 2026-07-12), joined to the
+main docker/docker-compose.yml stack's "waf-test" network so openresty can
+proxy_pass to it - see docker-compose.yml's own comments and
+"tools.sh online-test-full gitea". Brought up automatically as part of
+`bash tools.sh docker-test-up`, torn down by `docker-test-down`. Unattended
+boot (GITEA__security__INSTALL_LOCK=true, no web installer step), admin
+user created/re-confirmed idempotently by docker-test-up itself.
+
+direct access (bypasses the WAF):
+
+	http://localhost:3000
+
+through the WAF (what online-test-full actually exercises - Phase 1 only
+covers /api/v1/*, everything else denies by default for now):
+
+	http://localhost:8890
+
+admin login (override via GITEA_ADMIN_USER/GITEA_ADMIN_PASS env vars):
+
+	username: Admin
+	password: WafTestPass123!
+	email: admin@waftest.local
+

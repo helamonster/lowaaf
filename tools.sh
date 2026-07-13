@@ -92,6 +92,23 @@ Subcommands:
   mw-regen-all           Full pipeline: mw-extract, dump-paraminfo + gen-api-schema,
                          gen-special-pages, gen-edit-forms, then verify + offline-test.
                          Requires the Docker test stack up (for mw-dump-paraminfo).
+
+  -- Gitea extraction pipeline (Phase 1: REST API v1 only - see TODO.txt,
+  -- "GITEA WAF POLICY - PHASE 1: REST API v1"). Scripts live in
+  -- notes/apps/gitea/gitea-api-extract/. Unlike MediaWiki's api.php, Gitea
+  -- ships a complete Swagger 2.0 spec checked into its own repo
+  -- (app-sources/gitea/gitea/templates/swagger/v1_json.tmpl) - no live
+  -- Docker dependency needed for structure, only for online-test-full.
+  gitea-extract-swagger  Parse the checked-in swagger spec + cross-reference Go struct
+                         binding tags (modules/structs, services/forms, models/activities,
+                         modules/timeutil) into gitea-api-extracted.json.
+  gitea-gen-api-schema   Regenerate apps/gitea/api_schema.lua from gitea-api-extracted.json -
+                         one route per (method, swagger path), no MediaWiki-style
+                         cross-action union needed (each REST path is already unique).
+  gitea-verify-routes    Sanity-check the real, loaded app.routes table: no duplicate
+                         route names, route count matches the extracted operation count.
+  gitea-regen-all        Full pipeline: extract-swagger, gen-api-schema, verify-routes,
+                         then offline-test. No Docker dependency (unlike mw-regen-all).
 EOF
 }
 
@@ -197,14 +214,46 @@ case "$1" in
 	# up changes to either.
 
 	"docker-test-up")
+		# gitea lives in its own compose file (docker/gitea/docker-compose.yml)
+		# rather than being folded into the main one, joined to the main
+		# stack's "waf-test" network as external - brought up first so the
+		# container (and its network attachment/DNS name) exists before
+		# openresty starts, since a plain `proxy_pass http://gitea:3000`
+		# resolves the hostname at config-load time, not per-request.
+		docker compose -f docker/gitea/docker-compose.yml up -d
 		docker compose -f docker/docker-compose.yml up -d
+
+		# Unattended boot (GITEA__security__INSTALL_LOCK=true) skips the web
+		# installer entirely but still needs one CLI call to create a test
+		# admin user - same intent as MW_ADMIN_USER/MW_ADMIN_PASS, just done
+		# from outside the container (no custom entrypoint.sh for gitea,
+		# unlike mediawiki's). Idempotent: tolerates "already exists" on
+		# every run after the first. Bounded retry loop since the container
+		# needs a moment after `up -d` before its SQLite engine is ready.
+		GITEA_ADMIN_USER="${GITEA_ADMIN_USER:-Admin}"
+		GITEA_ADMIN_PASS="${GITEA_ADMIN_PASS:-WafTestPass123!}"
+		GITEA_READY=0
+		for _ in $(seq 1 15); do
+			OUT="$(docker exec gitea gitea admin user create \
+				--username "$GITEA_ADMIN_USER" --password "$GITEA_ADMIN_PASS" \
+				--email admin@waftest.local --admin --must-change-password=false 2>&1)" && GITEA_READY=1 && break
+			echo "$OUT" | grep -qi "already exists" && GITEA_READY=1 && break
+			sleep 1
+		done
+		if [ "$GITEA_READY" != "1" ]; then
+			echo "WARNING: could not confirm/create the gitea admin user - it may not be ready yet:"
+			echo "$OUT"
+		fi
+
 		echo "Vaultwarden web vault: http://localhost:8888"
 		echo "MediaWiki:             http://localhost:8889  (bash tools.sh docker-test-mw-creds for login)"
+		echo "Gitea:                 http://localhost:8890  (user: $GITEA_ADMIN_USER / pass: $GITEA_ADMIN_PASS)"
 		echo "WAF logs: ./tools.sh docker-test-logs [service]"
 	;;
 
 	"docker-test-down")
 		docker compose -f docker/docker-compose.yml down
+		docker compose -f docker/gitea/docker-compose.yml down
 	;;
 
 	"docker-test-reload")
@@ -298,8 +347,13 @@ case "$1" in
 		#   WAF_HTTP_BASE=https://localhost:8443 to use the HTTPS listener instead.
 		# Port 8889: mediawiki, with a real MediaWiki (PHP-FPM + SQLite) backend
 		#   too - see docker/mediawiki/.
+		# Port 8890: gitea, with a real Gitea backend - see docker/gitea/
+		#   (its own compose file, joined to this stack's network as external).
+		#   Phase 1 only models /api/v1/*, so non-API paths will show as denies -
+		#   expected until later phases widen coverage.
 		case "$APP" in
 			mediawiki) DEFAULT_BASE="http://localhost:8889" ;;
+			gitea)     DEFAULT_BASE="http://localhost:8890" ;;
 			*)         DEFAULT_BASE="http://localhost:8888" ;;
 		esac
 		BASE="${WAF_HTTP_BASE:-$DEFAULT_BASE}"
@@ -382,6 +436,26 @@ case "$1" in
 		bash "$0" mw-gen-edit-forms
 		bash "$0" mw-verify-routes
 		bash "$0" offline-test mediawiki
+	;;
+
+	"gitea-extract-swagger")
+		python3 notes/apps/gitea/gitea-api-extract/extract_swagger.py
+	;;
+
+	"gitea-gen-api-schema")
+		python3 notes/apps/gitea/gitea-api-extract/gen_api_schema.py
+	;;
+
+	"gitea-verify-routes")
+		python3 notes/apps/gitea/gitea-api-extract/verify_gitea_routes.py
+	;;
+
+	"gitea-regen-all")
+		set -e
+		bash "$0" gitea-extract-swagger
+		bash "$0" gitea-gen-api-schema
+		bash "$0" gitea-verify-routes
+		bash "$0" offline-test gitea
 	;;
 
 	"migrate-to-github")

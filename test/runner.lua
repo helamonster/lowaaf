@@ -253,9 +253,17 @@ local function wrong_method(route)
   local allowed = {}
   for _, m in ipairs(route_methods(route)) do allowed[m] = true end
   local global_ok = app.defaults.allowed_methods or {}
+  -- HEAD rides on GET's permission in core.lua (both the global method
+  -- check and route matching treat it as GET) - it's only genuinely
+  -- rejected if GET itself would be, for this route or globally.
+  local head_effectively_ok = allowed["GET"] or global_ok["GET"]
   -- 1. Try PATCH / HEAD / TRACE — blocked globally, no shared-URI ambiguity.
   for _, m in ipairs({ "PATCH", "HEAD", "TRACE" }) do
-    if not allowed[m] and not global_ok[m] then return m end
+    if m == "HEAD" then
+      if not head_effectively_ok then return m end
+    elseif not allowed[m] and not global_ok[m] then
+      return m
+    end
   end
   -- 2. Fall back to a globally-allowed method not used by this route.
   --    May produce a false "allow" if another route shares the URI — acceptable.
