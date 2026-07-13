@@ -66,7 +66,7 @@ LOWAAF runs as an `access_by_lua_block` handler inside an OpenResty `location` b
 4. Validates request headers — both the set of header names (allowlist) and their values (format validators)
 5. Validates the request body — size limits, JSON schema, or form field schema
 
-If any check fails, the request is denied. In `log` mode (the safe default), violations are logged but requests are passed through, allowing you to validate a policy against real traffic before enabling blocking. In `block` mode, violations result in a `4xx` response and the request never reaches the application.
+If any check fails, the request is denied. `block` is the project default — a brand new or heavily-revised policy is deliberately started in `log` mode instead, so violations are logged but requests still pass through, letting you validate the policy against real traffic before flipping it to `block`. In `block` mode, violations result in a `4xx` response and the request never reaches the application.
 
 ```nginx
 location /
@@ -92,7 +92,8 @@ waf/
   apps/
     vaultwarden.lua # Policy definition for Vaultwarden
     jellyfin.lua    # Policy definition for Jellyfin
-    mediawiki.lua   # Policy definition for MediaWiki
+    mediawiki.lua   # Policy definition for MediaWiki   (+ apps/mediawiki/  — generated modules)
+    gitea.lua       # Policy definition for Gitea       (+ apps/gitea/     — generated module)
 
 test/
   runner.lua        # Test suite — runs offline (mock_ngx) or online (http_client)
@@ -101,8 +102,16 @@ test/
   http_client.lua   # Cosocket HTTP client (online mode)
 
 docker/
-  docker-compose.yml  # Local OpenResty + Vaultwarden test stack
-  nginx.conf          # Nginx config with WAF on all locations including /notifications/hub
+  docker-compose.yml  # OpenResty + Vaultwarden + MediaWiki test stack
+  nginx.conf           # Nginx config with a WAF-gated listener per app
+  mediawiki/            # MediaWiki test backend (Dockerfile + entrypoint)
+  gitea/                 # Gitea test backend (own compose file, joined to the shared network)
+
+notes/apps/<name>/
+  # For apps whose route table is generated rather than hand-written
+  # (mediawiki, gitea): the extraction/generation pipeline that produces
+  # apps/<name>/*.lua from the upstream application's own source — a live
+  # introspection API for MediaWiki, a checked-in Swagger spec for Gitea.
 ```
 
 ### types.lua — Validator Factories
@@ -173,6 +182,8 @@ return {
 }
 ```
 
+For a small application, the whole policy is one hand-written file like the one above. For a large one, hand-writing hundreds of routes stops being practical — MediaWiki's and Gitea's policies are instead mostly **generated** from the upstream application's own source (a live introspection API for MediaWiki's `api.php`, a checked-in Swagger spec for Gitea's REST API), with only the genuinely app-specific parts — shared field definitions, header rules, route assembly — hand-maintained in `apps/<name>.lua`. The generated pieces still return the exact same declarative shape shown above; nothing about `core.lua` or `types.lua` changes to support this, it's purely a difference in how the `routes` table gets built.
+
 ---
 
 ## Testing
@@ -200,23 +211,25 @@ For each route the suite:
 9. Tests form/query-string schema invalids
 10. Tests malformed JSON and malformed form bodies
 
-Across all three policies the offline suite generates **~28,000 test cases** covering 435 routes (Vaultwarden: ~25,000 cases / 270 routes; Jellyfin: ~1,400 cases / 154 routes; MediaWiki: ~1,200 cases / 11 routes).
+Across all four policies the offline suite generates **~149,000 test cases** covering 1,112 routes (MediaWiki: ~108,000 cases / 204 routes; Vaultwarden: ~25,000 cases / 270 routes; Gitea: ~11,800 cases / 482 routes, REST API v1 only; Jellyfin: ~3,600 cases / 156 routes).
 
 ### Online tests (live Docker stack)
 
 `online-test-full` runs the same cases against the actual WAF inside OpenResty, sending real HTTP requests and inspecting the `X-WAF: block` response header to distinguish WAF denials from application responses:
 
 ```bash
-bash tools.sh docker-test-up       # start OpenResty + Vaultwarden
-bash tools.sh online-test-full     # ~23,700 HTTP requests, ~1 minute
+bash tools.sh docker-test-up          # start OpenResty + Vaultwarden + MediaWiki + Gitea
+bash tools.sh online-test-full            # vaultwarden, port 8888 (the default app)
+bash tools.sh online-test-full mediawiki  # real MediaWiki backend, port 8889
+bash tools.sh online-test-full gitea      # real Gitea backend, port 8890
 bash tools.sh docker-test-down
 ```
 
 The runner temporarily forces block mode in the container for the duration of the test (by touching `/tmp/waf-block-mode`) and restores it on exit. A small number of offline cases are skipped in online mode where HTTP semantics differ — for example, nginx strips null bytes from headers before the WAF sees them, and URL-encoding collapses type mismatches to strings.
 
-Running both suites together catches two classes of bugs that neither catches alone:
+Running both suites together catches bug classes that neither catches alone:
 - **Logic bugs** — caught offline, because every case runs with full schema coverage
-- **Infrastructure bugs** — caught online, such as large bodies spilling to nginx temp files (a real bug found and fixed this way, where bodies > 8 KB caused the WAF to read an empty body and deny valid requests)
+- **Infrastructure bugs** — caught online, real examples found and fixed this way: large bodies spilling to nginx temp files (bodies > 8 KB caused the WAF to read an empty body and deny valid requests), nginx rejecting `TRACE` with a bare `405` before the WAF's own Lua code ever runs, and array-valued query parameters serializing incorrectly over real HTTP in ways the offline mock never exercises
 
 ### CLI integration tests
 
@@ -237,17 +250,23 @@ bash tools.sh online-test-cli
 | `offline-test [app]` | Run WAF unit tests via `resty` (mock, no Docker) |
 | `online-test-full [app]` | Live HTTP replay of the full test suite against Docker |
 | `online-test-cli [--no-reset]` | `bw` CLI integration tests against Docker |
-| `docker-test-up` | Start the OpenResty + Vaultwarden Docker stack |
+| `docker-test-up` | Start the OpenResty + Vaultwarden + MediaWiki + Gitea Docker stack |
 | `docker-test-down` | Stop the Docker stack |
 | `docker-test-reload` | Reload OpenResty in-container (picks up WAF code changes without restart) |
-| `docker-test-logs` | Tail WAF deny log entries from the running container |
+| `docker-test-logs [service]` | Tail logs from a stack service (default: WAF deny/warn/error lines) |
 | `diff` | Diff WAF sources against the deployed copy in `/etc/openresty/waf/` |
 | `deploy` | rsync WAF sources to `/etc/openresty/waf/` and restart OpenResty |
 
-The Docker stack exposes three ports:
+Apps whose route table is generated (mediawiki, gitea) each get their own `<app>-regen-all` command (`mw-regen-all`, `gitea-regen-all`) that re-runs extraction → generation → verification → offline-test in one shot — see `bash tools.sh` for the complete list, including each generator's individual steps.
+
+The Docker stack exposes five ports:
 - `8080` — HTTP → redirects to HTTPS
 - `8443` — HTTPS (used by `bw` CLI and browser)
-- `8888` — plain HTTP WAF listener (used by `online-test-full` to avoid per-request TLS overhead)
+- `8888` — plain HTTP WAF listener, Vaultwarden backend
+- `8889` — plain HTTP WAF listener, real MediaWiki (PHP-FPM + SQLite) backend
+- `8890` — plain HTTP WAF listener, real Gitea backend
+
+(`8888`–`8890` skip the TLS handshake so `online-test-full` runs fast — a few seconds to a couple minutes instead of tens of minutes.)
 
 ---
 
@@ -255,9 +274,10 @@ The Docker stack exposes three ports:
 
 | Application | Status | Notes |
 |---|---|---|
-| [Vaultwarden](https://github.com/dani-garcia/vaultwarden) | Working (log mode) | Full route coverage; cipher, login, send, admin schemas; UA restriction; ~25k test cases |
-| [Jellyfin](https://github.com/jellyfin/jellyfin) | Working (log mode) | 154 routes; library, playback, session, admin schemas; ~1.4k test cases |
-| [MediaWiki](https://www.mediawiki.org) | Working (log mode) | index.php / api.php / load.php query & form schemas; ~1.2k test cases |
+| [Vaultwarden](https://github.com/dani-garcia/vaultwarden) | `block` mode | 270 routes; cipher, login, send, admin schemas; UA restriction; ~25k test cases |
+| [MediaWiki](https://www.mediawiki.org) | `block` mode | 204 routes; index.php / api.php / load.php, mostly generated from a live `action=paraminfo` introspection dump; ~108k test cases |
+| [Jellyfin](https://github.com/jellyfin/jellyfin) | `block` mode | 156 routes; library, playback, session, admin schemas; ~3.6k test cases |
+| [Gitea](https://gitea.com) | `log` mode — Phase 1 (REST API v1) | 482 routes, generated from Gitea's own checked-in Swagger spec; web UI and git smart-HTTP/LFS are later phases, not yet covered; ~11.8k test cases |
 
 ---
 
@@ -265,15 +285,17 @@ The Docker stack exposes three ports:
 
 This project is actively being developed and improved. Planned work includes:
 
+- **Gitea web UI + git smart-HTTP/LFS** — Phase 1 (REST API v1) is done; the browser-facing routes/forms and the actual git clone/push/LFS protocol are separate, not-yet-started phases
 - **More application policies** — WordPress, Nextcloud, and others migrated to the framework
 - **Stricter schemas** — deeper JSON validation on more endpoints as real-traffic log analysis reveals actual request shapes
 - **Rate limiting integration** — per-route and per-client request rate limits
 - **IPv6 CIDR support** — IP allowlists currently handle IPv4 only
-- **Query string validation** — allowlisting and validating URI query parameters
 - **Response filtering** — optionally inspect and sanitize upstream responses
 - **More validator helpers** — additional `T.*` factories for common patterns (JWT validation, API key formats, common header value shapes)
-- ~~**Testing infrastructure**~~ *(done — offline + online test suites, ~28k cases across all three policies)*
+- ~~**Testing infrastructure**~~ *(done — offline + online test suites, ~149k cases across all four policies)*
 - ~~**Jellyfin & MediaWiki policies**~~ *(done — both migrated to the declarative framework with full offline test coverage)*
+- ~~**Query string validation**~~ *(done — every app validates query parameters the same way as JSON/form bodies)*
+- ~~**Gitea REST API v1**~~ *(done — 482 generated routes, see Current Application Policies)*
 
 ---
 
