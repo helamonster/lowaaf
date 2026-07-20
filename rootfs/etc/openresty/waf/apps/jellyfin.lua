@@ -115,11 +115,23 @@ return {
       -- /web/noto-sans-latin-400-normal.f5cd7b617bcb047bfaa4.woff2
       paths   = {
         [[^/web/[^/]+\.(js|css|woff2|woff|ttf|png|svg|ico|json|map)$]],
-        [[^/web/assets/img/[^/]+\.svg$]],
+        -- /web/assets/img/devices/firefox.svg
+        [[^/web/assets/img/(?:[^/]+/)?[^/]+\.svg$]],
         [[^/web/themes/[^/]+/[^/]+\.css$]],
         [[^/web/ConfigurationPages$]],
       },
       no_body = true,
+    },
+    {
+      -- Plugin-provided HTML config page, e.g. /web/configurationpage?name=Home%20Screen%20Sections
+      name    = "web configurationpage",
+      method  = "GET",
+      paths   = { [[^/web/(?:C|c)onfigurationpage$]] },
+      no_body = true,
+      query   = T.object(
+        { name = T.string({ max = 128, not_match = "[\\x00-\\x1f]" }) },
+        { required = { name = true } }
+      ),
     },
 
     -------------------------------------------------------------------------

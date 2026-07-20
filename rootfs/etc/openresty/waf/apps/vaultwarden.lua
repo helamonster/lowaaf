@@ -523,6 +523,7 @@ return {
       ["User-Agent"] = ua_any_known(),
       ["priority"]   = T.http_priority(),
       ["sec-gpc"]    = T.sec_gpc(),
+      ["sec-fetch-storage-access"] = T.sec_fetch_storage_access(),
       -- DeviceType enum (libs/common/src/enums/device-type.enum.ts): 0–26
       ["device-type"]            = T.string({ max=2,  match=[[^(?:[0-9]|1[0-9]|2[0-6])$]] }),
       -- Version string: YYYY.M.P  (e.g. 2026.5.1)

@@ -450,6 +450,7 @@ local _common_request_headers = {
   "sec-fetch-mode",
   "sec-fetch-site",
   "sec-fetch-user",
+  "sec-fetch-storage-access",
   "te",
   "upgrade",
   "upgrade-insecure-requests",
@@ -561,6 +562,28 @@ do
   local fn = T.string({ max=1, enum={ ["1"]=true } })
   T._registry[fn] = { type = "sec_gpc" }
   function T.sec_gpc() return fn end
+end
+
+--
+-- Sec-Fetch-Storage-Access is a relatively new browser-generated Fetch Metadata request header related to the Storage Access API. It tells the server whether a cross-site request currently has access to unpartitioned (third-party) cookies.
+--
+-- The header is a token and has exactly three valid values:
+--
+-- Value      Meaning Cookies Available?
+-- none       The context has not been granted storage access permission.     ❌ No
+-- inactive   The context has storage-access permission, but it has not activated it for this request.        ❌ No
+-- active     The context has activated storage access and may use unpartitioned cookies.     ✅ Yes
+--
+-- These are the only currently defined values. Servers are encouraged to ignore unknown values for forward compatibility rather than rejecting the request.
+--
+do
+  local fn = T.string({ max=8, enum={
+    ["none"] = true,
+    ["inactive"]     = true,
+    ["active"] = true,
+  }})
+  T._registry[fn] = { type = "sec_fetch_storage_access" }
+  function T.sec_fetch_storage_access() return fn end
 end
 
 -- ---------------------------------------------------------------------------
