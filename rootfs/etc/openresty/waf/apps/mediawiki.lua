@@ -746,7 +746,8 @@ end)()
 
 return {
   name = "mediawiki",
-  mode = "block",
+  mode = "block",   -- switch to "block" after validating against real traffic
+  verbose = 2,
 
   defaults = {
     max_body        = 4 * 1024 * 1024,

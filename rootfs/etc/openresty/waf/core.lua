@@ -169,9 +169,15 @@ local function deny(app, status, reason)
   ngx.log(ngx.WARN, "[waf:", app.name or "?", "] ", reason)
   if not ngx.ctx.waf_log_mode then
     if app.on_deny then pcall(app.on_deny, reason, status) end
+
+    ngx.status = 403
+    ngx.header["content-type"] = "text/html; charset=utf-8"
+    ngx.header["cache-control"] = "no-store"
+    ngx.header["pragma"] = "no-cache"
+    ngx.header["x-request-id"] = "0xgoaway"
     ngx.header["X-WAF"] = "block"
-    ngx.status = status or 400
-    ngx.say("bad request")
+    ngx.say('<!doctype html><meta charset=utf-8><title>Request blocked by LOWAAF</title><body>Request blocked by <a href="https://github.com/helamonster/lowaaf">LOWAAF — Lua OpenResty Web Application and API Firewall</a></body>')
+
     ngx.exit(ngx.status)
     -- ngx.exit() raises internally; code below is unreachable
   end

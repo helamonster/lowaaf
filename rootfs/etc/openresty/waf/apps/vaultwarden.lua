@@ -486,7 +486,7 @@ local vw_file_token = T.jwt_claims({
 -- ---------------------------------------------------------------------------
 return {
   name    = "vaultwarden",
-  mode    = "block",
+  mode = "block",   -- flip to "block" after validating against real traffic
   verbose = 2,
   -- on_deny fires only in "block" mode.  Requires the ipset to exist:
   --   ipset create waf-blocklist hash:ip timeout 3600
