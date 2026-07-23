@@ -1,7 +1,7 @@
 services:
 
   vaultwarden:
-    image: vaultwarden/server:latest
+    image: vaultwarden/server:1.36.0
     restart: unless-stopped
     environment:
       DOMAIN:              "https://localhost:8443"
@@ -30,7 +30,7 @@ services:
       # (e.g. MEDIAWIKI_TARBALL=/path/to/mediawiki-1.99.0.tar.gz bash tools.sh
       # docker-test-up). Read-only: entrypoint.sh only ever extracts it, never
       # writes back to it.
-      - ${MEDIAWIKI_TARBALL:-../app-sources/mediawiki/mediawiki-1.46.0.tar.gz}:/mediawiki-src.tar.gz:ro
+      - ${MEDIAWIKI_TARBALL:-../app-sources/mediawiki/server/mediawiki-1.46.0.tar.gz}:/mediawiki-src.tar.gz:ro
       # Extracted code + LocalSettings.php + the SQLite DB all live here, in a
       # volume shared with openresty (which needs direct read access to serve
       # static assets without proxying every request through PHP).
@@ -39,7 +39,7 @@ services:
       - waf-test
 
   openresty:
-    image: openresty/openresty:alpine
+    image: openresty/openresty:1.31.1.1-alpine
     restart: unless-stopped
     ports:
       - "8080:80"    # HTTP → redirects to HTTPS
