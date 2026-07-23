@@ -1,6 +1,6 @@
 services:
   server:
-    image: docker.gitea.com/gitea:1.26.4-rootless
+    image: docker.gitea.com/gitea:1.27.0-rootless
     container_name: gitea
     restart: unless-stopped
     environment:
