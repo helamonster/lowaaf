@@ -12,7 +12,7 @@ Usage:
     python3 extract_mediawiki_api.py [path-to-mediawiki-source] [output-dir]
 
 Defaults:
-    path-to-mediawiki-source = app-sources/mediawiki/mediawiki-<latest>
+    path-to-mediawiki-source = app-sources/mediawiki/server/mediawiki-<latest>
     output-dir               = ./mw-api-extract
 
 Outputs (in output-dir):
@@ -1327,7 +1327,7 @@ def find_default_mw_src():
     # under notes/apps/mediawiki/).
     repo_root = find_repo_root(SCRIPT_DIR)
     candidates = sorted(
-        p for p in glob.glob(os.path.join(repo_root, "app-sources", "mediawiki", "mediawiki-*"))
+        p for p in glob.glob(os.path.join(repo_root, "app-sources", "mediawiki", "server", "mediawiki-*"))
         if os.path.isdir(p)
     )
     return candidates[-1] if candidates else None

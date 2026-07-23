@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Reads app-sources/gitea/gitea/templates/swagger/v1_json.tmpl - a fully
+Reads app-sources/gitea/server/gitea/templates/swagger/v1_json.tmpl - a fully
 generated Swagger 2.0 spec checked into the Gitea repo (built by
 `make generate-swagger` from `//swagger:...` doc comments, kept in sync by
 CI's `make swagger-check`) - and writes gitea-api-extracted.json: every
@@ -31,7 +31,7 @@ sys.path.insert(0, SCRIPT_DIR)
 from _lib import find_repo_root  # noqa: E402
 
 REPO_ROOT = find_repo_root(SCRIPT_DIR)
-GITEA_ROOT = os.path.join(REPO_ROOT, "app-sources", "gitea", "gitea")
+GITEA_ROOT = os.path.join(REPO_ROOT, "app-sources", "gitea", "server", "gitea")
 SWAGGER_PATH = os.path.join(GITEA_ROOT, "templates", "swagger", "v1_json.tmpl")
 OUT_PATH = os.path.join(SCRIPT_DIR, "gitea-api-extracted.json")
 

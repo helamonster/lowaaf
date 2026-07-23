@@ -1,6 +1,6 @@
 # WAF routes missing from vaultwarden.lua policy
 # Discovered via live traffic testing on 2026-06-26
-# Verified against app-sources/vaultwarden/clients/ and vaultwarden-1.36.0/
+# Verified against app-sources/vaultwarden/clients/clients/ and server/vaultwarden-1.36.0/
 # Status: FIXED — all four routes below were added to vaultwarden.lua
 
 ## Registration (new two-step web vault flow + legacy)

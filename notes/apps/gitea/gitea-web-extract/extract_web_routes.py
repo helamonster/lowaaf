@@ -42,7 +42,7 @@ sys.path.insert(0, SCRIPT_DIR)
 from _lib import find_repo_root  # noqa: E402
 
 REPO_ROOT = find_repo_root(SCRIPT_DIR)
-GITEA_ROOT = os.path.join(REPO_ROOT, "app-sources", "gitea", "gitea")
+GITEA_ROOT = os.path.join(REPO_ROOT, "app-sources", "gitea", "server", "gitea")
 WEB_GO = os.path.join(GITEA_ROOT, "routers", "web", "web.go")
 OUT_PATH = os.path.join(SCRIPT_DIR, "gitea-web-extracted.json")
 

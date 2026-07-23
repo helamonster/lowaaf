@@ -97,7 +97,7 @@ Subcommands:
   -- "GITEA WAF POLICY - PHASE 1: REST API v1"). Scripts live in
   -- notes/apps/gitea/gitea-api-extract/. Unlike MediaWiki's api.php, Gitea
   -- ships a complete Swagger 2.0 spec checked into its own repo
-  -- (app-sources/gitea/gitea/templates/swagger/v1_json.tmpl) - no live
+  -- (app-sources/gitea/server/gitea/templates/swagger/v1_json.tmpl) - no live
   -- Docker dependency needed for structure, only for online-test-full.
   gitea-extract-swagger  Parse the checked-in swagger spec + cross-reference Go struct
                          binding tags (modules/structs, services/forms, models/activities,

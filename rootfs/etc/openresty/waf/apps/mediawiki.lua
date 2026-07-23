@@ -127,7 +127,7 @@ local idx_common = {
   extended        = T.string({ max=4 }),    -- Watchlist-specific
   -- Remaining getBaseFilterGroupDefinitions() siblings missed by the initial
   -- pass in 26eabae - confirmed against includes/SpecialPage/ChangesListSpecialPage.php
-  -- directly (app-sources/mediawiki-1.46.0): hideminor/hidemyself live in the
+  -- directly (app-sources/mediawiki/server/mediawiki-1.46.0): hideminor/hidemyself live in the
   -- same 'significance'/'authorship' filter groups as hidemajor/hidebyothers
   -- above, hideanons/hideliu/hidepatrolled/hidecategorization round out the
   -- rest of the group set. Confirmed live: ?hidemyself=1 and ?hideminor=1 on

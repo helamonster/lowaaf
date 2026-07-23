@@ -1,9 +1,9 @@
 look in:
-	app-sources/mediawiki/mediawiki-1.46.0/includes/Specials/
+	app-sources/mediawiki/server/mediawiki-1.46.0/includes/Specials/
 
 for files like:
 
-	app-sources/mediawiki/mediawiki-1.46.0/includes/Specials/SpecialWatchlist.php
+	app-sources/mediawiki/server/mediawiki-1.46.0/includes/Specials/SpecialWatchlist.php
 
 Call all of these functions to get parameter info:
 

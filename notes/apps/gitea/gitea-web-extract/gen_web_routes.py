@@ -31,7 +31,7 @@ sys.path.insert(0, SCRIPT_DIR)
 from _lib import find_repo_root, lua_str, field_key  # noqa: E402
 
 REPO_ROOT = find_repo_root(SCRIPT_DIR)
-GITEA_ROOT = os.path.join(REPO_ROOT, "app-sources", "gitea", "gitea")
+GITEA_ROOT = os.path.join(REPO_ROOT, "app-sources", "gitea", "server", "gitea")
 FORMS_DIR = os.path.join(GITEA_ROOT, "services", "forms")
 IN_PATH = os.path.join(SCRIPT_DIR, "gitea-web-extracted.json")
 OUT_PATH = os.path.join(
