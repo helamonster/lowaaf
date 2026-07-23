@@ -14,7 +14,7 @@
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 COMPOSE_FILE="$SCRIPT_DIR/docker/docker-compose.yml"
-REGISTER_JS="$SCRIPT_DIR/docker/register.js"
+REGISTER_JS="$SCRIPT_DIR/docker/vaultwarden/register.js"
 
 SERVER="https://localhost:8443"
 EMAIL="waftest@example.com"

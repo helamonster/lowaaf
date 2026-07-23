@@ -7,7 +7,7 @@
 // extract+expand, producing different keys. So we implement expand-only here.
 //
 // Used by bw_test_live.sh; also callable standalone:
-//   BW_EMAIL=x BW_PASSWORD=y BW_SERVER=https://... node docker/register.js
+//   BW_EMAIL=x BW_PASSWORD=y BW_SERVER=https://... node docker/vaultwarden/register.js
 
 const crypto = require('crypto');
 const https  = require('https');

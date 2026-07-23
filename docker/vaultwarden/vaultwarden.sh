@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
-# Standalone utility for the `vaultwarden` service in docker-compose.yml
+# Standalone utility for the `vaultwarden` service in ../docker-compose.yml
 # (vaultwarden has no Dockerfile/compose file of its own - off-the-shelf
-# image). Version lives in exactly one place - the `image:` line in
-# docker-compose.yml - every subcommand here defers to `docker compose`
-# for that rather than hardcoding it again.
+# image, this subdir just holds vaultwarden-specific scripts). Version
+# lives in exactly one place - the `image:` line in docker-compose.yml -
+# every subcommand here defers to `docker compose` for that rather than
+# hardcoding it again.
 set -euo pipefail
 
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/.."
 
 SERVICE=vaultwarden
 
