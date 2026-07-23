@@ -242,6 +242,17 @@ local cipher_body = T.with_check(T.object({
   { value = { type=5, name="a", sshKey={} },     label = "type=5 (SshKey)"     },
 })
 
+-- Share-cipher body: shared by "cipher share", "cipher admin create", and
+-- "cipher create-post" (src/api/core/ciphers.rs: ShareCipherData). Serde
+-- aliases mean older/mobile clients may send PascalCase "Cipher"/
+-- "CollectionIds" instead of "cipher"/"collectionIds"; both are allowed.
+local share_cipher_body = T.object({
+  cipher        = cipher_body,
+  Cipher        = cipher_body,
+  collectionIds = T.array(T.uuid(), { max = 200 }),
+  CollectionIds = T.array(T.uuid(), { max = 200 }),
+})
+
 -- ---------------------------------------------------------------------------
 -- Registration body: shared by the legacy /identity/accounts/register and
 -- the new two-step /identity/accounts/register/finish.
@@ -657,10 +668,7 @@ return {
     { name = "cipher restore",     method = "PUT",    path = "^/api/ciphers/" .. U .. "/restore$",   no_body = true },
     { name = "cipher share", method = "PUT", path = "^/api/ciphers/" .. U .. "/share$",
       content_type = "application/json",
-      json = T.object({
-        cipher        = cipher_body,
-        collectionIds = T.array(T.uuid(), { max = 200 }),
-      }) },
+      json = share_cipher_body },
     -- Details endpoint: includes org collection membership alongside the cipher
     { name = "cipher details",           method = "GET",    path = "^/api/ciphers/" .. U .. "/details$",         no_body = true },
     -- POST alias for PUT cipher update
@@ -703,15 +711,16 @@ return {
     -- Org-admin cipher create: same body shape as cipher share
     { name = "cipher admin create", method = "POST", path = [[^/api/ciphers/admin$]],
       content_type = "application/json",
-      json = T.object({
-        cipher        = cipher_body,
-        collectionIds = T.array(T.uuid(), { max = 200 }),
-      }) },
+      json = share_cipher_body },
     -- Org cipher list: query param only, no body
     { name = "org cipher details", method = "GET", path = [[^/api/ciphers/organization-details$]],
       query = T.object({ organizationId = T.uuid() }), no_body = true },
-    -- POST alias for cipher create (some older clients use /ciphers/create)
-    { name = "cipher create-post",   method = "POST", path = [[^/api/ciphers/create$]], content_type = "application/json", json = cipher_body },
+    -- POST alias for cipher create (some older clients use /ciphers/create).
+    -- Same ShareCipherData wrapper as "cipher share"/"cipher admin create",
+    -- not a bare cipher_body (src/api/core/ciphers.rs: post_ciphers_create).
+    { name = "cipher create-post", method = "POST", path = [[^/api/ciphers/create$]],
+      content_type = "application/json",
+      json = share_cipher_body },
     -- Bulk share: re-encrypts and moves multiple ciphers into org collections at once
     { name = "ciphers share-bulk",   method = "PUT",  path = [[^/api/ciphers/share$]],
       content_type = "application/json",
@@ -1328,6 +1337,9 @@ return {
     { name = "org billing metadata",       method = "GET", path = "^/api/organizations/" .. U .. "/billing/metadata$",                no_body = true },
     { name = "org billing warnings",       method = "GET", path = "^/api/organizations/" .. U .. "/billing/vnext/warnings$",          no_body = true },
     { name = "org billing self-host-meta", method = "GET", path = "^/api/organizations/" .. U .. "/billing/vnext/self-host/metadata$", no_body = true },
+    -- Personal (cloud-only) billing subscription: not implemented server-side at all,
+    -- Vaultwarden's api_not_found catcher 404s it; mobile clients probe it regardless.
+    { name = "account billing subscription", method = "GET", path = [[^/api/account/billing/vnext/subscription$]], no_body = true },
 
     -- Org public key (GET /public-key and backward-compat GET /keys alias)
     { name = "org public-key", method = "GET", path = "^/api/organizations/" .. U .. "/public-key$", no_body = true },
