@@ -226,6 +226,19 @@ case "$1" in
 	# up changes to either.
 
 	"docker-test-up")
+		# docker/certs is gitignored (self-signed, host-specific, no reason to
+		# track it) but docker-compose.yml bind-mounts it into openresty and
+		# nginx.conf's :443 server block hard-requires cert.pem/key.pem to
+		# exist or the whole nginx process refuses to start - generate a
+		# throwaway self-signed pair on first run if missing.
+		if [ ! -f docker/certs/cert.pem ] || [ ! -f docker/certs/key.pem ]; then
+			echo "Generating self-signed TLS cert for docker/certs (first run)..."
+			mkdir -p docker/certs
+			openssl req -x509 -nodes -newkey rsa:2048 \
+				-keyout docker/certs/key.pem -out docker/certs/cert.pem \
+				-days 3650 -subj "/CN=localhost" 2>/dev/null
+		fi
+
 		# gitea lives in its own compose file (docker/gitea/docker-compose.yml)
 		# rather than being folded into the main one, joined to the main
 		# stack's "waf-test" network as external - brought up first so the
