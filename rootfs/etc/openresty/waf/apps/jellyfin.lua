@@ -76,6 +76,11 @@ return {
       ["accept-charset"] = accept_charset(),
       ["x-requested-with"] = T.string( { max = 512 } ),
       ["service-worker"] = T.string({ max = 8, enum = { script = true } }),
+      -- Icy-MetaData: audio/video clients request ShoutCast-style stream
+      -- metadata injection. Header values are always strings, never Lua
+      -- numbers (core.lua passes tostring(value) to every validator) - so
+      -- this must be T.string with an enum, not T.number.
+      ["icy-metadata"] = T.string({ max = 1, enum = { ["0"] = true, ["1"] = true } }),
     },
   },
 
@@ -192,8 +197,24 @@ return {
     -------------------------------------------------------------------------
     -- Display Preferences
     -------------------------------------------------------------------------
-    { name="displayprefs settings", methods={"GET","POST"}, path=[[^/DisplayPreferences/usersettings$]] },
-    { name="displayprefs livetv",   methods={"GET","POST"}, path=[[^/DisplayPreferences/livetv$]] },
+    -- DisplayPreferencesController: displayPreferencesId is any free-form
+    -- string, not a fixed keyword set - the server Guid.TryParse()s it and
+    -- falls back to MD5-hashing the raw string if it isn't one. "usersettings"
+    -- and "livetv" are just the values the official web client happens to
+    -- use; other clients (e.g. Android TV) send a GUID instead. client is a
+    -- required query param; userId is optional (implied by auth token).
+    {
+      name    = "displayprefs",
+      methods = { "GET", "POST" },
+      path    = [[^/DisplayPreferences/[0-9A-Za-z_.-]+$]],
+      query   = T.object(
+        {
+          client = T.string({ max = 64, not_match = "[\\x00-\\x1f]" }),
+          userId = T.nullable(T.uuid()),
+        },
+        { required = { client = true } }
+      ),
+    },
 
     -------------------------------------------------------------------------
     -- Repositories / Packages / Plugins / Backup
@@ -230,28 +251,68 @@ return {
     { name="users configuration", methods={"GET","POST"}, path="^/Users/" .. ID .. "/Configuration$" },
     { name="users policy",        method="POST",           path="^/Users/" .. ID .. "/Policy$" },
     { name="users grouping",      method="GET",            path="^/Users/" .. ID .. "/GroupingOptions$", no_body=true },
+    {
+      name    = "userviews grouping",
+      method  = "GET",
+      path    = [[^/UserViews/GroupingOptions$]],
+      no_body = true,
+      query   = T.object({ userId = T.nullable(T.uuid()) }),
+    },
     { name="users items",         method="GET",            path="^/Users/" .. ID .. "/Items$",           no_body=true },
     { name="users items latest",  method="GET",            path="^/Users/" .. ID .. "/Items/Latest$",    no_body=true },
     { name="users items resume",  method="GET",            path="^/Users/" .. ID .. "/Items/Resume$",    no_body=true },
     { name="users items by id",   method="GET",            path="^/Users/" .. ID .. "/Items/" .. ID .. "$", no_body=true },
     { name="users items intros",  method="GET",            path="^/Users/" .. ID .. "/Items/" .. ID .. "/Intros$", no_body=true },
+    { name="items intros",        method="GET",            path="^/Items/" .. ID .. "/Intros$", no_body=true },
     { name="users items special", method="GET",            path="^/Users/" .. ID .. "/Items/" .. ID .. "/SpecialFeatures$", no_body=true },
-    -- Mark / unmark played: POST requires DatePlayed ISO-8601 query param
+    {
+      name    = "items special",
+      method  = "GET",
+      path    = "^/Items/" .. ID .. "/SpecialFeatures$",
+      no_body = true,
+      query   = T.object({ userId = T.nullable(T.uuid()) }),
+    },
+    -- Mark / unmark played, legacy user-in-path form. datePlayed is
+    -- [FromQuery] DateTime? in PlaystateController.MarkPlayedItem - optional,
+    -- not required.
     {
       name   = "played items mark",
       method = "POST",
       path   = "^/Users/" .. ID .. "/PlayedItems/[0-9A-Za-z_.-]+$",
-      query  = T.object(
-        { DatePlayed = T.iso8601() },
-        { required = { DatePlayed = true } }
-      ),
+      query  = T.object({ DatePlayed = T.nullable(T.iso8601()) }),
     },
     {
       name   = "played items unmark",
       method = "DELETE",
       path   = "^/Users/" .. ID .. "/PlayedItems/[0-9A-Za-z_.-]+$",
     },
+    -- Mark / unmark played, current form (userId implied by auth token, or
+    -- passed as an optional query param instead of a path segment).
+    {
+      name   = "userplayeditems mark",
+      method = "POST",
+      path   = "^/UserPlayedItems/[0-9A-Za-z_.-]+$",
+      query  = T.object({
+        userId     = T.nullable(T.uuid()),
+        datePlayed = T.nullable(T.iso8601()),
+      }),
+    },
+    {
+      name   = "userplayeditems unmark",
+      method = "DELETE",
+      path   = "^/UserPlayedItems/[0-9A-Za-z_.-]+$",
+      query  = T.object({ userId = T.nullable(T.uuid()) }),
+    },
     { name="favorite items", methods={"POST","DELETE"}, path="^/Users/" .. ID .. "/FavoriteItems/[0-9A-Za-z_.-]+$" },
+    -- Current form of favorite items (userId implied by auth token, or
+    -- passed as an optional query param instead of a path segment) -
+    -- same legacy/current split as userplayeditems above.
+    {
+      name    = "userfavoriteitems",
+      methods = { "POST", "DELETE" },
+      path    = "^/UserFavoriteItems/[0-9A-Za-z_.-]+$",
+      query   = T.object({ userId = T.nullable(T.uuid()) }),
+    },
 
     -------------------------------------------------------------------------
     -- User-level convenience endpoints
@@ -297,6 +358,15 @@ return {
     -------------------------------------------------------------------------
     { name="audio lyrics",        methods={"GET","POST","DELETE"}, path="^/Audio/" .. ID .. "/Lyrics$" },
     { name="audio lyrics remote", method="GET",                    path="^/Audio/" .. ID .. "/RemoteSearch/Lyrics$", no_body=true },
+    -- AudioController: direct-play/transcode streaming, mirrors the "videos
+    -- stream"/"videos stream <ext>" routes below. Query params (container,
+    -- audioCodec, bitrate, etc.) are numerous, transcoding-engine-specific,
+    -- and already unvalidated for video's equivalent routes - same here.
+    { name="audio stream",     method="GET", path="^/Audio/" .. ID .. "/stream$" },
+    { name="audio stream ext", method="GET", path="^/Audio/" .. ID .. "/stream\\.[A-Za-z0-9]{1,10}$", no_body=true },
+    -- UniversalAudioController: adaptive-streaming endpoint most mobile/TV
+    -- clients use for audio playback in preference to plain /stream.
+    { name="audio universal",  method="GET", path="^/Audio/" .. ID .. "/universal$" },
 
     -------------------------------------------------------------------------
     -- Videos / videos (lowercase used for HLS streaming segments)
@@ -304,7 +374,8 @@ return {
     { name="videos",               methods={"GET","POST"}, path=[[^/Videos$]] },
     { name="videos active enc",    methods={"GET","POST","DELETE"}, path=[[^/Videos/ActiveEncodings$]] },
     { name="videos subtitles",     method="POST",          path="^/Videos/" .. ID .. "/Subtitles$" },
-    { name="videos stream",        method="POST",          path="^/Videos/" .. ID .. "/stream$" },
+    { name="videos stream post",   method="POST",          path="^/Videos/" .. ID .. "/stream$" },
+    { name="videos stream get",    method="GET",           path="^/Videos/" .. ID .. "/stream$" },
     { name="videos stream mp4",    method="GET",           path="^/Videos/" .. HEX32 .. "/stream\\.mp4$",   no_body=true },
     { name="videos stream mkv",    method="GET",           path="^/Videos/" .. HEX32 .. "/stream\\.mkv$",   no_body=true },
     { name="videos stream webm",   method="GET",           path="^/Videos/" .. HEX32 .. "/stream\\.webm$",  no_body=true },
@@ -332,12 +403,9 @@ return {
       name    = "hls segments",
       method  = "GET",
       paths   = {
-
-			--  /videos/c1909159-c1fa-11af-3447-9e34339ceacf/hls1/main/-1.mp4, 
+        -- /videos/c1909159-c1fa-11af-3447-9e34339ceacf/hls1/main/-1.mp4
         "^/videos/" .. ID .. "/hls1/main/[0-9-]+\\.(?:ts|mp4)$",
         "^/videos/" .. ID .. "/hls/[0-9a-fA-F_-]+\\.ts$",
-
-
       },
       no_body = true,
     },
