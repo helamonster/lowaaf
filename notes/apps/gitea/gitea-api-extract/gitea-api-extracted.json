@@ -258,7 +258,6 @@
         "properties": {
           "active": {
             "default": false,
-            "description": "Whether the webhook should be active upon creation",
             "type": "boolean",
             "x-go-name": "Active"
           },
@@ -297,7 +296,6 @@
             "x-go-name": "Name"
           },
           "type": {
-            "description": "The type of the webhook to create",
             "enum": [
               "dingtalk",
               "discord",
@@ -575,6 +573,7 @@
             "x-go-name": "Created"
           },
           "email": {
+            "format": "email",
             "type": "string",
             "x-binding": "Required;Email;MaxSize(254)",
             "x-go-name": "Email"
@@ -625,7 +624,7 @@
             "x-go-name": "Username"
           },
           "visibility": {
-            "description": "User visibility level: public, limited, or private",
+            "description": "User visibility level: public, limited, or private\npublic UserVisibilityPublic\nlimited UserVisibilityLimited\nprivate UserVisibilityPrivate",
             "enum": [
               "public",
               "limited",
@@ -706,7 +705,6 @@
             "x-go-name": "Description"
           },
           "email": {
-            "description": "The email address of the user",
             "format": "email",
             "type": "string",
             "x-binding": "MaxSize(254)",
@@ -759,13 +757,12 @@
             "x-go-name": "Restricted"
           },
           "source_id": {
-            "description": "The authentication source ID to associate with the user",
             "format": "int64",
             "type": "integer",
             "x-go-name": "SourceID"
           },
           "visibility": {
-            "description": "User visibility level: public, limited, or private",
+            "description": "User visibility level: public, limited, or private\npublic UserVisibilityPublic\nlimited UserVisibilityLimited\nprivate UserVisibilityPrivate",
             "enum": [
               "public",
               "limited",
@@ -979,7 +976,7 @@
             "x-go-name": "UserName"
           },
           "visibility": {
-            "description": "possible values are `public` (default), `limited` or `private`",
+            "description": "possible values are `public` (default), `limited` or `private`\npublic UserVisibilityPublic\nlimited UserVisibilityLimited\nprivate UserVisibilityPrivate",
             "enum": [
               "public",
               "limited",
@@ -1091,7 +1088,7 @@
             "x-go-name": "Name"
           },
           "object_format_name": {
-            "description": "ObjectFormatName of the underlying git repository, empty string for default (sha1)",
+            "description": "ObjectFormatName of the underlying git repository, empty string for default (sha1)\nsha1 ObjectFormatSHA1\nsha256 ObjectFormatSHA256",
             "enum": [
               "sha1",
               "sha256"
@@ -1227,9 +1224,8 @@
             "type": "string"
           },
           "Wiki": {
-            "description": "Is it a wiki page? (use mode=wiki instead)",
-            "type": "boolean",
-            "x-deprecated": true
+            "description": "Is it a wiki page? (use mode=wiki instead)\n\nDeprecated: true",
+            "type": "boolean"
           }
         },
         "type": "object",
@@ -1273,9 +1269,8 @@
             "type": "string"
           },
           "Wiki": {
-            "description": "Is it a wiki page? (use mode=wiki instead)",
-            "type": "boolean",
-            "x-deprecated": true
+            "description": "Is it a wiki page? (use mode=wiki instead)\n\nDeprecated: true",
+            "type": "boolean"
           }
         },
         "type": "object",
@@ -1447,7 +1442,7 @@
             "x-go-name": "Name"
           },
           "object_format_name": {
-            "description": "ObjectFormatName of the underlying git repository, empty string for default (sha1)",
+            "description": "ObjectFormatName of the underlying git repository, empty string for default (sha1)\nsha1 ObjectFormatSHA1\nsha256 ObjectFormatSHA256",
             "enum": [
               "sha1",
               "sha256"
@@ -1562,7 +1557,7 @@
             "x-go-name": "UserName"
           },
           "visibility": {
-            "description": "possible values are `public` (default), `limited` or `private`",
+            "description": "possible values are `public` (default), `limited` or `private`\npublic UserVisibilityPublic\nlimited UserVisibilityLimited\nprivate UserVisibilityPrivate",
             "enum": [
               "public",
               "limited",
@@ -1653,7 +1648,7 @@
             "x-go-name": "RepoAdminChangeTeamAccess"
           },
           "visibility": {
-            "description": "possible values are `public`, `limited` or `private`",
+            "description": "possible values are `public`, `limited` or `private`\npublic UserVisibilityPublic\nlimited UserVisibilityLimited\nprivate UserVisibilityPrivate",
             "enum": [
               "public",
               "limited",
@@ -2258,7 +2253,6 @@
         "properties": {
           "active": {
             "default": false,
-            "description": "Whether the webhook should be active upon creation",
             "type": "boolean",
             "x-go-name": "Active"
           },
@@ -2297,7 +2291,6 @@
             "x-go-name": "Name"
           },
           "type": {
-            "description": "The type of the webhook to create",
             "enum": [
               "dingtalk",
               "discord",
@@ -2480,7 +2473,6 @@
             "x-go-name": "IsArchived"
           },
           "name": {
-            "description": "Name is the display name for the new label",
             "type": "string",
             "x-binding": "Required",
             "x-go-name": "Name"
@@ -2821,7 +2813,7 @@
             "x-go-name": "Name"
           },
           "object_format_name": {
-            "description": "ObjectFormatName of the underlying git repository, empty string for default (sha1)",
+            "description": "ObjectFormatName of the underlying git repository, empty string for default (sha1)\nsha1 ObjectFormatSHA1\nsha256 ObjectFormatSHA256",
             "enum": [
               "sha1",
               "sha256"
@@ -2950,14 +2942,13 @@
             "x-go-name": "Permission"
           },
           "units": {
-            "description": "Deprecated: This variable should be replaced by UnitsMap and will be dropped in later versions.",
             "example": [
               "repo.actions",
-              "repo.packages",
               "repo.code",
               "repo.issues",
               "repo.ext_issues",
               "repo.wiki",
+              "repo.ext_wiki",
               "repo.pulls",
               "repo.releases",
               "repo.projects",
@@ -2967,30 +2958,18 @@
               "type": "string"
             },
             "type": "array",
-            "x-deprecated": true,
             "x-go-name": "Units"
           },
           "units_map": {
             "additionalProperties": {
               "type": "string"
             },
-            "example": {
-              "repo.actions": "read",
-              "repo.code": "read",
-              "repo.ext_issues": "none",
-              "repo.ext_wiki": "none",
-              "repo.issues": "write",
-              "repo.packages": "read",
-              "repo.projects": "none",
-              "repo.pulls": "owner",
-              "repo.releases": "none",
-              "repo.wiki": "admin"
-            },
+            "example": "{\"repo.actions\",\"repo.packages\",\"repo.code\":\"read\",\"repo.issues\":\"write\",\"repo.ext_issues\":\"none\",\"repo.wiki\":\"admin\",\"repo.pulls\":\"owner\",\"repo.releases\":\"none\",\"repo.projects\":\"none\",\"repo.ext_wiki\":\"none\"}",
             "type": "object",
             "x-go-name": "UnitsMap"
           },
           "visibility": {
-            "description": "Team visibility within the organization. Defaults to \"private\".",
+            "description": "Team visibility within the organization. Defaults to \"private\".\npublic TeamVisibilityPublic\nlimited TeamVisibilityLimited\nprivate TeamVisibilityPrivate",
             "enum": [
               "public",
               "limited",
@@ -5169,8 +5148,8 @@
             "x-go-name": "BlockOnRejectedReviews"
           },
           "branch_name": {
+            "description": "Deprecated: true",
             "type": "string",
-            "x-deprecated": true,
             "x-go-name": "BranchName"
           },
           "bypass_allowlist_teams": {
@@ -5640,11 +5619,10 @@
             "x-go-name": "BranchName"
           },
           "old_branch_name": {
-            "description": "Name of the old branch to create from",
+            "description": "Deprecated: true\nName of the old branch to create from",
             "type": "string",
             "uniqueItems": true,
             "x-binding": "GitRefName;MaxSize(100)",
-            "x-deprecated": true,
             "x-go-name": "OldBranchName"
           },
           "old_ref_name": {
@@ -5858,7 +5836,7 @@
         "description": "AddCollaboratorOption options when adding a user as a collaborator of a repository",
         "properties": {
           "permission": {
-            "description": "Permission level to grant the collaborator",
+            "description": "Permission level to grant the collaborator\nread RepoWritePermissionRead\nwrite RepoWritePermissionWrite\nadmin RepoWritePermissionAdmin",
             "enum": [
               "read",
               "write",
@@ -6155,7 +6133,6 @@
             "description": "Identity for a person's identity like an author or committer",
             "properties": {
               "email": {
-                "description": "Email is the person's email address",
                 "format": "email",
                 "type": "string",
                 "x-binding": "MaxSize(254)",
@@ -6181,7 +6158,6 @@
             "description": "Identity for a person's identity like an author or committer",
             "properties": {
               "email": {
-                "description": "Email is the person's email address",
                 "format": "email",
                 "type": "string",
                 "x-binding": "MaxSize(254)",
@@ -6202,13 +6178,11 @@
             "description": "CommitDateOptions store dates for GIT_AUTHOR_DATE and GIT_COMMITTER_DATE",
             "properties": {
               "author": {
-                "description": "Author is the author date for the commit",
                 "format": "date-time",
                 "type": "string",
                 "x-go-name": "Author"
               },
               "committer": {
-                "description": "Committer is the committer date for the commit",
                 "format": "date-time",
                 "type": "string",
                 "x-go-name": "Committer"
@@ -6379,7 +6353,6 @@
             "description": "Identity for a person's identity like an author or committer",
             "properties": {
               "email": {
-                "description": "Email is the person's email address",
                 "format": "email",
                 "type": "string",
                 "x-binding": "MaxSize(254)",
@@ -6405,7 +6378,6 @@
             "description": "Identity for a person's identity like an author or committer",
             "properties": {
               "email": {
-                "description": "Email is the person's email address",
                 "format": "email",
                 "type": "string",
                 "x-binding": "MaxSize(254)",
@@ -6431,13 +6403,11 @@
             "description": "CommitDateOptions store dates for GIT_AUTHOR_DATE and GIT_COMMITTER_DATE",
             "properties": {
               "author": {
-                "description": "Author is the author date for the commit",
                 "format": "date-time",
                 "type": "string",
                 "x-go-name": "Author"
               },
               "committer": {
-                "description": "Committer is the committer date for the commit",
                 "format": "date-time",
                 "type": "string",
                 "x-go-name": "Committer"
@@ -6513,7 +6483,6 @@
             "description": "Identity for a person's identity like an author or committer",
             "properties": {
               "email": {
-                "description": "Email is the person's email address",
                 "format": "email",
                 "type": "string",
                 "x-binding": "MaxSize(254)",
@@ -6539,7 +6508,6 @@
             "description": "Identity for a person's identity like an author or committer",
             "properties": {
               "email": {
-                "description": "Email is the person's email address",
                 "format": "email",
                 "type": "string",
                 "x-binding": "MaxSize(254)",
@@ -6565,13 +6533,11 @@
             "description": "CommitDateOptions store dates for GIT_AUTHOR_DATE and GIT_COMMITTER_DATE",
             "properties": {
               "author": {
-                "description": "Author is the author date for the commit",
                 "format": "date-time",
                 "type": "string",
                 "x-go-name": "Author"
               },
               "committer": {
-                "description": "Committer is the committer date for the commit",
                 "format": "date-time",
                 "type": "string",
                 "x-go-name": "Committer"
@@ -6636,7 +6602,6 @@
             "description": "Identity for a person's identity like an author or committer",
             "properties": {
               "email": {
-                "description": "Email is the person's email address",
                 "format": "email",
                 "type": "string",
                 "x-binding": "MaxSize(254)",
@@ -6662,7 +6627,6 @@
             "description": "Identity for a person's identity like an author or committer",
             "properties": {
               "email": {
-                "description": "Email is the person's email address",
                 "format": "email",
                 "type": "string",
                 "x-binding": "MaxSize(254)",
@@ -6683,13 +6647,11 @@
             "description": "CommitDateOptions store dates for GIT_AUTHOR_DATE and GIT_COMMITTER_DATE",
             "properties": {
               "author": {
-                "description": "Author is the author date for the commit",
                 "format": "date-time",
                 "type": "string",
                 "x-go-name": "Author"
               },
               "committer": {
-                "description": "Committer is the committer date for the commit",
                 "format": "date-time",
                 "type": "string",
                 "x-go-name": "Committer"
@@ -6760,7 +6722,6 @@
             "description": "Identity for a person's identity like an author or committer",
             "properties": {
               "email": {
-                "description": "Email is the person's email address",
                 "format": "email",
                 "type": "string",
                 "x-binding": "MaxSize(254)",
@@ -6786,7 +6747,6 @@
             "description": "Identity for a person's identity like an author or committer",
             "properties": {
               "email": {
-                "description": "Email is the person's email address",
                 "format": "email",
                 "type": "string",
                 "x-binding": "MaxSize(254)",
@@ -6811,13 +6771,11 @@
             "description": "CommitDateOptions store dates for GIT_AUTHOR_DATE and GIT_COMMITTER_DATE",
             "properties": {
               "author": {
-                "description": "Author is the author date for the commit",
                 "format": "date-time",
                 "type": "string",
                 "x-go-name": "Author"
               },
               "committer": {
-                "description": "Committer is the committer date for the commit",
                 "format": "date-time",
                 "type": "string",
                 "x-go-name": "Committer"
@@ -7271,7 +7229,6 @@
         "properties": {
           "active": {
             "default": false,
-            "description": "Whether the webhook should be active upon creation",
             "type": "boolean",
             "x-go-name": "Active"
           },
@@ -7310,7 +7267,6 @@
             "x-go-name": "Name"
           },
           "type": {
-            "description": "The type of the webhook to create",
             "enum": [
               "dingtalk",
               "discord",
@@ -7877,7 +7833,6 @@
         "description": "EditIssueCommentOption options for editing a comment",
         "properties": {
           "body": {
-            "description": "Body is the updated comment text content",
             "type": "string",
             "x-binding": "Required",
             "x-go-name": "Body"
@@ -8658,7 +8613,6 @@
         "description": "CreateIssueCommentOption options for creating a comment on an issue",
         "properties": {
           "body": {
-            "description": "Body is the comment text content",
             "type": "string",
             "x-binding": "Required",
             "x-go-name": "Body"
@@ -8720,7 +8674,6 @@
         "description": "EditIssueCommentOption options for editing a comment",
         "properties": {
           "body": {
-            "description": "Body is the updated comment text content",
             "type": "string",
             "x-binding": "Required",
             "x-go-name": "Body"
@@ -9791,7 +9744,6 @@
             "x-go-name": "IsArchived"
           },
           "name": {
-            "description": "Name is the display name for the new label",
             "type": "string",
             "x-binding": "Required",
             "x-go-name": "Name"
@@ -10055,13 +10007,11 @@
             "x-go-name": "Description"
           },
           "due_on": {
-            "description": "Deadline is the due date for the milestone",
             "format": "date-time",
             "type": "string",
             "x-go-name": "Deadline"
           },
           "state": {
-            "description": "State indicates the initial state of the milestone",
             "enum": [
               "open",
               "closed"
@@ -12046,7 +11996,7 @@
             "x-go-name": "Description"
           },
           "state": {
-            "description": "State represents the status state to set (pending, success, error, failure)",
+            "description": "State represents the status state to set (pending, success, error, failure)\npending CommitStatusPending is for when the CommitStatus is Pending\nsuccess CommitStatusSuccess is for when the CommitStatus is Success\nerror CommitStatusError is for when the CommitStatus is Error\nfailure CommitStatusFailure is for when the CommitStatus is Failure\nwarning CommitStatusWarning is for when the CommitStatus is Warning\nskipped CommitStatusSkipped is for when CommitStatus is Skipped",
             "enum": [
               "pending",
               "success",
@@ -12358,7 +12308,6 @@
             "x-go-name": "Message"
           },
           "tag_name": {
-            "description": "The name of the tag to create",
             "type": "string",
             "x-binding": "Required",
             "x-go-name": "TagName"
@@ -13145,7 +13094,6 @@
             "x-go-name": "Permission"
           },
           "units": {
-            "description": "Deprecated: This variable should be replaced by UnitsMap and will be dropped in later versions.",
             "example": [
               "repo.code",
               "repo.issues",
@@ -13160,7 +13108,6 @@
               "type": "string"
             },
             "type": "array",
-            "x-deprecated": true,
             "x-go-name": "Units"
           },
           "units_map": {
@@ -13181,7 +13128,7 @@
             "x-go-name": "UnitsMap"
           },
           "visibility": {
-            "description": "Team visibility within the organization. When omitted, visibility is\nleft unchanged.",
+            "description": "Team visibility within the organization. When omitted, visibility is\nleft unchanged.\npublic TeamVisibilityPublic\nlimited TeamVisibilityLimited\nprivate TeamVisibilityPrivate",
             "enum": [
               "public",
               "limited",
@@ -14238,7 +14185,6 @@
         "properties": {
           "active": {
             "default": false,
-            "description": "Whether the webhook should be active upon creation",
             "type": "boolean",
             "x-go-name": "Active"
           },
@@ -14277,7 +14223,6 @@
             "x-go-name": "Name"
           },
           "type": {
-            "description": "The type of the webhook to create",
             "enum": [
               "dingtalk",
               "discord",
@@ -14565,7 +14510,7 @@
             "x-go-name": "Name"
           },
           "object_format_name": {
-            "description": "ObjectFormatName of the underlying git repository, empty string for default (sha1)",
+            "description": "ObjectFormatName of the underlying git repository, empty string for default (sha1)\nsha1 ObjectFormatSHA1\nsha256 ObjectFormatSHA256",
             "enum": [
               "sha1",
               "sha256"
