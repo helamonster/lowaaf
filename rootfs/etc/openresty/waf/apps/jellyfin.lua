@@ -28,6 +28,38 @@ local HEX32 = "[0-9a-fA-F]{32}"
 local UUID  = "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
 local ID    = "(?:" .. HEX32 .. "|" .. UUID .. ")"
 
+-- Value validator for a Jellyfin ID (userId, parentId, mediaSourceId, ...)
+-- appearing in a query/body field, not a path segment. T.uuid() is too
+-- strict here: it requires dashes plus RFC4122 version/variant bits, but
+-- real requests send the dashless 32-hex .NET Guid.ToString("N") form too
+-- (confirmed via a real deny() log: ?userId=feca5a21d9c8418fbb51eade36f83000).
+local function jf_id()
+  return T.string({ match = "^" .. ID .. "$", max = 36 })
+end
+
+-- Session/device/playlist-entry/timer IDs: opaque server-generated tokens,
+-- not necessarily GUID-shaped (SessionController/PlaylistsController/
+-- LiveTvController all bind these as plain `string`, not `Guid`).
+local OPAQUE_ID = "[0-9A-Za-z_.-]+"
+
+-- PlaystateCommand enum (MediaBrowser.Model.Session.PlaystateCommand)
+local PLAYSTATE_COMMAND = "(?:Stop|Pause|Unpause|NextTrack|PreviousTrack|Seek|Rewind|FastForward|PlayPause)"
+
+-- PlayCommand enum (MediaBrowser.Model.Session.PlayCommand)
+local PLAY_COMMAND_ENUM = { PlayNow=true, PlayNext=true, PlayLast=true, PlayInstantMix=true, PlayShuffle=true }
+
+-- GeneralCommandType enum (MediaBrowser.Model.Session.GeneralCommandType)
+local GENERAL_COMMAND_ENUM = {}
+for _, v in ipairs({
+  "MoveUp","MoveDown","MoveLeft","MoveRight","PageUp","PageDown","PreviousLetter","NextLetter",
+  "ToggleOsd","ToggleContextMenu","Select","Back","TakeScreenshot","SendKey","SendString",
+  "GoHome","GoToSettings","VolumeUp","VolumeDown","Mute","Unmute","ToggleMute","SetVolume",
+  "SetAudioStreamIndex","SetSubtitleStreamIndex","ToggleFullscreen","DisplayContent","GoToSearch",
+  "DisplayMessage","SetRepeatMode","ChannelUp","ChannelDown","Guide","ToggleStats",
+  "PlayMediaSource","PlayTrailers","SetShuffleQueue","PlayState","PlayNext","ToggleOsdMenu",
+  "Play","SetMaxStreamingBitrate","SetPlaybackOrder",
+}) do GENERAL_COMMAND_ENUM[v] = true end
+
 
 local Q = "(?:0(?:\\.\\d{0,3})?|1(?:\\.0{0,3})?)"
 local CHARSET = "(?:\\*|[A-Za-z][A-Za-z0-9._-]*)"
@@ -152,7 +184,9 @@ return {
     { name="system config",          methods={"GET","POST"}, path=[[^/System/Configuration$]] },
     { name="system config livetv",   methods={"GET","POST"}, path=[[^/System/Configuration/livetv$]] },
     { name="system config branding", method="POST",          path=[[^/System/Configuration/branding$]] },
-    { name="system config network",  method="GET",           path=[[^/System/Configuration/network$]],      no_body=true },
+    -- apps/dashboard/controllers/networking.js:63 - admin Networking
+    -- settings page saves via POST; GET (open the page) was already covered.
+    { name="system config network",  methods={"GET","POST"},          path=[[^/System/Configuration/network$]] },
     { name="system config xbmc",     methods={"GET","POST"}, path=[[^/System/Configuration/xbmcmetadata$]] },
     { name="system config encoding", methods={"GET","POST"}, path=[[^/System/Configuration/encoding$]] },
     { name="system config metadata", methods={"GET","POST"}, path=[[^/System/Configuration/metadata$]] },
@@ -176,6 +210,16 @@ return {
     -------------------------------------------------------------------------
     { name="auth providers",  method="GET", path=[[^/Auth/Providers$]],              no_body=true },
     { name="auth keys",       method="GET", path=[[^/Auth/Keys$]],                   no_body=true },
+    -- apps/dashboard/features/keys/api/useCreateKey.ts,useRevokeKey.ts -
+    -- generated SDK, camelCase; key is server-issued (Guid.ToString("N") -
+    -- hex32), route param.
+    {
+      name   = "auth keys create",
+      method = "POST",
+      path   = [[^/Auth/Keys$]],
+      query  = T.object({ app = T.string({ max = 128, not_match = "[\\x00-\\x1f]" }) }, { required = { app = true } }),
+    },
+    { name="auth keys revoke", method="DELETE", path=[[^/Auth/Keys/]] .. HEX32 .. [[$]] },
     { name="auth pwproviders",method="GET", path=[[^/Auth/PasswordResetProviders$]], no_body=true },
 
     -------------------------------------------------------------------------
@@ -210,7 +254,7 @@ return {
       query   = T.object(
         {
           client = T.string({ max = 64, not_match = "[\\x00-\\x1f]" }),
-          userId = T.nullable(T.uuid()),
+          userId = T.nullable(jf_id()),
         },
         { required = { client = true } }
       ),
@@ -242,6 +286,38 @@ return {
         [[^/Users/AuthenticateByName$]],
         [[^/Users/authenticatebyname$]],
     }},
+    -- controllers/session/login/index.js reads json.Secret/data.Secret from
+    -- this same QuickConnect flow's own request/response traffic (see
+    -- "quickconnect connect" below) - PascalCase, not the camelCase the
+    -- C# parameter name (secret) would suggest.
+    {
+      name          = "users auth quickconnect",
+      method        = "POST",
+      path          = [[^/Users/AuthenticateWithQuickConnect$]],
+      content_types = { "application/json" },
+      json          = T.object(
+        { Secret = T.string({ max = 256, not_match = "[\\x00-\\x1f]" }) },
+        { required = { Secret = true } }
+      ),
+    },
+    {
+      name    = "users password",
+      method  = "POST",
+      path    = [[^/Users/Password$]],
+      query   = T.object({ userId = T.nullable(jf_id()) }),
+    },
+    {
+      name          = "users forgotpassword",
+      method        = "POST",
+      path          = [[^/Users/ForgotPassword$]],
+      content_types = { "application/json" },
+    },
+    {
+      name          = "users forgotpassword pin",
+      method        = "POST",
+      path          = [[^/Users/ForgotPassword/Pin$]],
+      content_types = { "application/json" },
+    },
     {
       name    = "users by id",
       methods = { "GET", "POST", "DELETE" },
@@ -256,7 +332,7 @@ return {
       method  = "GET",
       path    = [[^/UserViews/GroupingOptions$]],
       no_body = true,
-      query   = T.object({ userId = T.nullable(T.uuid()) }),
+      query   = T.object({ userId = T.nullable(jf_id()) }),
     },
     { name="users items",         method="GET",            path="^/Users/" .. ID .. "/Items$",           no_body=true },
     { name="users items latest",  method="GET",            path="^/Users/" .. ID .. "/Items/Latest$",    no_body=true },
@@ -270,7 +346,7 @@ return {
       method  = "GET",
       path    = "^/Items/" .. ID .. "/SpecialFeatures$",
       no_body = true,
-      query   = T.object({ userId = T.nullable(T.uuid()) }),
+      query   = T.object({ userId = T.nullable(jf_id()) }),
     },
     -- Mark / unmark played, legacy user-in-path form. datePlayed is
     -- [FromQuery] DateTime? in PlaystateController.MarkPlayedItem - optional,
@@ -293,7 +369,7 @@ return {
       method = "POST",
       path   = "^/UserPlayedItems/[0-9A-Za-z_.-]+$",
       query  = T.object({
-        userId     = T.nullable(T.uuid()),
+        userId     = T.nullable(jf_id()),
         datePlayed = T.nullable(T.iso8601()),
       }),
     },
@@ -301,7 +377,7 @@ return {
       name   = "userplayeditems unmark",
       method = "DELETE",
       path   = "^/UserPlayedItems/[0-9A-Za-z_.-]+$",
-      query  = T.object({ userId = T.nullable(T.uuid()) }),
+      query  = T.object({ userId = T.nullable(jf_id()) }),
     },
     { name="favorite items", methods={"POST","DELETE"}, path="^/Users/" .. ID .. "/FavoriteItems/[0-9A-Za-z_.-]+$" },
     -- Current form of favorite items (userId implied by auth token, or
@@ -311,7 +387,7 @@ return {
       name    = "userfavoriteitems",
       methods = { "POST", "DELETE" },
       path    = "^/UserFavoriteItems/[0-9A-Za-z_.-]+$",
-      query   = T.object({ userId = T.nullable(T.uuid()) }),
+      query   = T.object({ userId = T.nullable(jf_id()) }),
     },
 
     -------------------------------------------------------------------------
@@ -325,7 +401,12 @@ return {
     -- Items
     -------------------------------------------------------------------------
     { name="items",              methods={"GET","POST"}, path=[[^/Items$]] },
-    { name="items by id",        methods={"GET","POST"}, path="^/Items/" .. ID .. "$" },
+    -- GET: fetch. POST: ItemUpdateController.UpdateItem, save from the
+    -- metadata editor (scripts/metadataEditor.js) - body is the full
+    -- BaseItemDto (100+ fields), left unvalidated beyond content-type, same
+    -- as this file's convention for other large nested-object bodies.
+    -- DELETE: scripts/deleteHelper.js's item-delete flow.
+    { name="items by id",        methods={"GET","POST","DELETE"}, path="^/Items/" .. ID .. "$", content_types={"application/json"} },
     { name="items counts",       method="GET",           path=[[^/Items/Counts$]],         no_body=true },
     { name="items latest",       method="GET",           path=[[^/Items/Latest$]],         no_body=true },
     { name="items similar",      method="GET",           path="^/Items/" .. ID .. "/Similar$",             no_body=true },
@@ -333,7 +414,58 @@ return {
     { name="items metadata editor", method="GET",        path="^/Items/" .. ID .. "/MetadataEditor$",      no_body=true },
     { name="items download",     method="GET",           path="^/Items/" .. ID .. "/Download$",            no_body=true },
     { name="items externalids",  method="GET",           path="^/Items/" .. ID .. "/ExternalIdInfos$",     no_body=true },
-    { name="items remotesearch book", method="POST",     path=[[^/Items/RemoteSearch/Book$]] },
+    -- itemidentifier.js:94 builds this URL dynamically per item type -
+    -- `Items/RemoteSearch/${currentItemType}` - confirming all 9 ItemLookupController
+    -- variants are real traffic, not just the one ("Book") previously
+    -- whitelisted. Body is RemoteSearchQuery<T> (generic, type-varying
+    -- nested SearchInfo), left unvalidated beyond content-type, same
+    -- convention as "items by id"'s POST above.
+    {
+      name          = "items remotesearch",
+      method        = "POST",
+      path          = [[^/Items/RemoteSearch/(?:Movie|Trailer|MusicVideo|Series|BoxSet|MusicArtist|MusicAlbum|Person|Book)$]],
+      content_types = { "application/json" },
+    },
+    -- itemidentifier.js:269 - applies a chosen search result to the item.
+    {
+      name          = "items remotesearch apply",
+      method        = "POST",
+      path          = "^/Items/RemoteSearch/Apply/" .. ID .. "$",
+      content_types = { "application/json" },
+    },
+    {
+      name    = "items instantmix",
+      method  = "GET",
+      path    = "^/Items/" .. ID .. "/InstantMix$",
+      no_body = true,
+      -- apiClient.getInstantMixFromItem(item.Id, options) - userId/limit are
+      -- the only scalar params confirmed as real (playbackmanager.js:4018);
+      -- fields/enableImageTypes are CSV enum lists, bounded but not
+      -- enumerated (same tradeoff as elsewhere for those two fields).
+      query   = T.object({
+        userId           = T.nullable(jf_id()),
+        limit            = T.nullable(T.number_query({ integer = true, min = 1 })),
+        enableImages     = T.bool_query(),
+        enableUserData   = T.bool_query(),
+        imageTypeLimit   = T.nullable(T.number_query({ integer = true, min = 0 })),
+        fields           = T.nullable(T.string({ max = 512, not_match = "[\\x00-\\x1f]" })),
+        enableImageTypes = T.nullable(T.string({ max = 512, not_match = "[\\x00-\\x1f]" })),
+      }),
+    },
+    -- filterdialog.js / useFetchItems.ts's getQueryFiltersLegacy call -
+    -- powers the library filter dropdown.
+    {
+      name    = "items filters",
+      method  = "GET",
+      path    = [[^/Items/Filters$]],
+      no_body = true,
+      query   = T.object({
+        userId           = T.nullable(jf_id()),
+        parentId         = T.nullable(jf_id()),
+        includeItemTypes = T.nullable(T.string({ max = 512, not_match = "[\\x00-\\x1f]" })),
+        mediaTypes       = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+      }),
+    },
     { name="items thememedia",   method="GET",           path="^/Items/" .. ID .. "/ThemeMedia$",          no_body=true },
     { name="items remoteimages", method="GET",           path="^/Items/" .. ID .. "/RemoteImages/Providers$", no_body=true },
     { name="items playbackinfo", methods={"GET","POST"}, path="^/Items/" .. ID .. "/PlaybackInfo$" },
@@ -379,16 +511,35 @@ return {
     { name="videos stream mp4",    method="GET",           path="^/Videos/" .. HEX32 .. "/stream\\.mp4$",   no_body=true },
     { name="videos stream mkv",    method="GET",           path="^/Videos/" .. HEX32 .. "/stream\\.mkv$",   no_body=true },
     { name="videos stream webm",   method="GET",           path="^/Videos/" .. HEX32 .. "/stream\\.webm$",  no_body=true },
-    -- subtitle streams
+    -- subtitle streams. SubtitleController's real route param is {routeFormat}
+    -- (free-form in the C# signature), but the web client's SubtitleProfiles
+    -- (browserDeviceProfile.js) only ever request vtt/ass/ssa/pgssub - never
+    -- js/subrip.js, which this route previously (incorrectly) hardcoded.
+    -- StreamInfo.cs always builds the URL with the startPositionTicks segment
+    -- present (even when 0), so the 5-segment "no ticks" form is legacy/dead
+    -- but kept for safety since SubtitleController still defines it.
+    -- Server's default DeliveryUrl extension is .vtt; the web client
+    -- string-replaces it for two other real cases: 'ass'/'ssa'/'pgssub'
+    -- (browserDeviceProfile.js's SubtitleProfiles, tells the server which
+    -- pass-through formats it accepts) and '.js' (getTextTrackUrl() in
+    -- htmlVideoPlayer/plugin.js, still actively used by
+    -- renderSubtitlesWithCustomElement's fetchSubtitles() for the custom
+    -- text-overlay renderer). 'subrip.js' has zero references anywhere in
+    -- this client version - dropped, unlike plain '.js'.
     {
       name    = "videos subtitle stream",
       method  = "GET",
       paths   = {
-        "^/Videos/" .. ID .. "/" .. ID .. "/Subtitles/[0-9]+/[0-9]+/Stream\\.js$",
-        "^/Videos/" .. ID .. "/" .. ID .. "/Subtitles/[0-9]+/[0-9]+/Stream\\.subrip\\.js$",
+        "^/Videos/" .. ID .. "/" .. OPAQUE_ID .. "/Subtitles/[0-9]+/Stream\\.(?:vtt|ass|ssa|pgssub|js)$",
+        "^/Videos/" .. ID .. "/" .. OPAQUE_ID .. "/Subtitles/[0-9]+/[0-9]+/Stream\\.(?:vtt|ass|ssa|pgssub|js)$",
       },
       no_body = true,
     },
+    { name="videos subtitle delete", method="DELETE", path="^/Videos/" .. ID .. "/Subtitles/[0-9]+$" },
+    -- No web-client caller found for isPerfectMatch on the search route
+    -- (subtitleeditor.js's actual call omits it); left unvalidated.
+    { name="items subtitle search",   method="GET",  path="^/Items/" .. ID .. "/RemoteSearch/Subtitles/[A-Za-z-]{2,35}$", no_body=true },
+    { name="items subtitle download", method="POST", path="^/Items/" .. ID .. "/RemoteSearch/Subtitles/" .. OPAQUE_ID .. "$" },
     -- HLS streaming (lowercase /videos/)
     {
       name    = "hls playlist",
@@ -411,6 +562,40 @@ return {
     },
 
     -------------------------------------------------------------------------
+    -- Trickplay (seek-bar hover thumbnails)
+    -------------------------------------------------------------------------
+    -- No web-client caller found for the HLS-tiles-playlist variant (only
+    -- the per-tile .jpg form, for the seek-bar hover preview) - left
+    -- unvalidated beyond path/method rather than guess at query shape.
+    {
+      name    = "trickplay tiles",
+      method  = "GET",
+      path    = "^/Videos/" .. ID .. "/Trickplay/[0-9]+/tiles\\.m3u8$",
+      no_body = true,
+    },
+    -- controllers/playback/video/index.js builds this URL with
+    -- { ApiKey: apiClient.accessToken(), MediaSourceId: mediaSourceId } -
+    -- PascalCase, since <img>-style URLs can't carry an Authorization header
+    -- and go through apiClient.getUrl()'s raw query-building path rather
+    -- than the generated SDK (which would camelCase these).
+    {
+      name    = "trickplay tile",
+      method  = "GET",
+      path    = "^/Videos/" .. ID .. "/Trickplay/[0-9]+/[0-9]+\\.jpg$",
+      no_body = true,
+      query   = T.object({
+        ApiKey        = T.nullable(T.string({ max = 512, not_match = "[\\x00-\\x1f]" })),
+        MediaSourceId = T.nullable(jf_id()),
+      }),
+    },
+
+    -------------------------------------------------------------------------
+    -- FallbackFont (ASS/SSA subtitle rendering)
+    -------------------------------------------------------------------------
+    { name="fallbackfont list", method="GET", path=[[^/FallbackFont/Fonts$]],             no_body=true },
+    { name="fallbackfont file", method="GET", path=[[^/FallbackFont/Fonts/]] .. OPAQUE_ID .. [[$]], no_body=true },
+
+    -------------------------------------------------------------------------
     -- Media Segments
     -------------------------------------------------------------------------
     { name="mediasegments", method="GET", path="^/MediaSegments/" .. ID .. "$", no_body=true },
@@ -427,6 +612,29 @@ return {
     { name="sessions capabilities",    method="POST",          path=[[^/Sessions/Capabilities$]] },
     { name="sessions capabilities full",method="POST",         path=[[^/Sessions/Capabilities/Full$]] },
     { name="sessions message",         method="POST",          path="^/Sessions/" .. ID .. "/Message$" },
+    -- Remote-control commands (SessionController). These go through
+    -- apiClient.sendPlayCommand/sendCommand/sendPlayStateCommand - methods
+    -- of the "jellyfin-apiclient" npm package (external dependency, not
+    -- vendored in app-sources/ - only its own connection-management subset
+    -- is vendored), so the exact wire-format query/body key casing can't be
+    -- confirmed against source. Left unvalidated beyond path/method, same as
+    -- the already-established "sessions playing"/"sessions playing progress"
+    -- routes above, rather than risk blocking real traffic on a guessed casing.
+    {
+      name   = "sessions playing (session)",
+      method = "POST",
+      path   = "^/Sessions/" .. OPAQUE_ID .. "/Playing$",
+    },
+    {
+      name   = "sessions playing command",
+      method = "POST",
+      path   = "^/Sessions/" .. OPAQUE_ID .. "/Playing/" .. PLAYSTATE_COMMAND .. "$",
+    },
+    {
+      name   = "sessions command",
+      method = "POST",
+      path   = "^/Sessions/" .. OPAQUE_ID .. "/Command$",
+    },
     { name="sessions playing",         method="POST",          path=[[^/Sessions/Playing$]] },
     { name="sessions playing progress",method="POST",          path=[[^/Sessions/Playing/Progress$]] },
     { name="sessions playing stop",    method="POST",          path=[[^/Sessions/Playing/Stop$]] },
@@ -455,9 +663,39 @@ return {
     { name="livetv channels",     method="GET",          path=[[^/LiveTv/Channels$]],                              no_body=true },
     { name="livetv channel by id",method="GET",          path="^/LiveTv/Channels/" .. ID .. "$",                   no_body=true },
     { name="livetv timers",       method="GET",          path=[[^/LiveTv/Timers$]],                                no_body=true },
+    -- DVR timer CRUD (recordingeditor.js, recordinghelper.js). timerId is a
+    -- `string` route param server-side (opaque, not GUID). TimerInfoDto is
+    -- a large nested object - unvalidated beyond content-type, same
+    -- convention as other big DTOs above.
+    {
+      name          = "livetv timer by id",
+      methods       = { "GET", "POST", "DELETE" },
+      path          = "^/LiveTv/Timers/" .. OPAQUE_ID .. "$",
+      content_types = { "application/json" },
+    },
+    {
+      name          = "livetv timers create",
+      method        = "POST",
+      path          = [[^/LiveTv/Timers$]],
+      content_types = { "application/json" },
+    },
     { name="livetv recordings",   method="GET",          path=[[^/LiveTv/Recordings$]],                            no_body=true },
     { name="livetv rec folders",  method="GET",          path=[[^/LiveTv/Recordings/Folders$]],                    no_body=true },
     { name="livetv series timers",method="GET",          path=[[^/LiveTv/SeriesTimers$]],                          no_body=true },
+    -- Series-recording CRUD (seriesrecordingeditor.js, guide.js). Same
+    -- SeriesTimerInfoDto/opaque-timerId reasoning as above.
+    {
+      name          = "livetv seriestimer by id",
+      methods       = { "GET", "POST", "DELETE" },
+      path          = "^/LiveTv/SeriesTimers/" .. OPAQUE_ID .. "$",
+      content_types = { "application/json" },
+    },
+    {
+      name          = "livetv seriestimers create",
+      method        = "POST",
+      path          = [[^/LiveTv/SeriesTimers$]],
+      content_types = { "application/json" },
+    },
     { name="livetv prog rec",     method="GET",          path=[[^/LiveTv/Programs/Recommended$]],                  no_body=true },
     { name="livetv programs",     method="GET",          path=[[^/LiveTv/Programs$]],                              no_body=true },
 
@@ -465,15 +703,71 @@ return {
     -- Live Streams
     -------------------------------------------------------------------------
     { name="livestreams mediainfo", method="POST", path=[[^/LiveStreams/MediaInfo$]] },
+    -- Required to start playback of any tuner-based live channel
+    -- (playbackmanager.js:567). Confirmed real query keys are PascalCase
+    -- (ItemId, PlaySessionId, MaxStreamingBitrate, ...) plus a JSON body -
+    -- same large-transcoding-surface treatment as video/audio stream routes.
+    { name="livestreams open",  method="POST", path=[[^/LiveStreams/Open$]] },
+    { name="livestreams close", method="POST", path=[[^/LiveStreams/Close$]] },
 
     -------------------------------------------------------------------------
     -- Collections, Movies, Playlists
     -------------------------------------------------------------------------
     { name="collections",         method="POST",         path=[[^/Collections$]] },
+    -- collectionEditor.js / itemContextMenu.js build these with
+    -- { Ids: [...].join(',') } - PascalCase, confirmed via apiClient.getUrl().
+    {
+      name    = "collections items add",
+      method  = "POST",
+      path    = "^/Collections/" .. ID .. "/Items$",
+      query   = T.object({ Ids = T.string({ max = 8192, not_match = "[\\x00-\\x1f]" }) }, { required = { Ids = true } }),
+    },
+    {
+      name    = "collections items remove",
+      method  = "DELETE",
+      path    = "^/Collections/" .. ID .. "/Items$",
+      query   = T.object({ Ids = T.string({ max = 8192, not_match = "[\\x00-\\x1f]" }) }, { required = { Ids = true } }),
+    },
     { name="movies rec",          method="GET",          path=[[^/Movies/Recommendations$]], no_body=true },
     { name="playlists",           methods={"GET","POST"}, path=[[^/Playlists$]] },
     { name="playlists by id",     methods={"GET","POST"}, path="^/Playlists/" .. ID .. "$" },
     { name="playlists items",     method="GET",           path="^/Playlists/" .. ID .. "/Items$",           no_body=true },
+    -- playlisteditor.ts:139 calls the generated SDK with { playlistId, ids,
+    -- userId } literally - camelCase, SDK-confirmed.
+    {
+      name   = "playlists items add",
+      method = "POST",
+      path   = "^/Playlists/" .. ID .. "/Items$",
+      query  = T.object(
+        {
+          ids    = T.string({ max = 8192, not_match = "[\\x00-\\x1f]" }),
+          userId = T.nullable(jf_id()),
+        },
+        { required = { ids = true } }
+      ),
+    },
+    -- itemContextMenu.js builds this with { EntryIds: [...].join(',') } -
+    -- PascalCase, confirmed via apiClient.getUrl(). Bounded charset only
+    -- (not an ID-shaped pattern): PlaylistItemId isn't necessarily
+    -- GUID-shaped, and a strict comma-list regex isn't reversable by the
+    -- test generator's auto "valid" synthesis (see gen.lua's raw_valid).
+    {
+      name   = "playlists items remove",
+      method = "DELETE",
+      path   = "^/Playlists/" .. ID .. "/Items$",
+      query  = T.object(
+        { EntryIds = T.string({ max = 8192, not_match = "[\\x00-\\x1f]" }) },
+        { required = { EntryIds = true } }
+      ),
+    },
+    -- itemContextMenu.js:624,632 - playlistId/itemId route params, both
+    -- opaque strings server-side (MoveItem's C# signature types them
+    -- `string`, not `Guid`); newIndex is path-constrained to digits already.
+    {
+      name   = "playlists items move",
+      method = "POST",
+      path   = "^/Playlists/" .. OPAQUE_ID .. "/Items/" .. OPAQUE_ID .. "/Move/[0-9]+$",
+    },
     { name="playlists users",     method="GET",           path="^/Playlists/" .. ID .. "/Users$",           no_body=true },
     { name="playlists users byid",method="GET",           path="^/Playlists/" .. ID .. "/Users/" .. ID .. "$", no_body=true },
 
@@ -481,11 +775,58 @@ return {
     -- Browse collections: Artists, Persons, Genres, Studios, Channels, Devices
     -------------------------------------------------------------------------
     { name="artists",   method="GET", path=[[^/Artists$]],   no_body=true },
+    -- Same huge optional-filter query surface as "artists" above (already
+    -- unvalidated there); must come before "artists by name" below, since
+    -- that catch-all would otherwise match "AlbumArtists" as a literal name.
+    { name="artists albumartists", method="GET", path=[[^/Artists/AlbumArtists$]], no_body=true },
+    -- apiClient.getArtist(name, userId) / itemDetails/index.js:82,74,78 -
+    -- userId is the only param these callers pass; names are free-form
+    -- display strings (spaces, unicode, punctuation), so a bounded
+    -- not-slash charset rather than an ID pattern.
+    {
+      name    = "artists by name",
+      method  = "GET",
+      path    = [[^/Artists/[^/\x00-\x1f]{1,200}$]],
+      no_body = true,
+      query   = T.object({ userId = T.nullable(jf_id()) }),
+    },
     { name="persons",   method="GET", path=[[^/Persons$]],   no_body=true },
     { name="genres",    method="GET", path=[[^/Genres$]],    no_body=true },
+    {
+      name    = "genres by name",
+      method  = "GET",
+      path    = [[^/Genres/[^/\x00-\x1f]{1,200}$]],
+      no_body = true,
+      query   = T.object({ userId = T.nullable(jf_id()) }),
+    },
+    -- No base "GET /MusicGenres" list route exists in this policy or is
+    -- called by this web client (only apiclient.d.ts's type declaration,
+    -- no real call site) - itemDetails/index.js:78 only calls the by-name form.
+    {
+      name    = "musicgenres by name",
+      method  = "GET",
+      path    = [[^/MusicGenres/[^/\x00-\x1f]{1,200}$]],
+      no_body = true,
+      query   = T.object({ userId = T.nullable(jf_id()) }),
+    },
     { name="studios",   method="GET", path=[[^/Studios$]],   no_body=true },
     { name="channels",  method="GET", path=[[^/Channels$]],  no_body=true },
     { name="devices",   method="GET", path=[[^/Devices$]],   no_body=true },
+    -- apps/dashboard/features/devices/api/useDeleteDevice.ts,
+    -- useUpdateDevice.ts - generated SDK, camelCase.
+    {
+      name   = "devices delete",
+      method = "DELETE",
+      path   = [[^/Devices$]],
+      query  = T.object({ id = T.string({ max = 256, not_match = "[\\x00-\\x1f]" }) }, { required = { id = true } }),
+    },
+    {
+      name          = "devices options",
+      method        = "POST",
+      path          = [[^/Devices/Options$]],
+      query         = T.object({ id = T.string({ max = 256, not_match = "[\\x00-\\x1f]" }) }, { required = { id = true } }),
+      content_types = { "application/json" },
+    },
 
     -------------------------------------------------------------------------
     -- Scheduled Tasks
@@ -499,6 +840,32 @@ return {
     -------------------------------------------------------------------------
     { name="quickconnect initiate", method="POST", path=[[^/QuickConnect/Initiate$]] },
     { name="quickconnect enabled",  method="GET",  path=[[^/QuickConnect/Enabled$]], no_body=true },
+    -- controllers/session/login/index.js:67 builds this URL literally as
+    -- '/QuickConnect/Connect?Secret=' + json.Secret - confirmed PascalCase.
+    {
+      name    = "quickconnect connect",
+      method  = "GET",
+      path    = [[^/QuickConnect/Connect$]],
+      no_body = true,
+      query   = T.object(
+        { Secret = T.string({ max = 256, not_match = "[\\x00-\\x1f]" }) },
+        { required = { Secret = true } }
+      ),
+    },
+    -- apps/stable/routes/quickConnect/index.tsx calls the generated SDK
+    -- with { code, userId } literally - camelCase, SDK-confirmed.
+    {
+      name   = "quickconnect authorize",
+      method = "POST",
+      path   = [[^/QuickConnect/Authorize$]],
+      query  = T.object(
+        {
+          code   = T.string({ max = 32, not_match = "[\\x00-\\x1f]" }),
+          userId = T.nullable(jf_id()),
+        },
+        { required = { code = true } }
+      ),
+    },
 
     -------------------------------------------------------------------------
     -- Client log
