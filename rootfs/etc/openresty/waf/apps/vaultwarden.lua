@@ -152,6 +152,13 @@ local function cipher_type_check(v, path)
   return true
 end
 
+-- True when `key` is present and non-null in table `v` - shared by every
+-- "primary serde name OR its alias, at least one required" cross-field check
+-- in this file (share_cipher_check, kdf_alias_check, register_key_check, ...).
+local function present(v, key)
+  return v[key] ~= nil and v[key] ~= ngx.null
+end
+
 local cipher_body = T.with_check(T.object({
   -- type 5 = SshKey (added in Bitwarden SDK ~2024)
   type            = T.number({ integer = true, min = 1, max = 5 }),
@@ -162,6 +169,7 @@ local cipher_body = T.with_check(T.object({
   favorite        = nu_bool,
   folderId        = nu_uuid_or_empty,
   organizationId  = nu_uuid,
+  organizationID  = nu_uuid,  -- serde alias (unusual casing, confirmed in source)
   collectionIds   = T.nullable(T.array(T.uuid(), { max = 200 })),
   key                   = nu_enc,
   encryptedFor          = nu_enc,
@@ -246,11 +254,27 @@ local cipher_body = T.with_check(T.object({
 -- "cipher create-post" (src/api/core/ciphers.rs: ShareCipherData). Serde
 -- aliases mean older/mobile clients may send PascalCase "Cipher"/
 -- "CollectionIds" instead of "cipher"/"collectionIds"; both are allowed.
-local share_cipher_body = T.object({
+-- Both fields are required in the real struct (non-Option) - since each has
+-- an alias, "at least one of the pair" is the real requirement (same
+-- with_check pattern as kdf_alias_check).
+local function share_cipher_check(v, path)
+  if type(v) ~= "table" then return true end
+  if not present(v, "cipher") and not present(v, "Cipher") then
+    return false, path .. ": one of 'cipher' or 'Cipher' is required"
+  end
+  if not present(v, "collectionIds") and not present(v, "CollectionIds") then
+    return false, path .. ": one of 'collectionIds' or 'CollectionIds' is required"
+  end
+  return true
+end
+local share_cipher_body = T.with_check(T.object({
   cipher        = cipher_body,
   Cipher        = cipher_body,
   collectionIds = T.array(T.uuid(), { max = 200 }),
   CollectionIds = T.array(T.uuid(), { max = 200 }),
+}), share_cipher_check, {
+  { value = { Cipher = { type=1, name="a" } }, label = "collectionIds and CollectionIds both absent" },
+  { value = { collectionIds = {} },            label = "cipher and Cipher both absent" },
 })
 
 -- ---------------------------------------------------------------------------
@@ -260,30 +284,61 @@ local share_cipher_body = T.object({
 -- Serde aliases mean clients send either "key" or "userSymmetricKey" and
 -- either "keys" or "userAsymmetricKeys"; both names are allowed here.
 -- ---------------------------------------------------------------------------
+-- Both encryptedPrivateKey/publicKey are non-Option in every real struct
+-- this shape is reused for (accounts.rs: KeysData; organizations.rs:
+-- OrgKeyData) - required, not optional (a real gap for the two directly-
+-- posted uses below - keys_data's nested use already had this right).
 local asym_keys_schema = { encryptedPrivateKey = enc, publicKey = T.string({ max=4096 }) }
-local asym_keys_body   = T.object(asym_keys_schema)
-local keys_data        = T.nullable(T.object(asym_keys_schema, { required = { encryptedPrivateKey=true, publicKey=true } }))
+local asym_keys_body   = T.object(asym_keys_schema, { required = { encryptedPrivateKey=true, publicKey=true } })
+local keys_data        = T.nullable(asym_keys_body)
 
 -- RegisterData.key (accounts.rs:100) is a required String, aliased as
 -- userSymmetricKey by newer clients. opts.required can only enforce a single
 -- fixed key name, not "one of these two aliases", so that constraint needs an
 -- explicit cross-field check (same with_check pattern as cipher_type_check).
-local function register_key_check(v, path)
+-- kdf/kdfIterations are `required` at the flat T.object level below, but
+-- that only checks the *primary* serde name is present - a client sending
+-- just the alias (kdfType/iterations) would otherwise be wrongly denied as
+-- "missing required field 'kdf'" even though the real server accepts it.
+-- So those two aren't in opts.required at all; this function enforces the
+-- real "primary name OR its alias" requirement for all three OR-pairs.
+-- (`present` itself is defined near the top of the file, before cipher_body,
+-- since share_cipher_check below also needs it.)
+-- Shared by every body that #[serde(flatten)]s KDFData (RegisterData,
+-- SetPasswordData): kdf/kdfIterations are required at the Rust level, but
+-- each has an alias, so "at least one of the pair" is the real requirement.
+local function kdf_alias_check(v, path)
   if type(v) ~= "table" then return true end
-  local has_key   = v.key ~= nil and v.key ~= ngx.null
-  local has_alias = v.userSymmetricKey ~= nil and v.userSymmetricKey ~= ngx.null
-  if not has_key and not has_alias then
-    return false, path .. ": one of 'key' or 'userSymmetricKey' is required"
+  if not present(v, "kdf") and not present(v, "kdfType") then
+    return false, path .. ": one of 'kdf' or 'kdfType' is required"
+  end
+  if not present(v, "kdfIterations") and not present(v, "iterations") then
+    return false, path .. ": one of 'kdfIterations' or 'iterations' is required"
   end
   return true
 end
+local function register_key_check(v, path)
+  if type(v) ~= "table" then return true end
+  if not present(v, "key") and not present(v, "userSymmetricKey") then
+    return false, path .. ": one of 'key' or 'userSymmetricKey' is required"
+  end
+  return kdf_alias_check(v, path)
+end
 
+-- KDFData (#[serde(flatten)] into RegisterData) declares 4 aliases this
+-- schema previously missed entirely: kdf/"kdfType", kdfIterations/
+-- "iterations", kdfMemory/"memory", kdfParallelism/"parallelism" - found via
+-- a full field-by-field re-audit against current source.
 local register_body = T.with_check(T.object({
   email              = T.email(),
   kdf                = T.number({ integer=true, min=0, max=1 }),
+  kdfType            = T.number({ integer=true, min=0, max=1 }),   -- serde alias
   kdfIterations      = T.number({ integer=true, min=1, max=2000000 }),
+  iterations         = T.number({ integer=true, min=1, max=2000000 }),   -- serde alias
   kdfMemory          = nu_kdf_memory,
+  memory             = nu_kdf_memory,                              -- serde alias
   kdfParallelism     = nu_kdf_parallelism,
+  parallelism        = nu_kdf_parallelism,                         -- serde alias
   key                = T.nullable(enc),   -- serde primary name
   userSymmetricKey   = T.nullable(enc),   -- serde alias sent by newer clients
   keys               = keys_data,         -- serde primary name
@@ -298,9 +353,13 @@ local register_body = T.with_check(T.object({
   acceptEmergencyAccessInviteToken = T.nullable(T.string({ max=4096 })),
   orgInviteToken     = T.nullable(T.string({ max=4096 })),  -- serde primary name
   token              = T.nullable(T.string({ max=4096 })),  -- serde alias
-}, { required = { email=true, kdf=true, kdfIterations=true, masterPasswordHash=true } }), register_key_check, {
+}, { required = { email=true, masterPasswordHash=true } }), register_key_check, {
   { value = { email="a@a.com", kdf=0, kdfIterations=1, masterPasswordHash="a" },
     label = "key and userSymmetricKey both absent" },
+  { value = { email="a@a.com", key="a", kdfIterations=1, masterPasswordHash="a" },
+    label = "kdf and kdfType both absent" },
+  { value = { email="a@a.com", key="a", kdf=0, masterPasswordHash="a" },
+    label = "kdfIterations and iterations both absent" },
 })
 
 -- ---------------------------------------------------------------------------
@@ -321,7 +380,9 @@ local cipher_ids_body = T.object({
 local attachment_init_body = T.object({
   key                   = enc,
   fileName              = enc,
-  fileSize              = T.number({ integer=true, min=0, max=536870912 }),  -- 512 MB ceiling
+  -- Rust: NumberOrString (AttachmentRequestData.file_size) - found via a full
+  -- field-by-field re-audit against current source.
+  fileSize              = T.number_or_string({ integer=true, min=0, max=536870912 }),  -- 512 MB ceiling
   adminRequest          = nu_bool,
   lastKnownRevisionDate = T.nullable(T.iso8601()),
 }, { required = { key=true, fileName=true, fileSize=true } })
@@ -368,24 +429,41 @@ local send_body = T.object({
 -- Used by security-stamp, verify-password, and all 2fa get-* endpoints.
 -- (src/api/mod.rs: PasswordOrOtpData)
 -- ---------------------------------------------------------------------------
+-- master_password_hash carries #[serde(alias = "MasterPasswordHash")] server-
+-- side - both casings accepted (found via a full field-by-field re-audit
+-- against current source; this shared helper feeds 7+ routes, so the gap
+-- would have affected all of them at once).
 local password_or_otp = T.object({
   masterPasswordHash = T.nullable(med),
+  MasterPasswordHash = T.nullable(med),
   otp                = T.nullable(T.string({ max=16 })),
 })
 
 -- ---------------------------------------------------------------------------
 -- KDF parameters — nested inside ChangeKdfData (used by kdf-change via kdf = kdf_data).
--- Primary wire names are camelCase; serde aliases (kdfType, iterations, etc.)
--- are for backwards-compat deserialization only; clients send the primary names.
+-- Primary wire names are camelCase; kdf/kdfIterations also carry
+-- #[serde(alias = "kdfType"/"iterations")] (and kdfMemory/kdfParallelism
+-- "memory"/"parallelism") server-side - accepted here too (a previous claim
+-- here that "clients send the primary names" was an assumption, not
+-- evidence; the same alias set is real and required for register_body/
+-- set-password elsewhere in this file, found via a full field-by-field
+-- re-audit against current source).
 -- NOTE: set-password has the same four fields but flattened at the top level of
 -- its request body — the nesting differs, so kdf_data cannot be reused there.
 -- ---------------------------------------------------------------------------
-local kdf_data = T.object({
+local kdf_data = T.with_check(T.object({
   kdf            = T.number({ integer=true, min=0, max=1 }),  -- 0=PBKDF2, 1=Argon2id
+  kdfType        = T.number({ integer=true, min=0, max=1 }),          -- serde alias
   kdfIterations  = T.number({ integer=true, min=1, max=2000000 }),
+  iterations     = T.number({ integer=true, min=1, max=2000000 }),    -- serde alias
   kdfMemory      = nu_kdf_memory,
+  memory         = nu_kdf_memory,                                     -- serde alias
   kdfParallelism = nu_kdf_parallelism,
-}, { required = { kdf=true, kdfIterations=true } })
+  parallelism    = nu_kdf_parallelism,                                -- serde alias
+}), kdf_alias_check, {
+  { value = { kdfIterations=1 }, label = "kdf and kdfType both absent" },
+  { value = { kdf=0 },           label = "kdfIterations and iterations both absent" },
+})
 
 -- Folder body: encrypted name plus an optional id (src/api/core/folders.rs:
 -- FolderData.id — accepted on both create and update, though the server
@@ -447,9 +525,20 @@ local cipher_partial_body = T.object({
 -- Collection-assignment body: used by /collections, /collections_v2, /collections-admin
 -- (CollectionsAdminData — primary field collectionIds, #[serde(alias = "CollectionIds")]
 -- means legacy/mobile clients may send the PascalCase form instead)
-local cipher_collections_body = T.object({
+-- CollectionsAdminData.collection_ids is required (non-Option) with a
+-- #[serde(alias = "CollectionIds")] - "at least one of the pair" required.
+local function collection_ids_check(v, path)
+  if type(v) ~= "table" then return true end
+  if not present(v, "collectionIds") and not present(v, "CollectionIds") then
+    return false, path .. ": one of 'collectionIds' or 'CollectionIds' is required"
+  end
+  return true
+end
+local cipher_collections_body = T.with_check(T.object({
   collectionIds = T.array(T.uuid(), { max=200 }),
   CollectionIds = T.array(T.uuid(), { max=200 }),
+}), collection_ids_check, {
+  { value = {}, label = "collectionIds and CollectionIds both absent" },
 })
 
 -- Settings: equivalent domain groupings
@@ -460,13 +549,16 @@ local domains_body = T.object({
 })
 
 -- Organization group create/update body (src/api/core/organizations.rs: GroupRequest)
+-- GroupRequest.access_all carries #[serde(default)] (defaults false if
+-- absent) - it was wrongly required here (an over-strict gap: a real client
+-- omitting it would have been denied even though the server accepts that).
 local group_body = T.object({
   name        = T.string({ max=256 }),
-  accessAll   = T.boolean(),
+  accessAll   = T.nullable(T.boolean()),
   externalId  = T.nullable(T.string({ max=256 })),
   collections = T.array(collection_access_entry, { max=500 }),
   users       = T.array(T.uuid(), { max=5000 }),
-}, { required = { name=true, accessAll=true, collections=true, users=true } })
+}, { required = { name=true, collections=true, users=true } })
 
 -- ---------------------------------------------------------------------------
 -- Validates the Vaultwarden JWT "iss" claim against the current server's hostname.
@@ -651,11 +743,24 @@ return {
       path         = [[^/identity/connect/token$]],
       content_type = "application/x-www-form-urlencoded",
       form = T.object({
-        grant_type        = T.string({ enum = { password = true, refresh_token = true, client_credentials = true, authorization_code = true } }),
+        -- "webauthn" is sent by newer official Bitwarden clients (bitwarden/
+        -- clients' WebAuthnLoginTokenRequest) but ConnectData's own grant_type
+        -- match in identity.rs only recognizes refresh_token/password/
+        -- client_credentials/authorization_code - any other value (including
+        -- "webauthn") falls through to that match's `t => err!("Invalid
+        -- type", t)` arm. Vaultwarden doesn't support primary webauthn login
+        -- (only as a 2FA step within the password grant - see "webauthn
+        -- stub"'s comment elsewhere in this file), so this always 400s
+        -- app-side - accepted here anyway so that failure is a real app
+        -- error a client can see, not an indistinguishable WAF block (same
+        -- posture as this project's other intentionally-dead routes).
+        grant_type        = T.string({ enum = { password = true, refresh_token = true, client_credentials = true, authorization_code = true, webauthn = true } }),
         username          = T.nullable(T.email()),
         password          = T.nullable(med),
-        -- "api" or "api offline_access"
-        scope             = T.nullable(T.string({ max=32, match=[[^api( offline_access)?$]] })),
+        -- "api", "api offline_access" (password grant), or "api.organization"
+        -- (client_credentials grant against an organization API key - see
+        -- UserApiTokenRequest.toIdentityToken() in the vendored client source).
+        scope             = T.nullable(T.string({ max=32, match=[[^api(?:\.organization| offline_access)?$]] })),
         client_id         = T.nullable(T.string({ max=16, enum={
           ["browser"]   = true,
           ["web"]       = true,
@@ -679,16 +784,90 @@ return {
         -- SSO / OIDC fields (grant_type="authorization_code")
         code              = T.nullable(T.string({ max=1024 })),
         code_verifier     = T.nullable(T.string({ max=256 })),
+        -- SsoTokenRequest also sends redirect_uri (snake_case, confirmed via
+        -- vendored client source) - ConnectData has no matching field, but
+        -- `Form<ConnectData>` (not `Form<Strict<ConnectData>>>`) is lenient
+        -- about unrecognized form fields, so the real server just ignores
+        -- it; the WAF must accept it too or it'd block every real SSO login.
+        redirect_uri      = T.nullable(T.string({ max=2048, not_match = "[\\x00-\\x1f]" })),
+        -- PasswordTokenRequest's new-device-verification email OTP (a newer
+        -- official-client feature; same "unrecognized-but-tolerated form
+        -- field" reasoning as redirect_uri above).
+        newDeviceOtp      = T.nullable(T.string({ max=16 })),
+        -- WebAuthnLoginTokenRequest's own fields - see the grant_type comment
+        -- above for why these are accepted despite always failing app-side.
+        -- Rocket's `form` data limit isn't overridden in main.rs (only
+        -- json/data-form/file are), so it falls back to Rocket's own default
+        -- (well under 64KB for the whole decoded form body) - confirmed live
+        -- (a max=65536 bound here got denied at the HTTP layer before ever
+        -- reaching the app, i.e. a real body-size ceiling, not a WAF bug).
+        token             = T.nullable(T.string({ max=4096, not_match = "[\\x00-\\x1f]" })),
+        deviceResponse    = T.nullable(T.string({ max=8192, not_match = "[\\x00-\\x1f]" })),
       }, { required = { grant_type=true } }),
     },
 
     {
+      -- api/core/accounts.rs also declares its own "/accounts/prelogin"
+      -- (mounted at /api, not /identity) - identical PreloginData{email}
+      -- body and handler (both call the same _prelogin()) as the identity
+      -- one below, just a second real entry point - found via the same
+      -- static cross-reference as "public org import" above; it had no
+      -- route at all before this.
       name         = "prelogin",
       method       = "POST",
-      paths        = { [[^/identity/accounts/prelogin$]], [[^/identity/accounts/prelogin/password$]] },
+      paths        = {
+        [[^/identity/accounts/prelogin$]],
+        [[^/identity/accounts/prelogin/password$]],
+        [[^/api/accounts/prelogin$]],
+      },
       content_type = "application/json",
       json = T.object({ email = T.email() }, { required = { email=true } }),
     },
+
+    -- SSO / OIDC --------------------------------------------------------------
+    -- Whole feature area was entirely unrouted before this pass (found via a
+    -- full static cross-reference against every real #[get/post/...] route
+    -- attribute in the vendored source, not a live report) - always compiled
+    -- in as of 1.36.0 (no Cargo feature gate; SSO_ENABLED is a runtime config
+    -- toggle the handlers themselves check, not a route-registration guard),
+    -- so the routes exist and are reachable regardless of whether this
+    -- deployment currently has SSO configured.
+    { name = "sso prevalidate", method = "GET", path = [[^/identity/sso/prevalidate$]], no_body = true },
+    -- oidcsignin/oidcsignin_error (identity.rs): two Rocket route attributes
+    -- sharing the identical literal path, disambiguated server-side by rank
+    -- (rank 1 requires code+state, rank 2 requires state+error[+error_description]) -
+    -- modeled here as one route accepting the union of both query shapes,
+    -- since a real client only ever satisfies one or the other and Rocket's
+    -- own rank fallback is what picks between them, not the URL shape.
+    { name = "sso oidc-signin", method = "GET", path = [[^/identity/connect/oidc-signin$]], no_body = true,
+      query = T.object({
+        code               = T.nullable(med),
+        state              = T.nullable(med),
+        error              = T.nullable(med),
+        error_description  = T.nullable(med),
+      }) },
+    -- authorize (identity.rs, AuthorizeData via FromForm): several fields
+    -- declare a second #[field(name = uncased(...))] alias - both spellings
+    -- accepted here since Rocket binds either. code_challenge_method is
+    -- checked server-side to equal "S256" exactly but that's app-level logic,
+    -- not something the WAF should hard-enforce (a client sending a
+    -- different value gets a normal app error, not something to pre-empt).
+    { name = "sso authorize", method = "GET", path = [[^/identity/connect/authorize$]], no_body = true,
+      query = T.object({
+        client_id             = T.nullable(sml),
+        clientid              = T.nullable(sml),
+        redirect_uri          = T.nullable(med),
+        redirecturi           = T.nullable(med),
+        response_type         = T.nullable(sml),
+        scope                 = T.nullable(sml),
+        state                 = T.nullable(med),
+        code_challenge        = T.nullable(med),
+        code_challenge_method = T.nullable(sml),
+        response_mode         = T.nullable(sml),
+        domain_hint           = T.nullable(sml),
+        sso_token             = T.nullable(med),
+        ssoToken               = T.nullable(med),
+      }) },
 
     -- Registration: new two-step flow (send-verification-email → finish)
     -- and legacy single-step register.  All three share the identity service.
@@ -739,7 +918,11 @@ return {
     { name = "cipher delete",      method = "DELETE", path = "^/api/ciphers/" .. U .. "$",           no_body = true },
     { name = "cipher soft-delete", method = "PUT",    path = "^/api/ciphers/" .. U .. "/delete$",    no_body = true },
     { name = "cipher restore",     method = "PUT",    path = "^/api/ciphers/" .. U .. "/restore$",   no_body = true },
-    { name = "cipher share", method = "PUT", path = "^/api/ciphers/" .. U .. "/share$",
+    -- ciphers.rs declares both post_cipher_share and put_cipher_share for
+    -- this exact path - identical handler body (both call share_cipher_by_uuid
+    -- with the same ShareCipherData) - PUT-only here was a real gap, found
+    -- via the same static cross-reference as "public org import" above.
+    { name = "cipher share", methods = { "PUT", "POST" }, path = "^/api/ciphers/" .. U .. "/share$",
       content_type = "application/json",
       json = share_cipher_body },
     -- Details endpoint: includes org collection membership alongside the cipher
@@ -784,17 +967,20 @@ return {
       -- gen.lua's array-boundary test hitting a real body-size deny at
       -- exactly the declared max, not the array-length check).
       max_body = 10 * 1024 * 1024,
+      -- ImportData: ciphers/folders/folderRelationships all required (Vec,
+      -- non-Option); nested FolderData.name is also required. Real gap,
+      -- found via a full field-by-field re-audit against current source.
       json = T.object({
         ciphers = T.array(cipher_body, { max = 5000 }),
         folders = T.array(T.object({
           id   = nu_uuid,
           name = enc,
-        }), { max = 1000 }),
+        }, { required = { name=true } }), { max = 1000 }),
         folderRelationships = T.array(T.object({
           key   = T.number({ integer=true, min=0, max=4999 }),
           value = T.number({ integer=true, min=0, max=999 }),
         }), { max = 5000 }),
-      }) },
+      }, { required = { ciphers=true, folders=true, folderRelationships=true } }) },
     -- Org-scoped import (distinct from personal-vault "ciphers import" above):
     -- collections use the full org-collection shape, plus a cipher<->collection
     -- index-pair relationship list instead of a folder one.
@@ -811,15 +997,16 @@ return {
           key   = T.number({ integer=true, min=0, max=4999 }),
           value = T.number({ integer=true, min=0, max=999 }),
         }), { max = 5000 }),
-      }) },
+      }, { required = { ciphers=true, collections=true, collectionRelationships=true } }) },
     { name = "ciphers bulk-delete",method = "DELETE", path = [[^/api/ciphers$]],           content_type = "application/json", json = cipher_ids_body },
     -- Org-admin cipher create: same body shape as cipher share
     { name = "cipher admin create", method = "POST", path = [[^/api/ciphers/admin$]],
       content_type = "application/json",
       json = share_cipher_body },
     -- Org cipher list: query param only, no body
+    -- OrgIdData.organizationId is required (a real gap).
     { name = "org cipher details", method = "GET", path = [[^/api/ciphers/organization-details$]],
-      query = T.object({ organizationId = T.uuid() }), no_body = true },
+      query = T.object({ organizationId = T.uuid() }, { required = { organizationId=true } }), no_body = true },
     -- POST alias for cipher create (some older clients use /ciphers/create).
     -- Same ShareCipherData wrapper as "cipher share"/"cipher admin create",
     -- not a bare cipher_body (src/api/core/ciphers.rs: post_ciphers_create).
@@ -827,12 +1014,13 @@ return {
       content_type = "application/json",
       json = share_cipher_body },
     -- Bulk share: re-encrypts and moves multiple ciphers into org collections at once
+    -- ShareSelectedCipherData: both fields required (a real gap).
     { name = "ciphers share-bulk",   method = "PUT",  path = [[^/api/ciphers/share$]],
       content_type = "application/json",
       json = T.object({
         ciphers       = T.array(cipher_body, { max=2000 }),
         collectionIds = T.array(T.uuid(), { max=200 }),
-      }) },
+      }, { required = { ciphers=true, collectionIds=true } }) },
     -- Bulk soft-delete aliases
     { name = "ciphers soft-delete-post",      method = "POST",   path = [[^/api/ciphers/delete$]],         content_type = "application/json", json = cipher_ids_body },
     { name = "ciphers soft-delete-put",       method = "PUT",    path = [[^/api/ciphers/delete$]],         content_type = "application/json", json = cipher_ids_body },
@@ -844,12 +1032,13 @@ return {
     { name = "ciphers restore-bulk",       method = "PUT", path = [[^/api/ciphers/restore$]],       content_type = "application/json", json = cipher_ids_body },
     { name = "ciphers admin restore-bulk", method = "PUT", path = [[^/api/ciphers/restore-admin$]], content_type = "application/json", json = cipher_ids_body },
     -- Move ciphers to a folder (POST and PUT both supported)
+    -- MoveCipherData.ids is required (a real gap).
     { name = "ciphers move", methods = { "POST", "PUT" }, path = [[^/api/ciphers/move$]],
       content_type = "application/json",
       json = T.object({
         folderId = nu_uuid_or_empty,
         ids      = T.array(T.uuid(), { max=2000 }),
-      }) },
+      }, { required = { ids=true } }) },
     -- Purge vault: body authenticates the action; optional ?organizationId=<uuid> for org vault
     { name = "ciphers purge", method = "POST", path = [[^/api/ciphers/purge$]],
       content_type = "application/json", json = password_or_otp,
@@ -913,9 +1102,12 @@ return {
     -- File access: retrieve a file attachment from a Send (same password body as send access)
     { name = "send access-file",     method = "POST",   path = "^/api/sends/" .. U .. "/access/file/" .. FILEID .. "$",
       content_type = "application/json", json = T.object({ password = T.nullable(sml) }) },
-    -- Token-authenticated file download (token is a short-lived signed JWT)
+    -- Token-authenticated file download (token is a short-lived signed JWT).
+    -- download_send's `t: &str` (not Option) makes the query param required
+    -- for Rocket to even route here - a real gap, found via a full field-by-
+    -- field re-audit against current source.
     { name = "send file-download",   method = "GET",    path = "^/api/sends/" .. U .. "/" .. FILEID .. "$",
-      query = T.object({ t = T.string({ max=4096 }) }), no_body = true },
+      query = T.object({ t = T.string({ max=4096 }) }, { required = { t=true } }), no_body = true },
     -- Remove password protection from a Send
     { name = "send remove-password", method = "PUT",    path = "^/api/sends/" .. U .. "/remove-password$", no_body = true },
 
@@ -923,9 +1115,13 @@ return {
 
     -- Profile & avatar
     { name = "profile get",        method = "GET",    path = [[^/api/accounts/profile$]],           no_body = true },
+    -- ProfileData only has `name` (String, required, not Option) - no
+    -- masterPasswordHint field exists on this struct at all (harmless to
+    -- keep accepting defensively, but `name` being required was a real gap).
     { name = "profile update", methods = { "PUT", "POST" }, path = [[^/api/accounts/profile$]],
       content_type = "application/json",
-      json = T.object({ name = T.string({ max=50 }), masterPasswordHint = nu_sml }) },
+      json = T.object({ name = T.string({ max=50 }), masterPasswordHint = nu_sml },
+        { required = { name=true } }) },
     { name = "avatar update", method = "PUT", path = [[^/api/accounts/avatar$]],
       content_type = "application/json",
       json = T.object({ avatarColor = T.nullable(T.string({ max=7, match=[[^#[0-9a-fA-F]{6}$]] })) }) },
@@ -971,28 +1167,33 @@ return {
     -- Verification
     { name = "security stamp",  method = "POST", path = [[^/api/accounts/security-stamp$]],
       content_type = "application/json", json = password_or_otp },
+    -- SecretVerificationRequest.masterPasswordHash is required (a real gap).
     { name = "verify password", method = "POST", path = [[^/api/accounts/verify-password$]],
       content_type = "application/json",
-      json = T.object({ masterPasswordHash = med }) },
+      json = T.object({ masterPasswordHash = med }, { required = { masterPasswordHash=true } }) },
     { name = "verify email",       method = "POST",   path = [[^/api/accounts/verify-email$]],         no_body = true },
+    -- VerifyEmailTokenData: both fields plain (non-Option) - required, not
+    -- optional (a real gap - found via a full field-by-field re-audit
+    -- against current source).
     { name = "verify email token", method = "POST", path = [[^/api/accounts/verify-email-token$]],
       content_type = "application/json",
       json = T.object({
         userId = T.uuid(),
         token  = T.string({ max=1024 }),
-      }) },
+      }, { required = { userId=true, token=true } }) },
 
     -- Email & account lifecycle
     { name = "delete account",     methods = { "DELETE", "POST" }, path = [[^/api/accounts(/delete)?$]],
       content_type = "application/json",
       json = password_or_otp },
     -- Account email-change: step 1 sends token, step 2 completes the change
+    -- EmailTokenData: both fields required (a real gap).
     { name = "email-token", method = "POST", path = [[^/api/accounts/email-token$]],
       content_type = "application/json",
       json = T.object({
         masterPasswordHash = med,
         newEmail           = T.email(),
-      }) },
+      }, { required = { masterPasswordHash=true, newEmail=true } }) },
     { name = "email change", method = "POST", path = [[^/api/accounts/email$]],
       content_type = "application/json",
       json = T.object({
@@ -1004,24 +1205,36 @@ return {
         -- code (crypto::generate_email_token(6)) but clients may send it as
         -- either a JSON number or a numeric string.
         token                 = T.number_or_string({ integer=true, min=0, max=999999 }),
-      }) },
+      }, { required = { masterPasswordHash=true, newEmail=true, key=true, newMasterPasswordHash=true, token=true } }) },
     -- Set password: used after SSO registration / invite with no prior password
     -- kdf fields are top-level (flattened from KDFData struct)
     -- Rust: SetPasswordData (accounts.rs:121) -- kdf/kdfIterations (via the
     -- flattened KDFData), key, and masterPasswordHash are all non-Option.
+    -- SetPasswordData also #[serde(flatten)]s KDFData - same 4 missing
+    -- aliases (kdfType/iterations/memory/parallelism) as register_body,
+    -- found via the same full field-by-field re-audit.
     { name = "set-password", method = "POST", path = [[^/api/accounts/set-password$]],
       content_type = "application/json",
-      json = T.object({
+      json = T.with_check(T.object({
         kdf             = T.number({ integer=true, min=0, max=1 }),
+        kdfType         = T.number({ integer=true, min=0, max=1 }),          -- serde alias
         kdfIterations   = T.number({ integer=true, min=1, max=2000000 }),
+        iterations      = T.number({ integer=true, min=1, max=2000000 }),    -- serde alias
         kdfMemory       = nu_kdf_memory,
+        memory          = nu_kdf_memory,                                     -- serde alias
         kdfParallelism  = nu_kdf_parallelism,
+        parallelism     = nu_kdf_parallelism,                                -- serde alias
         key             = enc,
         keys            = T.nullable(asym_keys_body),
         masterPasswordHash = med,
         masterPasswordHint = T.nullable(sml),
         orgIdentifier      = T.nullable(T.string({ max=256 })),
-      }, { required = { kdf=true, kdfIterations=true, key=true, masterPasswordHash=true } }) },
+      }, { required = { key=true, masterPasswordHash=true } }), kdf_alias_check, {
+        { value = { key="a", masterPasswordHash="a", kdfIterations=1 },
+          label = "kdf and kdfType both absent" },
+        { value = { key="a", masterPasswordHash="a", kdf=0 },
+          label = "kdfIterations and iterations both absent" },
+      }) },
 
     -- ---------------------------------------------------------------------------
     -- Key rotation (heavyweight — re-encrypts all vault data)
@@ -1035,6 +1248,17 @@ return {
       -- Same max_body bump as "ciphers import" above, same reason - this
       -- route's accountData.ciphers carries the same 5000-max cipher_body array.
       max_body = 10 * 1024 * 1024,
+      -- KeyData's 4 top-level fields are all non-Option/required, as are
+      -- MasterPasswordUnlockData's kdfType/kdfIterations/email/
+      -- masterKeyAuthenticationHash/masterKeyEncryptedUserKey (no
+      -- masterPasswordHint field exists on it at all - kept defensively),
+      -- UpdateEmergencyAccessData's id/keyEncrypted, UpdateResetPasswordData's
+      -- organizationId/resetPasswordKey (its ONLY 2 real fields -
+      -- masterPasswordHash/otp/authRequestAccessCode below don't exist on it
+      -- at all, kept defensively), RotateAccountKeys' both fields, and
+      -- RotateAccountData's ciphers/folders/sends. None of that required-ness
+      -- was previously enforced - a real gap, found via a full field-by-
+      -- field re-audit against current source.
       json = T.object({
         -- Hash of the current master key used to authenticate the rotation
         oldMasterKeyAuthenticationHash = sml,
@@ -1049,20 +1273,21 @@ return {
             masterKeyAuthenticationHash = sml,
             masterKeyEncryptedUserKey   = enc,
             masterPasswordHint          = T.nullable(sml),  -- client sends; server 1.36.0 ignores
-          }),
+          }, { required = { kdfType=true, kdfIterations=true, email=true,
+                             masterKeyAuthenticationHash=true, masterKeyEncryptedUserKey=true } }),
           emergencyAccessUnlockData = T.array(T.object({
             id           = T.uuid(),
             type         = T.number({ integer=true, min=0, max=1 }),
             waitTimeDays = T.number({ integer=true, min=1, max=90 }),
-            keyEncrypted = nu_enc,
-          }), { max=200 }),
+            keyEncrypted = enc,
+          }, { required = { id=true, keyEncrypted=true } }), { max=200 }),
           organizationAccountRecoveryUnlockData = T.array(T.object({
             organizationId        = T.uuid(),
-            resetPasswordKey      = nu_enc,
+            resetPasswordKey      = enc,
             masterPasswordHash    = T.nullable(med),
             otp                   = T.nullable(T.string({ max=16 })),
             authRequestAccessCode = T.nullable(T.string({ max=128 })),
-          }), { max=200 }),
+          }, { required = { organizationId=true, resetPasswordKey=true } }), { max=200 }),
           -- Newer fields the client sends; Vaultwarden 1.36.0 ignores both
           passkeyUnlockData = T.nullable(T.array(T.object({
             id                 = T.string({ max=512 }),
@@ -1073,12 +1298,12 @@ return {
             encryptedPublicKey = nu_enc,
             encryptedUserKey   = nu_enc,
           }), { max=50 })),
-        }),
+        }, { required = { masterPasswordUnlockData=true, emergencyAccessUnlockData=true,
+                           organizationAccountRecoveryUnlockData=true } }),
 
         accountKeys = T.object({
-          -- Deprecated in newer clients but still included in every request
-          userKeyEncryptedAccountPrivateKey = nu_enc,
-          accountPublicKey                  = T.nullable(T.string({ max=4096 })),
+          userKeyEncryptedAccountPrivateKey = enc,
+          accountPublicKey                  = T.string({ max=4096 }),
           -- Newer key-pair fields; Vaultwarden 1.36.0 ignores all three
           publicKeyEncryptionKeyPair = T.nullable(T.object({
             wrappedPrivateKey = enc,
@@ -1094,7 +1319,7 @@ return {
             securityState   = T.string({ max=8192 }),
             securityVersion = T.number({ integer=true, min=0, max=9999 }),
           })),
-        }),
+        }, { required = { userKeyEncryptedAccountPrivateKey=true, accountPublicKey=true } }),
 
         accountData = T.object({
           -- cipher_body already contains id as nu_uuid; rotation always populates it
@@ -1106,23 +1331,27 @@ return {
           })), { max=1000 }),
           -- send_body already contains id as nu_uuid
           sends = T.array(send_body, { max=5000 }),
-        }),
-      }) },
+        }, { required = { ciphers=true, folders=true, sends=true } }),
+      }, { required = { oldMasterKeyAuthenticationHash=true, accountUnlockData=true,
+                         accountKeys=true, accountData=true } }) },
     -- Account deletion recovery & password hint
     -- Delete recover: request and confirm account deletion by email
+    -- DeleteRecoverData/DeleteRecoverTokenData/PasswordHintData fields are
+    -- all plain (non-Option) - required, not optional (a real gap - found
+    -- via a full field-by-field re-audit against current source).
     { name = "delete-recover",       method = "POST", path = [[^/api/accounts/delete-recover$]],
       content_type = "application/json",
-      json = T.object({ email = T.email() }) },
+      json = T.object({ email = T.email() }, { required = { email=true } }) },
     { name = "delete-recover-token", method = "POST", path = [[^/api/accounts/delete-recover-token$]],
       content_type = "application/json",
       json = T.object({
         userId = T.uuid(),
         token  = T.string({ max=1024 }),
-      }) },
+      }, { required = { userId=true, token=true } }) },
     -- Password hint: unauthenticated endpoint
     { name = "password-hint", method = "POST", path = [[^/api/accounts/password-hint$]],
       content_type = "application/json",
-      json = T.object({ email = T.email() }) },
+      json = T.object({ email = T.email() }, { required = { email=true } }) },
     -- API key & OTP
     -- API key management: retrieve or rotate the user's CLI API key
     { name = "api-key",        method = "POST", path = [[^/api/accounts/api-key$]],        content_type = "application/json", json = password_or_otp },
@@ -1228,12 +1457,21 @@ return {
         masterPasswordHash = T.nullable(med),
         otp                = T.nullable(T.string({ max=16 })),
       }) },
+    -- SendEmailLoginData: device_identifier is a plain (non-Option) DeviceId -
+    -- required, not nullable (a real gap - was previously nullable here);
+    -- email/master_password_hash/device_identifier each carry a
+    -- #[serde(alias = "Email"/"MasterPasswordHash"/"DeviceIdentifier")] -
+    -- both casings accepted. All found via a full field-by-field re-audit
+    -- against current source.
     { name = "2fa send-email",    method = "POST", path = [[^/api/two-factor/send-email-login$]],
       content_type = "application/json",
       json = T.object({
         email                 = T.nullable(T.email()),
+        Email                 = T.nullable(T.email()),
         masterPasswordHash    = T.nullable(med),
-        deviceIdentifier      = nu_uuid,
+        MasterPasswordHash    = T.nullable(med),
+        deviceIdentifier      = T.uuid(),
+        DeviceIdentifier      = T.uuid(),
         authRequestId         = nu_uuid,
         authRequestAccessCode = T.nullable(T.string({ max=128 })),
       }) },
@@ -1245,17 +1483,33 @@ return {
     { name = "device knowndevice", method = "GET",    path = [[^/api/devices/knowndevice$]],              no_body = true },
     { name = "device delete",      method = "DELETE", path = "^/api/devices/" .. U .. "$",                no_body = true },
     -- Device push token: register or update the push notification token for a device
+    -- PushToken.pushToken is required (a real gap).
     { name = "device push-token",  methods = { "POST", "PUT" }, path = "^/api/devices/identifier/" .. U .. "/token$",
       content_type = "application/json",
-      json = T.object({ pushToken = T.string({ max=512 }) }) },
+      json = T.object({ pushToken = T.string({ max=512 }) }, { required = { pushToken=true } }) },
     -- Device clear-token: remove push token (PUT and POST are both supported upstream)
     { name = "device clear-token", methods = { "PUT", "POST" }, path = "^/api/devices/identifier/" .. U .. "/clear-token$",
       no_body = true },
 
     -- WEBAUTHN --------------------------------------------------------------
 
-    -- WebAuthn routes are under /api/two-factor/webauthn, not /api/webauthn
+    -- 2FA WebAuthn credential management routes are under /api/two-factor/webauthn.
+    -- /api/webauthn (bare) is a *separate*, real, distinct route
+    -- (api/core/mod.rs: get_api_webauthn) - a stub that always returns an
+    -- empty list "to prevent a 404 error, which also causes key-rotation
+    -- issues" per its own source comment - a real gap, found via the same
+    -- static cross-reference as "public org import" above (this file's
+    -- previous comment here asserted it doesn't exist; it does).
+    { name = "webauthn stub", method = "GET", path = [[^/api/webauthn$]], no_body = true },
     { name = "webauthn list",   method = "GET",    path = [[^/api/two-factor/webauthn$]], no_body = true },
+    -- AuthenticatorAttestationResponseRawCopy: attestation_object carries
+    -- #[serde(rename = "AttestationObject", alias = "attestationObject")] -
+    -- primary spelling is PascalCase "AttestationObject", not the camelCase
+    -- alias this schema previously only accepted; client_data_json carries
+    -- #[serde(rename = "clientDataJson", alias = "clientDataJSON")] - the
+    -- primary spelling was already covered but not the alternate-caps
+    -- "clientDataJSON" alias. Both found via a full field-by-field re-audit
+    -- against current source.
     { name = "webauthn create", methods = { "POST", "PUT" }, path = [[^/api/two-factor/webauthn$]],
       content_type = "application/json",
       json = T.object({
@@ -1268,18 +1522,24 @@ return {
           type   = T.string({ max=32 }),
           response = T.object({
             attestationObject = T.string({ max=65536 }),
+            AttestationObject = T.string({ max=65536 }),
             clientDataJson    = T.string({ max=65536 }),
+            clientDataJSON    = T.string({ max=65536 }),
           }),
         }),
         masterPasswordHash = T.nullable(med),
         otp                = T.nullable(T.string({ max=16 })),
       }) },
+    -- DeleteU2FData.master_password_hash is a plain (non-Option) String -
+    -- required, not nullable (a real gap - was previously nullable here);
+    -- there is no `otp` field on this struct at all (harmless to keep
+    -- accepting it defensively, but it's not real).
     { name = "webauthn delete", method = "DELETE", path = [[^/api/two-factor/webauthn$]],
       content_type = "application/json",
       json = T.object({
         -- Rust: NumberOrString (DeleteU2FData.id)
         id                 = T.number_or_string({ integer=true, min=1, max=5 }),
-        masterPasswordHash = T.nullable(med),
+        masterPasswordHash = med,
         otp                = T.nullable(T.string({ max=16 })),
       }) },
 
@@ -1315,24 +1575,26 @@ return {
         collectionName = enc,
         key            = enc,
         name           = T.string({ max=256 }),
-        -- Rust: NumberOrString (OrgData.plan_type) -- ignored server-side
-        -- (self-hosted always uses the same plan) but still type-checked.
-        planType       = T.nullable(T.number_or_string({ integer=true, min=0, max=100 })),
+        -- Rust: NumberOrString (OrgData.plan_type), non-Option - required,
+        -- not nullable, even though its value is ignored server-side
+        -- (self-hosted always uses the same plan) - a real gap.
+        planType       = T.number_or_string({ integer=true, min=0, max=100 }),
         keys = keys_data,
-      }, { required = { billingEmail=true, collectionName=true, key=true, name=true } }) },
+      }, { required = { billingEmail=true, collectionName=true, key=true, name=true, planType=true } }) },
     { name = "collection list",        method = "GET", path = [[^/api/collections$]],                              no_body = true },
     { name = "org collections",        method = "GET", path = "^/api/organizations/" .. U .. "/collections$",      no_body = true },
     { name = "org collections details",method = "GET", path = "^/api/organizations/" .. U .. "/collections/details$", no_body = true },
     -- Collection CRUD
     { name = "org collection create", method = "POST", path = "^/api/organizations/" .. U .. "/collections$",
       content_type = "application/json", json = full_collection_body },
+    -- BulkCollectionAccessData: all 3 fields required (a real gap).
     { name = "org collection bulk-access", method = "POST", path = "^/api/organizations/" .. U .. "/collections/bulk-access$",
       content_type = "application/json",
       json = T.object({
         collectionIds = T.array(T.uuid(), { max=500 }),
         groups        = T.array(collection_access_entry, { max=500 }),
         users         = T.array(collection_access_entry, { max=500 }),
-      }) },
+      }, { required = { collectionIds=true, groups=true, users=true } }) },
     { name = "org collection update",  methods = { "PUT", "POST" }, path = "^/api/organizations/" .. U .. "/collections/" .. U .. "$",
       content_type = "application/json", json = full_collection_body },
     { name = "org collection delete",  method = "DELETE", path = "^/api/organizations/" .. U .. "/collections/" .. U .. "$",  no_body = true },
@@ -1376,13 +1638,15 @@ return {
     { name = "org user update",  methods = { "PUT", "POST" }, path = "^/api/organizations/" .. U .. "/users/" .. U .. "$",
       content_type = "application/json",
       json = T.object({
-        -- Rust: NumberOrString (EditUserData.type)
+        -- Rust: NumberOrString (EditUserData.type), required.
         type        = T.number_or_string({ integer=true, min=0, max=4 }),
         collections = T.nullable(T.array(collection_access_entry, { max=500 })),
         groups      = T.nullable(T.array(T.uuid(), { max=500 })),
         permissions = T.nullable(permissions_body),
-      }) },
+      }, { required = { type=true } }) },
     { name = "org user delete",  method = "DELETE", path = "^/api/organizations/" .. U .. "/users/" .. U .. "$", no_body = true },
+    -- InviteData: emails/groups/type all required (non-Option); collections
+    -- is the only genuinely Option<> field (permissions defaults via serde).
     { name = "org users invite",  method = "POST", path = "^/api/organizations/" .. U .. "/users/invite$",
       content_type = "application/json",
       json = T.object({
@@ -1392,16 +1656,17 @@ return {
         type        = T.number_or_string({ integer=true, min=0, max=4 }),
         collections = T.nullable(T.array(collection_access_entry, { max=500 })),
         permissions = T.nullable(permissions_body),
-      }) },
+      }, { required = { emails=true, groups=true, type=true } }) },
     { name = "org users reinvite-bulk", method = "POST", path = "^/api/organizations/" .. U .. "/users/reinvite$",
       content_type = "application/json", json = bulk_uuid_ids },
     { name = "org user reinvite", method = "POST", path = "^/api/organizations/" .. U .. "/users/" .. U .. "/reinvite$", no_body = true },
+    -- AcceptData.token is required (a real gap).
     { name = "org user accept",  method = "POST", path = "^/api/organizations/" .. U .. "/users/" .. U .. "/accept$",
       content_type = "application/json",
       json = T.object({
         token            = T.string({ max=4096 }),
         resetPasswordKey = T.nullable(enc),
-      }) },
+      }, { required = { token=true } }) },
     { name = "org users confirm-bulk", method = "POST", path = "^/api/organizations/" .. U .. "/users/confirm$",
       content_type = "application/json",
       json = T.object({
@@ -1431,13 +1696,14 @@ return {
     -- Account recovery / reset-password
     { name = "org user reset-pw-details", method = "GET",
       path = "^/api/organizations/" .. U .. "/users/" .. U .. "/reset-password-details$", no_body = true },
+    -- OrganizationUserResetPasswordRequest: both fields required (a real gap).
     { name = "org user reset-password", method = "PUT",
       path = "^/api/organizations/" .. U .. "/users/" .. U .. "/reset-password$",
       content_type = "application/json",
       json = T.object({
         newMasterPasswordHash = med,
         key                   = enc,
-      }) },
+      }, { required = { newMasterPasswordHash=true, key=true } }) },
     -- Member enrolls in or withdraws from admin account recovery
     { name = "org user reset-pw-enrollment", method = "PUT",
       path = "^/api/organizations/" .. U .. "/users/" .. U .. "/reset-password-enrollment$",
@@ -1460,20 +1726,21 @@ return {
       path = "^/api/organizations/" .. U .. "/policies/master-password$", no_body = true },
     -- Policy GET/PUT by integer type (0–11 in current Vaultwarden; [0-9]{1,3} gives headroom)
     { name = "org policy get",     method = "GET", path = "^/api/organizations/" .. U .. "/policies/[0-9]{1,3}$", no_body = true },
+    -- PolicyData.enabled is required (a real gap).
     { name = "org policy update",  method = "PUT", path = "^/api/organizations/" .. U .. "/policies/[0-9]{1,3}$",
       content_type = "application/json",
       json = T.object({
         enabled = T.boolean(),
         data    = T.nullable(T.any()),  -- shape varies by policy type
-      }) },
+      }, { required = { enabled=true } }) },
     { name = "org policy update-vnext", method = "PUT", path = "^/api/organizations/" .. U .. "/policies/[0-9]{1,3}/vnext$",
       content_type = "application/json",
       json = T.object({
         policy = T.object({
           enabled = T.boolean(),
           data    = T.nullable(T.any()),
-        }),
-      }) },
+        }, { required = { enabled=true } }),
+      }, { required = { policy=true } }) },
 
     -- Billing stubs (Vaultwarden always returns empty/dummy data for self-hosted)
     { name = "org billing metadata",       method = "GET", path = "^/api/organizations/" .. U .. "/billing/metadata$",                no_body = true },
@@ -1539,31 +1806,42 @@ return {
     { name = "emergency delete",  methods = { "DELETE" }, path = "^/api/emergency-access/" .. U .. "$",           no_body = true },
     { name = "emergency delete-post", method = "POST", path = "^/api/emergency-access/" .. U .. "/delete$",       no_body = true },
     { name = "emergency reinvite",    method = "POST", path = "^/api/emergency-access/" .. U .. "/reinvite$",     no_body = true },
+    -- AcceptData.token / ConfirmData.key are both plain (non-Option) String -
+    -- required, not optional (a real gap - found via a full field-by-field
+    -- re-audit against current source).
     { name = "emergency accept",      method = "POST", path = "^/api/emergency-access/" .. U .. "/accept$",
       content_type = "application/json",
-      json = T.object({ token = T.string({ max=4096 }) }) },
+      json = T.object({ token = T.string({ max=4096 }) }, { required = { token=true } }) },
     { name = "emergency confirm",     method = "POST", path = "^/api/emergency-access/" .. U .. "/confirm$",
       content_type = "application/json",
-      json = T.object({ key = enc }) },
+      json = T.object({ key = enc }, { required = { key=true } }) },
     { name = "emergency initiate",    method = "POST", path = "^/api/emergency-access/" .. U .. "/initiate$",     no_body = true },
     { name = "emergency approve",     method = "POST", path = "^/api/emergency-access/" .. U .. "/approve$",      no_body = true },
     { name = "emergency reject",      method = "POST", path = "^/api/emergency-access/" .. U .. "/reject$",       no_body = true },
     { name = "emergency view",        method = "POST", path = "^/api/emergency-access/" .. U .. "/view$",         no_body = true },
     { name = "emergency takeover",    method = "POST", path = "^/api/emergency-access/" .. U .. "/takeover$",     no_body = true },
+    -- EmergencyAccessPasswordData: both fields plain (non-Option) String -
+    -- required, same gap class as "emergency accept"/"confirm" above.
     { name = "emergency password",    method = "POST", path = "^/api/emergency-access/" .. U .. "/password$",
       content_type = "application/json",
       json = T.object({
         newMasterPasswordHash = med,
         key                   = enc,
-      }) },
+      }, { required = { newMasterPasswordHash=true, key=true } }) },
     { name = "emergency policies",    method = "GET",  path = "^/api/emergency-access/" .. U .. "/policies$",     no_body = true },
 
     -- PUBLIC API (LDAP / directory-connector sync) ---------------------------
     -- Authenticated with a distinct org-API-key bearer JWT (vw_org_api_key_header),
     -- not the standard user login JWT — overrides the default "authorization"
     -- header validator for this route only.
-    -- (src/api/core/public.rs: ldap_import / OrgImportData)
-    { name = "public org import", method = "POST", path = [[^/public/organization/import$]],
+    -- (src/api/core/public.rs: ldap_import / OrgImportData - mounted at /api
+    -- like every other core:: route, confirmed via main.rs's own mount list
+    -- and public::routes()'s single ldap_import entry - the previous
+    -- `/public/organization/import` pattern here was missing the /api
+    -- prefix, meaning this endpoint was 100% unreachable/WAF-blocked; found
+    -- via a full static cross-reference against the real Rocket route
+    -- attributes, not a live report.)
+    { name = "public org import", method = "POST", path = [[^/api/public/organization/import$]],
       content_type = "application/json",
       headers = { authorization = vw_org_api_key_header },
       json = T.object({
@@ -1592,9 +1870,13 @@ return {
     -- Legacy alias for /pending; still sent by some older clients
     { name = "auth-request list-all", method = "GET", path = [[^/api/auth-requests$]], no_body = true },
     { name = "auth-request list",   method = "GET",  path = [[^/api/auth-requests/pending$]],  no_body = true },
-    -- Auth-request response poll: the initiating device polls this to get the approval
+    -- Auth-request response poll: the initiating device polls this to get the
+    -- approval. get_auth_request_response's `code: &str` (not Option) makes
+    -- the query param required for Rocket to route here at all (a real gap -
+    -- found via a full field-by-field re-audit against current source).
     { name = "auth-request response", method = "GET", path = "^/api/auth-requests/" .. U .. "/response$",
-      query = T.object({ code = T.string({ max=64 }) }), no_body = true },
+      query = T.object({ code = T.string({ max=64 }) }, { required = { code=true } }), no_body = true },
+    -- AuthRequestRequest: all 4 fields required.
     { name = "auth-request create", method = "POST", path = [[^/api/auth-requests$]],
       content_type = "application/json",
       json = T.object({
@@ -1602,8 +1884,10 @@ return {
         deviceIdentifier = T.uuid(),
         email            = T.email(),
         publicKey        = T.string({ max=4096 }),
-      }) },
+      }, { required = { accessCode=true, deviceIdentifier=true, email=true, publicKey=true } }) },
     { name = "auth-request get",    method = "GET",  path = "^/api/auth-requests/" .. U .. "$", no_body = true },
+    -- AuthResponseRequest: deviceIdentifier/key/requestApproved required;
+    -- masterPasswordHash is the only genuinely-Option field.
     { name = "auth-request update", method = "PUT",  path = "^/api/auth-requests/" .. U .. "$",
       content_type = "application/json",
       json = T.object({
@@ -1611,7 +1895,7 @@ return {
         key                = enc,
         masterPasswordHash = T.nullable(med),
         requestApproved    = T.boolean(),
-      }) },
+      }, { required = { deviceIdentifier=true, key=true, requestApproved=true } }) },
 
     -- ICONS -----------------------------------------------------------------
 
@@ -1665,13 +1949,16 @@ return {
 
     { name = "admin logout", method = "GET", path = [[^/admin/logout$]], no_body = true },
 
+    -- InviteData.email is a plain (non-Option) String - required, not
+    -- optional (a real gap - found via a full field-by-field re-audit
+    -- against current source).
     { name = "admin invite",    method = "POST", path = [[^/admin/invite$]],
       content_type = "application/json",
-      json = T.object({ email = T.email() }),
+      json = T.object({ email = T.email() }, { required = { email=true } }),
     },
     { name = "admin test smtp", method = "POST", path = [[^/admin/test/smtp$]],
       content_type = "application/json",
-      json = T.object({ email = T.email() }),
+      json = T.object({ email = T.email() }, { required = { email=true } }),
     },
 
     -- User management — specific named paths before the parameterized /<uuid> route
@@ -1687,7 +1974,7 @@ return {
         user_type = T.number_or_string({ integer = true, min = 0, max = 4 }),
         user_uuid = T.uuid(),
         org_uuid  = T.uuid(),
-      }),
+      }, { required = { user_type=true, user_uuid=true, org_uuid=true } }),
     },
     { name = "admin users update-revision", method = "POST", path = [[^/admin/users/update_revision$]],  no_body = true },
     { name = "admin users by-mail",         method = "GET",
@@ -1712,9 +1999,13 @@ return {
     -- Diagnostics
     { name = "admin diagnostics",        method = "GET", path = [[^/admin/diagnostics$]],        no_body = true },
     { name = "admin diagnostics config", method = "GET", path = [[^/admin/diagnostics/config$]], no_body = true },
+    -- get_diagnostics_http's `code: u16` is required (not Option) for Rocket
+    -- to even route here, and u16 bounds it to 0-65535 - both a real gap,
+    -- found via a full field-by-field re-audit against current source.
     { name = "admin diagnostics http",   method = "GET", path = [[^/admin/diagnostics/http$]],
       no_body = true,
-      query   = T.object({ code = T.string({ max = 5, match = [[^\d+$]] }) }),
+      query   = T.object({ code = T.number_query({ integer = true, min = 0, max = 65535 }) },
+        { required = { code=true } }),
     },
 
     -- Config management
