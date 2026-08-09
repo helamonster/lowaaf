@@ -62,8 +62,10 @@ local mw_api_actions = {
   },
   -- changeauthenticationdata (MediaWiki\Api\ApiChangeAuthenticationData)
   changeauthenticationdata = {
-    request = T.string({ max=512 }),
-    token = T.string({ max=512 }),  -- sensitive; token type: csrf
+    changeauthrequest = T.string({ max=512 }),
+    changeauthtoken = T.string({ max=512 }),  -- sensitive; token type: csrf
+    password = T.string({ max=256 }),  -- sensitive
+    retype = T.string({ max=256 }),  -- sensitive
   },
   -- changecontentmodel (MediaWiki\Api\ApiChangeContentModel)
   changecontentmodel = {
@@ -86,13 +88,16 @@ local mw_api_actions = {
   },
   -- clientlogin (MediaWiki\Api\ApiClientLogin)
   clientlogin = {
-    continue = T.nullable(T.string({ max=8 })),
-    mergerequestfields = T.nullable(T.string({ max=8 })),
-    messageformat = T.nullable(T.string({ max=8, enum={ ['html']=true, ['none']=true, ['raw']=true, ['wikitext']=true } })),
-    preservestate = T.nullable(T.string({ max=8 })),
-    requests = T.nullable(T.string({ max=2048 })),
-    returnurl = T.nullable(T.string({ max=512 })),
-    token = T.string({ max=512 }),  -- sensitive; token type: login
+    logincontinue = T.nullable(T.string({ max=8 })),
+    loginmergerequestfields = T.nullable(T.string({ max=8 })),
+    loginmessageformat = T.nullable(T.string({ max=8, enum={ ['html']=true, ['none']=true, ['raw']=true, ['wikitext']=true } })),
+    loginpreservestate = T.nullable(T.string({ max=8 })),
+    loginrequests = T.nullable(T.string({ max=2048 })),
+    loginreturnurl = T.nullable(T.string({ max=512 })),
+    logintoken = T.string({ max=512 }),  -- sensitive; token type: login
+    password = T.string({ max=256 }),  -- sensitive
+    rememberMe = T.nullable(T.string({ max=8 })),
+    username = T.string({ max=512 }),
   },
   -- compare (MediaWiki\Api\ApiComparePages)
   compare = {
@@ -121,13 +126,18 @@ local mw_api_actions = {
   },
   -- createaccount (MediaWiki\Api\ApiAMCreateAccount)
   createaccount = {
-    continue = T.nullable(T.string({ max=8 })),
-    mergerequestfields = T.nullable(T.string({ max=8 })),
-    messageformat = T.nullable(T.string({ max=8, enum={ ['html']=true, ['none']=true, ['raw']=true, ['wikitext']=true } })),
-    preservestate = T.nullable(T.string({ max=8 })),
-    requests = T.nullable(T.string({ max=2048 })),
-    returnurl = T.nullable(T.string({ max=512 })),
-    token = T.string({ max=512 }),  -- sensitive; token type: createaccount
+    createcontinue = T.nullable(T.string({ max=8 })),
+    createmergerequestfields = T.nullable(T.string({ max=8 })),
+    createmessageformat = T.nullable(T.string({ max=8, enum={ ['html']=true, ['none']=true, ['raw']=true, ['wikitext']=true } })),
+    createpreservestate = T.nullable(T.string({ max=8 })),
+    createrequests = T.nullable(T.string({ max=2048 })),
+    createreturnurl = T.nullable(T.string({ max=512 })),
+    createtoken = T.string({ max=512 }),  -- sensitive; token type: createaccount
+    email = T.nullable(T.string({ max=512 })),
+    password = T.string({ max=256 }),  -- sensitive
+    realname = T.nullable(T.string({ max=512 })),
+    retype = T.string({ max=256 }),  -- sensitive
+    username = T.string({ max=512 }),
   },
   -- cspreport (MediaWiki\Api\ApiCSPReport)
   cspreport = {
@@ -296,19 +306,19 @@ local mw_api_actions = {
   },
   -- linkaccount (MediaWiki\Api\ApiLinkAccount)
   linkaccount = {
-    continue = T.nullable(T.string({ max=8 })),
-    mergerequestfields = T.nullable(T.string({ max=8 })),
-    messageformat = T.nullable(T.string({ max=8, enum={ ['html']=true, ['none']=true, ['raw']=true, ['wikitext']=true } })),
-    requests = T.nullable(T.string({ max=2048 })),
-    returnurl = T.nullable(T.string({ max=512 })),
-    token = T.string({ max=512 }),  -- sensitive; token type: csrf
+    linkcontinue = T.nullable(T.string({ max=8 })),
+    linkmergerequestfields = T.nullable(T.string({ max=8 })),
+    linkmessageformat = T.nullable(T.string({ max=8, enum={ ['html']=true, ['none']=true, ['raw']=true, ['wikitext']=true } })),
+    linkrequests = T.nullable(T.string({ max=2048 })),
+    linkreturnurl = T.nullable(T.string({ max=512 })),
+    linktoken = T.string({ max=512 }),  -- sensitive; token type: csrf
   },
   -- login (MediaWiki\Api\ApiLogin)
   login = {
-    domain = T.nullable(T.string({ max=512 })),
-    name = T.nullable(T.string({ max=512 })),
-    password = T.nullable(T.string({ max=256 })),  -- sensitive
-    token = T.nullable(T.string({ max=512 })),  -- sensitive
+    lgdomain = T.nullable(T.string({ max=512 })),
+    lgname = T.nullable(T.string({ max=512 })),
+    lgpassword = T.nullable(T.string({ max=256 })),  -- sensitive
+    lgtoken = T.nullable(T.string({ max=512 })),  -- sensitive
   },
   -- logout (MediaWiki\Api\ApiLogout)
   logout = {

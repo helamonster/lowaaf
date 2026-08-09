@@ -35,6 +35,41 @@ import urllib.request
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 OUT_PATH = os.path.join(SCRIPT_DIR, "paraminfo.json")
 
+# A module flagged "dynamicparameters" (paraminfo emits this as an empty-
+# string boolean-true marker, same convention as "required"/"sensitive"
+# elsewhere in this dump) gets its real parameters injected at runtime by
+# MediaWiki's AuthManager - paraminfo only tells you THAT this happens, not
+# what the fields are (confirmed live: every module with this marker is one
+# of the four below; no others carry it). The actual field set has to come
+# from meta=authmanagerinfo instead, once per module, using the
+# amirequestsfor value MediaWiki's AuthManager API defines for each auth
+# action (a small, stable enum - login/create/change/link - not expected to
+# gain new entries). Confirmed live: these dynamic fields are NOT prefixed
+# with the module's own `prefix` (e.g. clientlogin sends bare "username"/
+# "password", not "loginusername"/"loginpassword") - a separate mechanism
+# from the module's own declared parameters, which DO get prefixed.
+AUTHMANAGER_REQUESTS_FOR = {
+    "clientlogin": "login",
+    "createaccount": "create",
+    "changeauthenticationdata": "change",
+    "linkaccount": "link",
+}
+
+
+def fetch_dynamic_auth_fields(base, path):
+    amirequestsfor = AUTHMANAGER_REQUESTS_FOR.get(path)
+    if not amirequestsfor:
+        return None
+    url = (f"{base}/api.php?action=query&meta=authmanagerinfo"
+           f"&amirequestsfor={amirequestsfor}&amimergerequestfields=1&format=json")
+    try:
+        with urllib.request.urlopen(url, timeout=30) as resp:
+            data = json.load(resp)
+    except Exception as e:
+        print(f"WARNING: could not fetch dynamic auth fields for {path}: {e}", file=sys.stderr)
+        return None
+    return data.get("query", {}).get("authmanagerinfo", {}).get("fields", {})
+
 
 def main():
     base = sys.argv[1] if len(sys.argv) > 1 else "http://localhost:8889"
@@ -55,10 +90,16 @@ def main():
         sys.exit(1)
 
     modules = {}
+    dynamic_auth_count = 0
     for m in raw_modules:
         path = m.get("path")
         if not path:
             continue
+        if "dynamicparameters" in m:
+            fields = fetch_dynamic_auth_fields(base, path)
+            if fields:
+                m["_dynamic_auth_fields"] = fields
+                dynamic_auth_count += 1
         modules[path] = m
 
     with open(OUT_PATH, "w", encoding="utf-8") as f:
@@ -69,7 +110,8 @@ def main():
         by_group.setdefault(m.get("group", "?"), 0)
         by_group[m.get("group", "?")] += 1
     print(f"Wrote {OUT_PATH} ({len(modules)} modules: " +
-          ", ".join(f"{g}={n}" for g, n in sorted(by_group.items())) + ")")
+          ", ".join(f"{g}={n}" for g, n in sorted(by_group.items())) +
+          f"; {dynamic_auth_count} dynamic-auth-field module(s) resolved via meta=authmanagerinfo)")
 
 
 if __name__ == "__main__":

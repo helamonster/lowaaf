@@ -147,9 +147,30 @@ def field_lua(wire_name, param, dynamic_fields, indent):
     return f"{indent}{field_key(wire_name)} = {inner},{comment}"
 
 
+def dynamic_auth_param(field):
+    """Adapts one meta=authmanagerinfo field dict (dump_paraminfo.py's
+    _dynamic_auth_fields, fetched live for clientlogin/createaccount/
+    changeauthenticationdata/linkaccount - see that script's own header for
+    why these need a separate live call at all) to the shape field_lua()
+    expects from a regular paraminfo parameter. Only two conventions
+    actually differ: authmanagerinfo flags optionality via "optional"
+    (paraminfo/field_lua use "required", the inverse - so its ABSENCE here
+    means required), and its "checkbox"/"password" type names map directly
+    onto field_lua's existing "boolean"/"password" branches (both already
+    handle the static-parameter case identically)."""
+    t = field.get("type", "string")
+    if t == "checkbox":
+        t = "boolean"
+    param = {"type": t}
+    if "optional" not in field:
+        param["required"] = ""
+    if "sensitive" in field:
+        param["sensitive"] = ""
+    return param
+
+
 def emit_module_fields(mod, dynamic_fields, indent):
     prefix = mod.get("prefix") or ""
-    is_action = mod.get("group") == "action"
     lines = []
     seen = set()
     for param in sorted(mod.get("parameters", []), key=lambda p: p.get("name", "")):
@@ -160,11 +181,31 @@ def emit_module_fields(mod, dynamic_fields, indent):
             # already covers the common case; skip the template variants
             # rather than emitting a literal, never-matching "-{slot}" key.
             continue
-        wire_name = name if is_action else (prefix + name)
+        # Apply prefix unconditionally, regardless of module group. Most
+        # group="action" modules have an empty prefix (a no-op here), but
+        # confirmed live against paraminfo.json: clientlogin ("login"),
+        # login ("lg"), createaccount ("create"), changeauthenticationdata
+        # ("changeauth"), and linkaccount ("link") are action modules that
+        # DO carry a real prefix MediaWiki applies to every one of their
+        # wire parameter names (e.g. clientlogin's "returnurl"/"token" are
+        # really "loginreturnurl"/"logintoken") - a previous version of this
+        # function special-cased is_action to skip prefixing entirely on the
+        # false assumption that only query submodules use one, which left
+        # those 5 modules' generated schemas rejecting every real request as
+        # "unknown key" (confirmed live: blocked a real clientlogin login).
+        wire_name = prefix + name
         if wire_name in seen:
             continue
         seen.add(wire_name)
         lines.append(field_lua(wire_name, param, dynamic_fields, indent))
+
+    # AuthManager-injected fields (username/password/... on clientlogin etc.)
+    # are NOT prefixed - confirmed live, see dump_paraminfo.py's header.
+    for name, field in sorted(mod.get("_dynamic_auth_fields", {}).items()):
+        if name in seen:
+            continue
+        seen.add(name)
+        lines.append(field_lua(name, dynamic_auth_param(field), dynamic_fields, indent))
     return "\n".join(lines)
 
 
