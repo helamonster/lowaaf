@@ -101,6 +101,11 @@ local function raw_valid(meta)
     if opts.integer then v = math.floor(v) end
     return tostring(v)
 
+  elseif t == "number_or_string" then
+    local v = opts.min or 0
+    if opts.integer then return math.floor(v) end
+    return v
+
   elseif t == "boolean"       then return false
   elseif t == "uuid"          then return "00000000-0000-4000-8000-000000000000"
   elseif t == "email"         then return "test@test.com"
@@ -211,7 +216,7 @@ local function raw_valids(meta)
       end
     end
 
-  elseif t == "number" or t == "number_query" then
+  elseif t == "number" or t == "number_query" or t == "number_or_string" then
     -- Six-point boundary: min, min+1, max-1, max.
     -- stable_enc dedup in gen.valid_values collapses identical values
     -- (e.g. reprompt min=0 max=1: min+1==max and max-1==min).
@@ -294,6 +299,19 @@ local function raw_valids(meta)
   return results
 end
 
+-- ── Public: is_nullable ───────────────────────────────────────────────────────
+-- True when `validator` is (or resolves through) a T.nullable() wrapper -
+-- used by runner.lua's malformed-JSON-body fuzzing to skip the "JSON null
+-- instead of object" case for routes whose top-level body schema genuinely
+-- accepts an absent/null body (e.g. a C# `[FromBody] SomeDto?` signature
+-- that defaults server-side when omitted) - for those, a literal `null`
+-- body is valid input, not malformed.
+
+function gen.is_nullable(validator)
+  local meta = REG[validator]
+  return meta ~= nil and meta.type == "nullable"
+end
+
 -- ── Public: valid_value ───────────────────────────────────────────────────────
 
 function gen.valid_value(validator)
@@ -370,6 +388,21 @@ local function raw_invalids(meta)
     add(false, "boolean instead of number")
     if opts.max then
       add(opts.max + 1, "value " .. opts.max+1 .. " (max+1)")
+    end
+    if opts.min then
+      add(opts.min - 1, "value " .. opts.min-1 .. " (min-1)")
+    end
+    if opts.integer then
+      local base = opts.min or 0
+      add(base + 0.5, "float " .. base+0.5 .. " (integer required)")
+    end
+
+  elseif t == "number_or_string" then
+    add("notanumber", "non-numeric string")
+    add(false, "boolean instead of number/numeric string")
+    if opts.max then
+      add(opts.max + 1, "value " .. opts.max+1 .. " (max+1)")
+      add(tostring(opts.max + 1), "stringified value " .. opts.max+1 .. " (max+1)")
     end
     if opts.min then
       add(opts.min - 1, "value " .. opts.min-1 .. " (min-1)")

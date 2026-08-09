@@ -72,25 +72,101 @@ if not HTTP_BASE then
   app.mode = "block"
 end
 
--- Positive-test enhancement (mediawiki, online mode only): log in once as
--- the wiki's admin account so "valid variant" requests carry a real session
--- cookie, not just anonymous requests with synthetic-but-schema-valid field
--- values. This only verifies the WAF doesn't block an authenticated request
--- shape - whether MediaWiki itself then succeeds/permits the action is out
--- of scope here (see test/mw_login.lua). Never fatal: a login failure just
--- means the rest of the run proceeds anonymous, same as before.
-local MW_LOGIN_COOKIE
-if HTTP_BASE and app_name == "mediawiki" then
-  local mw_login = require "test.mw_login"
-  local mw_user = os.getenv("MW_ADMIN_USER") or "Admin"
-  local mw_pass = os.getenv("MW_ADMIN_PASS") or "WafTestPass123!"
-  local cookie, err = mw_login.login(HTTP_BASE, mw_user, mw_pass)
-  if cookie then
-    MW_LOGIN_COOKIE = cookie
-    io.write(string.format("[%s] Logged in as %s for positive tests.\n", app_name, mw_user))
-  else
-    io.write(string.format(
-      "[%s] Could not log in as %s (continuing anonymous): %s\n", app_name, mw_user, tostring(err)))
+-- Positive-test enhancement (online mode only): log in for real so "valid
+-- variant" requests carry a genuine authenticated session/token, not just
+-- anonymous requests with synthetic-but-schema-valid field values. This
+-- only verifies the WAF doesn't block an authenticated request shape -
+-- whether the app itself then succeeds/permits the action is out of scope
+-- here. Never fatal: a login failure just means the rest of the run
+-- proceeds anonymous, same as before. Each app has a completely different
+-- auth mechanism: mediawiki and jellyfin need their own login modules
+-- (test/mw_login.lua, test/jellyfin_login.lua); gitea (plain HTTP Basic)
+-- and vaultwarden (shells out to docker/vaultwarden/register.js, which
+-- already implements Bitwarden's real client-side crypto) are simple/
+-- subprocess-based enough to just inline here.
+local EXTRA_AUTH_HEADER   -- { name = "...", value = "..." } or nil
+if HTTP_BASE then
+  if app_name == "mediawiki" then
+    local mw_login = require "test.mw_login"
+    local mw_user = os.getenv("MW_ADMIN_USER") or "Admin"
+    local mw_pass = os.getenv("MW_ADMIN_PASS") or "WafTestPass123!"
+    local cookie, err = mw_login.login(HTTP_BASE, mw_user, mw_pass)
+    if cookie then
+      EXTRA_AUTH_HEADER = { name = "Cookie", value = cookie }
+      io.write(string.format("[%s] Logged in as %s for positive tests.\n", app_name, mw_user))
+    else
+      io.write(string.format(
+        "[%s] Could not log in as %s (continuing anonymous): %s\n", app_name, mw_user, tostring(err)))
+    end
+
+  elseif app_name == "gitea" then
+    -- Gitea's REST API accepts HTTP Basic directly - no subprocess, no
+    -- separate login module needed. Same admin account tools.sh's
+    -- docker-test-up already provisions (`gitea admin user create`).
+    local gt_user = os.getenv("GITEA_ADMIN_USER") or "Admin"
+    local gt_pass = os.getenv("GITEA_ADMIN_PASS") or "WafTestPass123!"
+    EXTRA_AUTH_HEADER = {
+      -- Lowercase, matching gitea.lua's own declared key (`["authorization"]
+      -- = gitea_auth_header`) exactly - base_headers/bad_headers are plain
+      -- Lua tables, so a differently-cased "Authorization" here would sit
+      -- alongside that key as a second entry instead of overwriting it,
+      -- and http_client.lua sends both as separate header lines (confirmed
+      -- live: this exact mismatch let the WAF see the still-valid value
+      -- underneath every "header authorization invalid" fuzz case, turning
+      -- ~5000 expected-deny tests into false passes).
+      name  = "authorization",
+      value = "Basic " .. ngx.encode_base64(gt_user .. ":" .. gt_pass),
+    }
+    io.write(string.format("[%s] Using HTTP Basic auth as %s for positive tests.\n", app_name, gt_user))
+
+  elseif app_name == "jellyfin" then
+    local jellyfin_login = require "test.jellyfin_login"
+    local jf_user = os.getenv("JELLYFIN_ADMIN_USER") or "wafuser"
+    local jf_pass = os.getenv("JELLYFIN_ADMIN_PASS") or "WafTestPass123!"
+    local header, err = jellyfin_login.login(HTTP_BASE, jf_user, jf_pass)
+    if header then
+      -- Lowercase - see the gitea branch above for why this matters even
+      -- though jellyfin.lua doesn't currently value-fuzz this header itself.
+      EXTRA_AUTH_HEADER = { name = "authorization", value = header }
+      io.write(string.format("[%s] Logged in as %s for positive tests.\n", app_name, jf_user))
+    else
+      io.write(string.format(
+        "[%s] Could not log in as %s (continuing anonymous): %s\n", app_name, jf_user, tostring(err)))
+    end
+
+  elseif app_name == "vaultwarden" then
+    -- Defaults MUST match docker/vaultwarden/register.js's own BW_EMAIL/
+    -- BW_PASSWORD defaults (also bw_test_live.sh's, which relies on the
+    -- same defaults) - not some other app's admin-cred convention. This
+    -- account is registered once and reused across runs (see
+    -- BW_TOLERATE_EXISTING below), so a mismatched default here doesn't
+    -- fail loudly - it silently logs in with the wrong password against an
+    -- account that already exists under register.js's password, and falls
+    -- back to anonymous testing (confirmed live: this exact mismatch was
+    -- the actual bug the first time this branch was written).
+    local vw_email = os.getenv("VW_TEST_EMAIL")    or "waftest@example.com"
+    local vw_pass  = os.getenv("VW_TEST_PASSWORD") or "WafTest1234!"
+    local register_js = "docker/vaultwarden/register.js"
+    local cmd = string.format(
+      "BW_EMAIL=%q BW_PASSWORD=%q BW_SERVER=%q BW_TOLERATE_EXISTING=1 node %q 2>/tmp/waf_vw_login_err",
+      vw_email, vw_pass, HTTP_BASE, register_js)
+    local p = io.popen(cmd)
+    local out = p and p:read("*a") or ""
+    local closed = p and p:close()
+    local token = out:match("(%S+)%s*$")   -- last non-blank line, per register.js's contract
+    if closed and token and #token > 0 then
+      -- Lowercase - see the gitea branch above; vaultwarden.lua declares
+      -- this same key (`["authorization"] = vw_auth_header`) lowercase too.
+      EXTRA_AUTH_HEADER = { name = "authorization", value = "Bearer " .. token }
+      io.write(string.format("[%s] Logged in as %s for positive tests.\n", app_name, vw_email))
+    else
+      local errf = io.open("/tmp/waf_vw_login_err", "r")
+      local errtext = errf and errf:read("*a") or ""
+      if errf then errf:close() end
+      io.write(string.format(
+        "[%s] Could not log in as %s (continuing anonymous): %s\n", app_name, vw_email, errtext))
+    end
+    os.remove("/tmp/waf_vw_login_err")
   end
   io.flush()
 end
@@ -332,8 +408,22 @@ local function test_route(route)
                       "AppleWebKit/537.36 (KHTML, like Gecko) " ..
                       "Chrome/120.0 Safari/537.36 Bitwarden/2026.5.0",
   }
-  if MW_LOGIN_COOKIE then
-    base_headers["Cookie"] = MW_LOGIN_COOKIE
+  if EXTRA_AUTH_HEADER then
+    -- A route can override the app-default validator for this exact header
+    -- (e.g. vaultwarden's "public org import" requires a distinct org-API-key
+    -- bearer JWT instead of the standard user-login one) - confirmed live:
+    -- attaching the logged-in user's token there anyway doesn't test "a
+    -- logged-in user hits this route", it just sends the wrong credential
+    -- type and gets correctly denied, which isn't a false positive to fix,
+    -- it's the WAF working - so skip the global header for routes with
+    -- their own override and let them go anonymous, matching pre-login
+    -- behavior. Section 1c below still separately exercises the route's own
+    -- validator with its own synthetic-valid values, so that route's real
+    -- auth requirement remains covered.
+    local overridden = route.headers and route.headers[EXTRA_AUTH_HEADER.name]
+    if not overridden then
+      base_headers[EXTRA_AUTH_HEADER.name] = EXTRA_AUTH_HEADER.value
+    end
   end
   local ct = route.content_types or route.content_type
   if ct then
@@ -350,6 +440,15 @@ local function test_route(route)
   local form_schema = route.form_schemas and route.form_schemas[1] or route.form
   local query_schema = route.query_schemas and route.query_schemas[1] or route.query
 
+  -- Routes can declare a query schema alongside a body schema (e.g. cipher
+  -- import-organization's required ?organizationId=). Compute valid_query up
+  -- front so every branch below (and the variant/header tests further down,
+  -- which already expect valid_query to be populated) can attach it.
+  if query_schema then
+    local qv = gen.valid_value(query_schema)
+    if qv ~= nil then valid_query = qv end
+  end
+
   if json_schema then
     local v = gen.valid_value(json_schema)
     if v == nil then
@@ -359,12 +458,14 @@ local function test_route(route)
       if not valid_body then
         record(name, "valid request", "SKIP", "body not JSON-encodable")
       else
-        local allowed = run_request({
+        local req = {
           method  = method,
           uri     = uri,
           headers = base_headers,
           body    = valid_body,
-        })
+        }
+        if valid_query then req.query = valid_query end
+        local allowed = run_request(req)
         if allowed then
           record(name, "valid " .. method .. " " .. uri, "PASS")
         else
@@ -381,7 +482,9 @@ local function test_route(route)
         if av ~= nil then
           local ab = encode_body(av)
           if ab then
-            local ok = run_request({ method=method, uri=uri, headers=base_headers, body=ab })
+            local req2 = { method=method, uri=uri, headers=base_headers, body=ab }
+            if valid_query then req2.query = valid_query end
+            local ok = run_request(req2)
             if ok then
               record(name, "valid body (schema " .. i .. ")", "PASS")
             else
@@ -398,12 +501,14 @@ local function test_route(route)
       record(name, "valid request", "SKIP", "cannot auto-gen form body")
     else
       valid_form = v
-      local allowed = run_request({
+      local req = {
         method  = method,
         uri     = uri,
         headers = base_headers,
         form    = valid_form,
-      })
+      }
+      if valid_query then req.query = valid_query end
+      local allowed = run_request(req)
       if allowed then
         record(name, "valid " .. method .. " " .. uri, "PASS")
       else
@@ -447,11 +552,8 @@ local function test_route(route)
       end
     end
   else
-    -- No body schema: valid request has no body; include query params if declared.
-    if query_schema then
-      local qv = gen.valid_value(query_schema)
-      if qv ~= nil then valid_query = qv end
-    end
+    -- No body schema: valid request has no body; valid_query (computed above,
+    -- if the route declares a query schema) is included below.
     if query_too_big_for_http(valid_query) then
       record(name, "valid " .. method .. " " .. uri, "SKIP",
              "full valid query fixture exceeds a realistic URI length over real HTTP")
@@ -485,12 +587,14 @@ local function test_route(route)
         local pair     = variants[vi]
         local body_str = encode_body(pair.value)
         if body_str then
-          local allowed = run_request({
+          local req = {
             method  = method,
             uri     = uri,
             headers = base_headers,
             body    = body_str,
-          })
+          }
+          if valid_query then req.query = valid_query end
+          local allowed = run_request(req)
           local label = "valid variant: " .. pair.label .. sfx
           if allowed then
             record(name, label, "PASS")
@@ -506,12 +610,14 @@ local function test_route(route)
     for vi = 2, #variants do
       local pair = variants[vi]
       if type(pair.value) == "table" then
-        local allowed = run_request({
+        local req = {
           method  = method,
           uri     = uri,
           headers = base_headers,
           form    = pair.value,
-        })
+        }
+        if valid_query then req.query = valid_query end
+        local allowed = run_request(req)
         local label = "valid variant: " .. pair.label
         if allowed then
           record(name, label, "PASS")
@@ -750,18 +856,29 @@ local function test_route(route)
       { body = "",                label = "empty body" },
     }
     for _, case in ipairs(bad_bodies) do
-      local denied = not run_request({
-        method  = method,
-        uri     = uri,
-        headers = base_headers,
-        body    = case.body,
-      })
-      if denied then
-        record(name, "malformed json: " .. case.label, "PASS")
-      else
-        record(name, "malformed json: " .. case.label, "FAIL",
-               "expected deny, got allow")
+      -- A genuinely nullable top-level body schema (T.nullable(T.object(...)),
+      -- matching a real `[FromBody] SomeDto?` signature that defaults
+      -- server-side when omitted) legitimately accepts a literal JSON
+      -- `null` body - that's valid input there, not malformed.
+      if case.body == "null" and gen.is_nullable(json_schema) then
+        record(name, "malformed json: " .. case.label, "SKIP", "schema is nullable - null is valid input")
+        goto continue_bad_body
       end
+      do
+        local denied = not run_request({
+          method  = method,
+          uri     = uri,
+          headers = base_headers,
+          body    = case.body,
+        })
+        if denied then
+          record(name, "malformed json: " .. case.label, "PASS")
+        else
+          record(name, "malformed json: " .. case.label, "FAIL",
+                 "expected deny, got allow")
+        end
+      end
+      ::continue_bad_body::
     end
   end
 
