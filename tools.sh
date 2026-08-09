@@ -1,17 +1,25 @@
 #!/usr/bin/env bash
 
 usage() {
-	cat <<EOF
+	cat <<'EOF'
 Usage: bash tools.sh <subcommand> [args]
 
 Subcommands:
-  offline-test [app]     Run Lua WAF unit tests via resty (all apps, or one by name)
+  offline-test [app|all] Run Lua WAF unit tests via resty. No app given, or 'all':
+                         every app in turn, plus a summary table. One app name: just
+                         that app, full detail, no table.
 
-  online-test-full [app] Live HTTP replay of the offline test suite against the Docker
+  online-test-full [app|all]
+                         Live HTTP replay of the offline test suite against the Docker
                          stack.  WAF is temporarily forced to block mode for the run.
-                         Default app: vaultwarden (port 8888). mediawiki (port 8889) has
-                         a real MediaWiki (PHP-FPM + SQLite) backend too - see
-                         docker/mediawiki/. Docker stack must be running.
+                         No app given, or 'all': runs vaultwarden (port 8443, HTTPS -
+                         must match its DOMAIN config, see tools.sh), mediawiki (port
+                         8889), gitea (port 8890), and jellyfin (port 8892) in turn -
+                         the only apps with a real backend wired into the stack (see
+                         docker/mediawiki/, docker/gitea/, docker/jellyfin/) - plus a
+                         summary table. Any other app name
+                         silently falls back to the vaultwarden backend (no real
+                         backend wired up for it yet). Docker stack must be running.
   online-test-cli [--no-reset]
                          Run bw CLI live integration tests against the Docker stack
                          (--no-reset skips VW volume wipe and reuses existing account)
@@ -173,6 +181,81 @@ _follow_service_log() {
 	done
 }
 
+# Renders the global $SUMMARY_LINES array - one "[app] N routes — X passed
+# Y failed Z skipped (T total cases)" line per app, as printed by
+# test/runner.lua - as a column-aligned table with thousands-separated
+# numbers (printf's glibc "'" flag) plus a TOTAL row. Shared by
+# offline-test's and online-test-full's all-apps modes so the two don't
+# duplicate this formatting.
+_print_summary_table() {
+	local title="$1"
+	local G=$'\033[32m' R=$'\033[31m' RS=$'\033[0m'   # matches test/runner.lua's palette
+	local -a NAME=() ROUTES=() PASSV=() FAILV=() SKIPV=() CASESV=() STATUSV=()
+	local TOTAL_ROUTES=0 TOTAL_PASS=0 TOTAL_FAIL=0 TOTAL_SKIP=0 TOTAL_CASES=0
+	local line n r p f s c
+
+	for line in "${SUMMARY_LINES[@]}"; do
+		[ -z "$line" ] && continue
+		n="$(grep -oP '(?<=^\[)[^]]+'                <<< "$line")"
+		r="$(grep -oP '(?<=\] )\d+(?= routes)'       <<< "$line")"
+		p="$(grep -oP '\d+(?= passed)'               <<< "$line")"
+		f="$(grep -oP '\d+(?= failed)'                <<< "$line")"
+		s="$(grep -oP '\d+(?= skipped)'              <<< "$line")"
+		c="$(grep -oP '(?<=\()\d+(?= total cases)'   <<< "$line")"
+		TOTAL_ROUTES=$((TOTAL_ROUTES + ${r:-0}))
+		TOTAL_PASS=$((TOTAL_PASS + ${p:-0}))
+		TOTAL_FAIL=$((TOTAL_FAIL + ${f:-0}))
+		TOTAL_SKIP=$((TOTAL_SKIP + ${s:-0}))
+		TOTAL_CASES=$((TOTAL_CASES + ${c:-0}))
+		NAME+=("$n")
+		ROUTES+=("$(printf "%'d" "${r:-0}")")
+		PASSV+=("$(printf "%'d" "${p:-0}")")
+		FAILV+=("$(printf "%'d" "${f:-0}")")
+		SKIPV+=("$(printf "%'d" "${s:-0}")")
+		CASESV+=("$(printf "%'d" "${c:-0}")")
+		if [ "${f:-0}" -gt 0 ]; then STATUSV+=("${R}FAIL${RS}"); else STATUSV+=("${G}ok${RS}"); fi
+	done
+
+	# Column widths sized off the header + every data row (including TOTAL),
+	# so the table stays aligned regardless of app-name length or how many
+	# digits the numbers grow to.
+	local w_name=4 w_routes=6 w_pass=6 w_fail=6 w_skip=7 w_cases=5 i
+	for i in "${!NAME[@]}"; do
+		(( ${#NAME[i]}   > w_name   )) && w_name=${#NAME[i]}
+		(( ${#ROUTES[i]} > w_routes )) && w_routes=${#ROUTES[i]}
+		(( ${#PASSV[i]}  > w_pass   )) && w_pass=${#PASSV[i]}
+		(( ${#FAILV[i]}  > w_fail   )) && w_fail=${#FAILV[i]}
+		(( ${#SKIPV[i]}  > w_skip   )) && w_skip=${#SKIPV[i]}
+		(( ${#CASESV[i]} > w_cases  )) && w_cases=${#CASESV[i]}
+	done
+	local TOTAL_ROUTES_F TOTAL_PASS_F TOTAL_FAIL_F TOTAL_SKIP_F TOTAL_CASES_F
+	TOTAL_ROUTES_F="$(printf "%'d" "$TOTAL_ROUTES")"; (( ${#TOTAL_ROUTES_F} > w_routes )) && w_routes=${#TOTAL_ROUTES_F}
+	TOTAL_PASS_F="$(printf "%'d" "$TOTAL_PASS")";     (( ${#TOTAL_PASS_F}   > w_pass   )) && w_pass=${#TOTAL_PASS_F}
+	TOTAL_FAIL_F="$(printf "%'d" "$TOTAL_FAIL")";     (( ${#TOTAL_FAIL_F}   > w_fail   )) && w_fail=${#TOTAL_FAIL_F}
+	TOTAL_SKIP_F="$(printf "%'d" "$TOTAL_SKIP")";     (( ${#TOTAL_SKIP_F}   > w_skip   )) && w_skip=${#TOTAL_SKIP_F}
+	TOTAL_CASES_F="$(printf "%'d" "$TOTAL_CASES")";   (( ${#TOTAL_CASES_F}  > w_cases  )) && w_cases=${#TOTAL_CASES_F}
+
+	# Column order: APP, ROUTES, CASES, PASSED, FAILED, SKIPPED, STATUS -
+	# CASES sits right after ROUTES since it's a property of the route set
+	# (how many cases they expanded to), before the pass/fail/skip breakdown.
+	row() {
+		printf "  %-*s  %*s  %*s  %*s  %*s  %*s  %s\n" \
+			"$w_name" "$1" "$w_routes" "$2" "$w_cases" "$3" "$w_pass" "$4" "$w_fail" "$5" "$w_skip" "$6" "$7"
+	}
+	rule() { printf '  %s\n' "$(printf -- '-%.0s' $(seq 1 $((w_name+w_routes+w_pass+w_fail+w_skip+w_cases+18))))"; }
+
+	echo ""
+	echo "── $title summary (all apps) ──"
+	row "APP" "ROUTES" "CASES" "PASSED" "FAILED" "SKIPPED" "STATUS"
+	rule
+	for i in "${!NAME[@]}"; do
+		row "${NAME[i]}" "${ROUTES[i]}" "${CASESV[i]}" "${PASSV[i]}" "${FAILV[i]}" "${SKIPV[i]}" "${STATUSV[i]}"
+	done
+	rule
+	local TOTAL_STATUS="${G}ok${RS}"; [ "$TOTAL_FAIL" -gt 0 ] && TOTAL_STATUS="${R}FAIL${RS}"
+	row "TOTAL" "$TOTAL_ROUTES_F" "$TOTAL_CASES_F" "$TOTAL_PASS_F" "$TOTAL_FAIL_F" "$TOTAL_SKIP_F" "$TOTAL_STATUS"
+}
+
 case "$1" in
 
 	"diff")
@@ -191,18 +274,34 @@ case "$1" in
 	"offline-test")
 		shift
 		APP="$1"
-		if [ -z "$APP" ] ; then
+		if [ -z "$APP" ] || [ "$APP" = "all" ] ; then
+
+			# Run every app, but tee each run's output through a scratch file
+			# so the per-app "[app] N routes — ..." summary line (printed by
+			# test/runner.lua) can be pulled back out afterward and rolled up
+			# into a single cross-app table - without losing the live,
+			# full-detail output each run already prints as it goes.
+			OVERALL_STATUS=0
+			SUMMARY_LINES=()
 
 			for APP in $(ls -1  rootfs/etc/openresty/waf/apps/*.lua | grep -oP '[^/]+(?=\.lua$)') ; do
 
-				resty -I rootfs/etc/openresty test/runner.lua "$APP" 
+				OUT_FILE="$(mktemp)"
+				resty -I rootfs/etc/openresty test/runner.lua "$APP" 2>&1 | tee "$OUT_FILE"
+				[ "${PIPESTATUS[0]}" -ne 0 ] && OVERALL_STATUS=1
+				SUMMARY_LINES+=("$(grep -E '^\[[^]]+\] [0-9]+ routes' "$OUT_FILE")")
+				rm -f "$OUT_FILE"
 
 			done
+
+			_print_summary_table "offline-test"
+
+			exit "$OVERALL_STATUS"
 
 		else
 
 			if [ -e "rootfs/etc/openresty/waf/apps/$APP.lua" ] ; then
-				resty -I rootfs/etc/openresty test/runner.lua "$APP" 
+				resty -I rootfs/etc/openresty test/runner.lua "$APP"
 			else
 				echo "nope: '$APP'"
 			fi
@@ -239,13 +338,16 @@ case "$1" in
 				-days 3650 -subj "/CN=localhost" 2>/dev/null
 		fi
 
-		# gitea lives in its own compose file (docker/gitea/docker-compose.yml)
+		# gitea and jellyfin each live in their own compose file
+		# (docker/gitea/docker-compose.yml, docker/jellyfin/docker-compose.yml)
 		# rather than being folded into the main one, joined to the main
-		# stack's "waf-test" network as external - brought up first so the
+		# stack's "waf-test" network as external - brought up first so each
 		# container (and its network attachment/DNS name) exists before
-		# openresty starts, since a plain `proxy_pass http://gitea:3000`
-		# resolves the hostname at config-load time, not per-request.
+		# openresty starts, since a plain `proxy_pass http://gitea:3000` (or
+		# http://jellyfin:8096) resolves the hostname at config-load time,
+		# not per-request.
 		docker compose -f docker/gitea/docker-compose.yml up -d
+		docker compose -f docker/jellyfin/docker-compose.yml up -d
 		docker compose -f docker/docker-compose.yml up -d
 
 		# Unattended boot (GITEA__security__INSTALL_LOCK=true) skips the web
@@ -273,12 +375,14 @@ case "$1" in
 		echo "Vaultwarden web vault: http://localhost:8888"
 		echo "MediaWiki:             http://localhost:8889  (bash tools.sh docker-test-mw-creds for login)"
 		echo "Gitea:                 http://localhost:8890  (user: $GITEA_ADMIN_USER / pass: $GITEA_ADMIN_PASS)"
+		echo "Jellyfin:               http://localhost:8892  (unconfigured - first-run wizard not run; that's fine for WAF testing)"
 		echo "WAF logs: ./tools.sh docker-test-logs [service]"
 	;;
 
 	"docker-test-down")
 		docker compose -f docker/docker-compose.yml down
 		docker compose -f docker/gitea/docker-compose.yml down
+		docker compose -f docker/jellyfin/docker-compose.yml down
 	;;
 
 	"docker-test-reload")
@@ -366,22 +470,43 @@ case "$1" in
 
 	"online-test-full")
 		shift
-		APP="${1:-vaultwarden}"
-		# Port 8888: vaultwarden, plain-HTTP WAF listener with a real backend
-		#   (no TLS per-request, ~50s for full suite). Override with
-		#   WAF_HTTP_BASE=https://localhost:8443 to use the HTTPS listener instead.
+		APP="$1"
+		# Port 8443: vaultwarden, the HTTPS WAF listener - MUST match the
+		#   vaultwarden container's own DOMAIN (docker/docker-compose.yml,
+		#   currently "https://localhost:8443") exactly, scheme+host+port.
+		#   vaultwarden.lua's vw_iss validates a Bearer JWT's `iss` claim
+		#   against the CURRENT request's own Host header - and every token
+		#   Vaultwarden issues carries `iss` derived from its DOMAIN config,
+		#   never from whatever port a client happened to log in through.
+		#   Confirmed live: testing real logged-in traffic through the
+		#   plain-HTTP :8888 listener below made every authenticated request
+		#   fail iss validation (denied), even though the token itself was
+		#   perfectly valid - :8888 exists purely for fast anonymous bulk
+		#   testing (no per-request TLS handshake) and must stay that way for
+		#   any app name NOT explicitly listed here (the `*` case below), but
+		#   for vaultwarden specifically, correctness requires :8443.
 		# Port 8889: mediawiki, with a real MediaWiki (PHP-FPM + SQLite) backend
 		#   too - see docker/mediawiki/.
 		# Port 8890: gitea, with a real Gitea backend - see docker/gitea/
 		#   (its own compose file, joined to this stack's network as external).
 		#   Phase 1 only models /api/v1/*, so non-API paths will show as denies -
 		#   expected until later phases widen coverage.
-		case "$APP" in
-			mediawiki) DEFAULT_BASE="http://localhost:8889" ;;
-			gitea)     DEFAULT_BASE="http://localhost:8890" ;;
-			*)         DEFAULT_BASE="http://localhost:8888" ;;
-		esac
-		BASE="${WAF_HTTP_BASE:-$DEFAULT_BASE}"
+		# Port 8892: jellyfin, with a real Jellyfin backend - see
+		#   docker/jellyfin/ (its own compose file, same external-network
+		#   pattern as gitea). Any app name not explicitly listed here falls
+		#   through to the plain-HTTP :8888 vaultwarden listener, which
+		#   silently tests the wrong app against the wrong backend - add a
+		#   case here whenever a new app gets a real backend wired into the
+		#   stack.
+		_default_base_for_app() {
+			case "$1" in
+				vaultwarden) echo "https://localhost:8443" ;;
+				mediawiki)   echo "http://localhost:8889" ;;
+				gitea)       echo "http://localhost:8890" ;;
+				jellyfin)    echo "http://localhost:8892" ;;
+				*)           echo "http://localhost:8888" ;;
+			esac
+		}
 		COMPOSE="docker compose -f docker/docker-compose.yml"
 
 		# Verify the Docker stack is up before starting.
@@ -391,15 +516,54 @@ case "$1" in
 			exit 1
 		fi
 
-		# Start each run with a clean log slate.
-		_clear_service_log openresty
-		_clear_service_log "$APP"
+		if [ -z "$APP" ] || [ "$APP" = "all" ] ; then
 
-		# Force block mode in the container for the duration of the test.
-		$COMPOSE exec -T openresty sh -c 'touch /tmp/waf-block-mode'
-		trap '$COMPOSE exec -T openresty sh -c "rm -f /tmp/waf-block-mode"' EXIT
+			# Loop-all mode: only the apps with a real backend wired into the
+			# stack above - looping over every apps/*.lua file the way
+			# offline-test does would silently point an unlisted app at
+			# vaultwarden's backend and report meaningless results for it.
+			# WAF_HTTP_BASE is deliberately NOT honored here (unlike the
+			# single-app path below) - one override can't sensibly apply to
+			# four different apps' backends at once.
+			OVERALL_STATUS=0
+			SUMMARY_LINES=()
 
-		WAF_HTTP_BASE="$BASE" resty -I rootfs/etc/openresty test/runner.lua "$APP"
+			$COMPOSE exec -T openresty sh -c 'touch /tmp/waf-block-mode'
+			trap '$COMPOSE exec -T openresty sh -c "rm -f /tmp/waf-block-mode"' EXIT
+
+			for APP in vaultwarden mediawiki gitea jellyfin; do
+
+				BASE="$(_default_base_for_app "$APP")"
+				_clear_service_log openresty
+				_clear_service_log "$APP"
+
+				OUT_FILE="$(mktemp)"
+				WAF_HTTP_BASE="$BASE" resty -I rootfs/etc/openresty test/runner.lua "$APP" 2>&1 | tee "$OUT_FILE"
+				[ "${PIPESTATUS[0]}" -ne 0 ] && OVERALL_STATUS=1
+				SUMMARY_LINES+=("$(grep -E '^\[[^]]+\] [0-9]+ routes' "$OUT_FILE")")
+				rm -f "$OUT_FILE"
+
+			done
+
+			_print_summary_table "online-test-full"
+
+			exit "$OVERALL_STATUS"
+
+		else
+
+			BASE="${WAF_HTTP_BASE:-$(_default_base_for_app "$APP")}"
+
+			# Start with a clean log slate.
+			_clear_service_log openresty
+			_clear_service_log "$APP"
+
+			# Force block mode in the container for the duration of the test.
+			$COMPOSE exec -T openresty sh -c 'touch /tmp/waf-block-mode'
+			trap '$COMPOSE exec -T openresty sh -c "rm -f /tmp/waf-block-mode"' EXIT
+
+			WAF_HTTP_BASE="$BASE" resty -I rootfs/etc/openresty test/runner.lua "$APP"
+
+		fi
 	;;
 
 	"online-test-cli")
