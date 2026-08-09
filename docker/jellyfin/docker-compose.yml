@@ -1,0 +1,39 @@
+services:
+  jellyfin:
+    image: jellyfin/jellyfin:10.11.11
+    container_name: jellyfin
+    restart: unless-stopped
+    environment:
+      # Matches the WAF-fronted port (:8892, see docker/nginx.conf) so
+      # autodiscovery/redirect URLs come out right when accessed through the
+      # WAF the way online-test-full does - mirrors ROOT_URL for gitea and
+      # MW_SERVER for mediawiki.
+      - JELLYFIN_PublishedServerUrl=${JELLYFIN_PUBLISHED_URL:-http://localhost:8892}
+    volumes:
+      # Named volumes rather than gitea's bind-mount+chown approach: the
+      # official image has no PUID/PGID env vars (unlike gitea's rootless
+      # image), so the exact internal UID isn't something to guess at - a
+      # Docker-managed volume sidesteps host-side permission questions
+      # entirely. This is throwaway WAF-test state, not real media/library
+      # data, so there's no need for host-visible files here.
+      - jellyfin-config:/config
+      - jellyfin-cache:/cache
+    # No host port published deliberately: openresty reaches this container
+    # over the shared "waf-test" network by name (http://jellyfin:8096), and
+    # this repo's whole reason for existing is that real Jellyfin deployments
+    # commonly run on :8096 too - publishing the same port to the host would
+    # risk colliding with an actual production instance on the same machine.
+    networks:
+      - waf-test
+
+networks:
+  # The main WAF test stack's network (docker/docker-compose.yml), joined
+  # as external rather than duplicated so openresty can proxy_pass to this
+  # container by name - same pattern as docker/gitea/docker-compose.yml.
+  waf-test:
+    name: docker_waf-test
+    external: true
+
+volumes:
+  jellyfin-config:
+  jellyfin-cache:
