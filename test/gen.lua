@@ -291,6 +291,42 @@ local function raw_valids(meta)
       add(hint.value, hint.label)
     end
 
+  elseif t == "array" then
+    -- Four-point length boundary: min, min+1, max-1, max - same shape as the
+    -- string/number cases above, but counting elements instead of chars/value.
+    -- Needs a concrete valid inner element to fill each array with; when the
+    -- inner type can't produce one (e.g. an unreversable match-pattern
+    -- string), fall back to the single base array raw_valid() already knows
+    -- how to build (possibly nil, e.g. opts.min>0 with an unreversable inner -
+    -- valid_values' own verification step is the final gate either way).
+    local inner_meta = meta.inner and REG[meta.inner]
+    local elem = inner_meta and raw_valid(inner_meta)
+    if elem == nil then
+      local v = raw_valid(meta)
+      if v ~= nil then add(v, "base") end
+    else
+      local min = opts.min or 0
+      local function mk(n)
+        local arr = {}
+        for i = 1, n do arr[i] = elem end
+        return arr
+      end
+      add(mk(min),     "length " .. min       .. " (min)")
+      add(mk(min + 1), "length " .. (min + 1) .. " (min+1)")
+      if opts.max then
+        add(mk(opts.max - 1), "length " .. (opts.max - 1) .. " (max-1)")
+        add(mk(opts.max),     "length " .. opts.max       .. " (max)")
+      end
+    end
+
+  elseif t == "dict" then
+    -- T.dict has no length bound to sweep (no opts at all) - the only
+    -- meaningful valid variants are "empty" and "one populated key".
+    add({}, "empty dict")
+    local inner_meta = meta.inner and REG[meta.inner]
+    local v = inner_meta and raw_valid(inner_meta)
+    if v ~= nil then add({ testkey = v }, "one entry") end
+
   else
     local v = raw_valid(meta)
     if v ~= nil then add(v, "base") end

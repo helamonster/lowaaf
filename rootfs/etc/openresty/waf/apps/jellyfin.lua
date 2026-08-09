@@ -53,6 +53,310 @@ local function jf_instantmix_query()
   }
 end
 
+-- ItemsController.GetItems query shape (~90 [FromQuery] params) - shared by
+-- "items" (GET /Items, ?userId=) and the [Obsolete] "users items" legacy
+-- alias (GET /Users/{userId}/Items, userId in path instead). All params are
+-- optional; comma/pipe-delimited multi-value fields (locationTypes, fields,
+-- includeItemTypes, genres, ids, ...) are kept as bounded plain strings, not
+-- per-token-enum-validated, matching this file's existing convention for
+-- every other comma/pipe-delimited query field (see jf_instantmix_query,
+-- "search hints", "items thememedia", etc.) - ASP.NET's model binders
+-- reject unknown tokens server-side; the WAF's job here is bounding length/
+-- charset, not re-implementing the enum.
+-- include_user_id: false for the path-segment-userId legacy alias, so
+-- userId isn't double-accepted as a query key on that route too.
+local function jf_get_items_query(include_user_id)
+  local q = {
+    maxOfficialRating       = T.nullable(T.string({ max = 32, not_match = "[\\x00-\\x1f]" })),
+    hasThemeSong            = T.nullable(T.bool_query()),
+    hasThemeVideo           = T.nullable(T.bool_query()),
+    hasSubtitles             = T.nullable(T.bool_query()),
+    hasSpecialFeature       = T.nullable(T.bool_query()),
+    hasTrailer              = T.nullable(T.bool_query()),
+    adjacentTo              = T.nullable(jf_id()),
+    indexNumber             = T.nullable(T.number_query({ integer = true })),
+    parentIndexNumber       = T.nullable(T.number_query({ integer = true })),
+    hasParentalRating       = T.nullable(T.bool_query()),
+    isHd                    = T.nullable(T.bool_query()),
+    is4K                    = T.nullable(T.bool_query()),
+    locationTypes           = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+    excludeLocationTypes    = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+    isMissing               = T.nullable(T.bool_query()),
+    isUnaired               = T.nullable(T.bool_query()),
+    minCommunityRating      = T.nullable(T.number_query({ min = 0, max = 10 })),
+    minCriticRating         = T.nullable(T.number_query({ min = 0, max = 100 })),
+    minPremiereDate         = T.nullable(T.string({ max = 64, not_match = "[\\x00-\\x1f]" })),
+    minDateLastSaved        = T.nullable(T.string({ max = 64, not_match = "[\\x00-\\x1f]" })),
+    minDateLastSavedForUser = T.nullable(T.string({ max = 64, not_match = "[\\x00-\\x1f]" })),
+    maxPremiereDate         = T.nullable(T.string({ max = 64, not_match = "[\\x00-\\x1f]" })),
+    hasOverview             = T.nullable(T.bool_query()),
+    hasImdbId               = T.nullable(T.bool_query()),
+    hasTmdbId               = T.nullable(T.bool_query()),
+    hasTvdbId               = T.nullable(T.bool_query()),
+    isMovie                 = T.nullable(T.bool_query()),
+    isSeries                = T.nullable(T.bool_query()),
+    isNews                  = T.nullable(T.bool_query()),
+    isKids                  = T.nullable(T.bool_query()),
+    isSports                = T.nullable(T.bool_query()),
+    excludeItemIds          = T.nullable(T.string({ max = 65536, not_match = "[\\x00-\\x1f]" })),
+    startIndex              = T.nullable(T.number_query({ integer = true, min = 0 })),
+    limit                   = T.nullable(T.number_query({ integer = true, min = 0 })),
+    recursive               = T.nullable(T.bool_query()),
+    searchTerm              = T.nullable(T.string({ max = 512, not_match = "[\\x00-\\x1f]" })),
+    sortOrder               = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+    parentId                = T.nullable(jf_id()),
+    fields                  = T.nullable(T.string({ max = 2048, not_match = "[\\x00-\\x1f]" })),
+    excludeItemTypes        = T.nullable(T.string({ max = 1024, not_match = "[\\x00-\\x1f]" })),
+    includeItemTypes        = T.nullable(T.string({ max = 1024, not_match = "[\\x00-\\x1f]" })),
+    filters                 = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+    isFavorite              = T.nullable(T.bool_query()),
+    mediaTypes              = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+    imageTypes              = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+    sortBy                  = T.nullable(T.string({ max = 512, not_match = "[\\x00-\\x1f]" })),
+    isPlayed                = T.nullable(T.bool_query()),
+    genres                  = T.nullable(T.string({ max = 4096, not_match = "[\\x00-\\x1f]" })),
+    officialRatings         = T.nullable(T.string({ max = 1024, not_match = "[\\x00-\\x1f]" })),
+    tags                    = T.nullable(T.string({ max = 4096, not_match = "[\\x00-\\x1f]" })),
+    years                   = T.nullable(T.string({ max = 1024, not_match = "[\\x00-\\x1f]" })),
+    enableUserData          = T.nullable(T.bool_query()),
+    imageTypeLimit          = T.nullable(T.number_query({ integer = true, min = 0 })),
+    enableImageTypes        = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+    person                  = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+    personIds               = T.nullable(T.string({ max = 8192, not_match = "[\\x00-\\x1f]" })),
+    personTypes             = T.nullable(T.string({ max = 512, not_match = "[\\x00-\\x1f]" })),
+    studios                 = T.nullable(T.string({ max = 4096, not_match = "[\\x00-\\x1f]" })),
+    artists                 = T.nullable(T.string({ max = 4096, not_match = "[\\x00-\\x1f]" })),
+    excludeArtistIds        = T.nullable(T.string({ max = 8192, not_match = "[\\x00-\\x1f]" })),
+    artistIds               = T.nullable(T.string({ max = 8192, not_match = "[\\x00-\\x1f]" })),
+    albumArtistIds          = T.nullable(T.string({ max = 8192, not_match = "[\\x00-\\x1f]" })),
+    contributingArtistIds   = T.nullable(T.string({ max = 8192, not_match = "[\\x00-\\x1f]" })),
+    albums                  = T.nullable(T.string({ max = 4096, not_match = "[\\x00-\\x1f]" })),
+    albumIds                = T.nullable(T.string({ max = 8192, not_match = "[\\x00-\\x1f]" })),
+    ids                     = T.nullable(T.string({ max = 65536, not_match = "[\\x00-\\x1f]" })),
+    videoTypes              = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+    minOfficialRating       = T.nullable(T.string({ max = 32, not_match = "[\\x00-\\x1f]" })),
+    isLocked                = T.nullable(T.bool_query()),
+    isPlaceHolder           = T.nullable(T.bool_query()),
+    hasOfficialRating       = T.nullable(T.bool_query()),
+    collapseBoxSetItems     = T.nullable(T.bool_query()),
+    minWidth                = T.nullable(T.number_query({ integer = true, min = 0, max = 100000 })),
+    minHeight               = T.nullable(T.number_query({ integer = true, min = 0, max = 100000 })),
+    maxWidth                = T.nullable(T.number_query({ integer = true, min = 0, max = 100000 })),
+    maxHeight               = T.nullable(T.number_query({ integer = true, min = 0, max = 100000 })),
+    is3D                    = T.nullable(T.bool_query()),
+    seriesStatus            = T.nullable(T.string({ max = 128, not_match = "[\\x00-\\x1f]" })),
+    nameStartsWithOrGreater = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+    nameStartsWith          = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+    nameLessThan            = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+    studioIds               = T.nullable(T.string({ max = 8192, not_match = "[\\x00-\\x1f]" })),
+    genreIds                = T.nullable(T.string({ max = 8192, not_match = "[\\x00-\\x1f]" })),
+    enableTotalRecordCount  = T.nullable(T.bool_query()),
+    enableImages            = T.nullable(T.bool_query()),
+  }
+  if include_user_id then
+    q.userId = T.nullable(jf_id())
+  end
+  return q
+end
+
+-- MediaInfoController's [ParameterObsolete] query params, shared by GET and
+-- POST /Items/{itemId}/PlaybackInfo (see "items playbackinfo" below).
+local function jf_playbackinfo_query()
+  return T.object({
+    userId               = T.nullable(jf_id()),
+    maxStreamingBitrate  = T.nullable(T.number_query({ integer = true, min = 0 })),
+    startTimeTicks       = T.nullable(T.number_query({ integer = true, min = 0 })),
+    audioStreamIndex     = T.nullable(T.number_query({ integer = true })),
+    subtitleStreamIndex  = T.nullable(T.number_query({ integer = true })),
+    maxAudioChannels     = T.nullable(T.number_query({ integer = true, min = 0 })),
+    mediaSourceId        = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+    liveStreamId         = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+    autoOpenLiveStream   = T.nullable(T.bool_query()),
+    enableDirectPlay     = T.nullable(T.bool_query()),
+    enableDirectStream   = T.nullable(T.bool_query()),
+    enableTranscoding    = T.nullable(T.bool_query()),
+    allowVideoStreamCopy = T.nullable(T.bool_query()),
+    allowAudioStreamCopy = T.nullable(T.bool_query()),
+  })
+end
+
+-- PlaybackInfoDto (Jellyfin.Api.Models.MediaInfoDtos) - GetPostedPlaybackInfo's
+-- body. Every field typed except .DeviceProfile (MediaBrowser.Model.Dlna.
+-- DeviceProfile - one of the largest DTOs in the whole API: DirectPlay/
+-- Transcoding/Container/Codec/ResponseProfiles, each an array of further
+-- nested condition objects, sent in full by every real client on every
+-- playback start) - T.any() there so the key itself is still declared and
+-- every other field stays strictly typed, rather than this file's older
+-- "give up on the whole body" fallback for oversized DTOs.
+local function jf_playback_info_dto()
+  return T.object({
+    UserId               = T.nullable(jf_id()),
+    MaxStreamingBitrate  = T.nullable(T.number({ integer = true, min = 0 })),
+    StartTimeTicks       = T.nullable(T.number({ integer = true, min = 0 })),
+    AudioStreamIndex     = T.nullable(T.number({ integer = true })),
+    SubtitleStreamIndex  = T.nullable(T.number({ integer = true })),
+    MaxAudioChannels     = T.nullable(T.number({ integer = true, min = 0 })),
+    MediaSourceId        = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+    LiveStreamId         = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+    DeviceProfile        = T.any(),
+    EnableDirectPlay     = T.nullable(T.boolean()),
+    EnableDirectStream   = T.nullable(T.boolean()),
+    EnableTranscoding    = T.nullable(T.boolean()),
+    AllowVideoStreamCopy = T.nullable(T.boolean()),
+    AllowAudioStreamCopy = T.nullable(T.boolean()),
+    AutoOpenLiveStream   = T.nullable(T.boolean()),
+    AlwaysBurnInSubtitleWhenTranscoding = T.nullable(T.boolean()),
+  })
+end
+
+-- EncodingHelper's own validation regexes for the {container}/audioCodec/
+-- videoCodec/subtitleCodec query&path values and the {level} encoder-profile
+-- value - reused verbatim (already the pattern this file uses for the
+-- {container} path segment in "videos stream container"/"hls segment legacy").
+local CONTAINER_RE = [[[a-zA-Z0-9\-._,|]{0,40}]]
+local LEVEL_RE     = [[-?[0-9]+(?:\.[0-9]+)?]]
+
+-- AudioController.GetAudioStream / VideosController.GetVideoStream: near-
+-- identical [FromQuery] transcoding-parameter sets (confirmed by diffing
+-- both signatures) - video adds maxWidth/maxHeight, audio doesn't. Neither
+-- controller ever binds a `streamOptions` dictionary from a real client (no
+-- reference in the web client source), so it's deliberately not in the
+-- allowed-key set below - a request that did send it would be denied, same
+-- as any other genuinely unused parameter.
+local function jf_stream_query(is_video)
+  local q = {
+    container             = T.nullable(T.string({ max = 40, match = "^" .. CONTAINER_RE .. "$" })),
+    ["static"]            = T.nullable(T.bool_query()),
+    params                = T.nullable(T.string({ max = 2048, not_match = "[\\x00-\\x1f]" })),
+    tag                   = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+    playSessionId         = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+    segmentContainer      = T.nullable(T.string({ max = 40, match = "^" .. CONTAINER_RE .. "$" })),
+    segmentLength         = T.nullable(T.number_query({ integer = true, min = 0 })),
+    minSegments           = T.nullable(T.number_query({ integer = true, min = 0 })),
+    mediaSourceId         = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+    deviceId               = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+    audioCodec            = T.nullable(T.string({ max = 40, match = "^" .. CONTAINER_RE .. "$" })),
+    enableAutoStreamCopy  = T.nullable(T.bool_query()),
+    allowVideoStreamCopy  = T.nullable(T.bool_query()),
+    allowAudioStreamCopy  = T.nullable(T.bool_query()),
+    breakOnNonKeyFrames   = T.nullable(T.bool_query()),
+    audioSampleRate       = T.nullable(T.number_query({ integer = true, min = 0 })),
+    maxAudioBitDepth      = T.nullable(T.number_query({ integer = true, min = 0 })),
+    audioBitRate          = T.nullable(T.number_query({ integer = true, min = 0 })),
+    audioChannels         = T.nullable(T.number_query({ integer = true, min = 0 })),
+    maxAudioChannels      = T.nullable(T.number_query({ integer = true, min = 0 })),
+    profile               = T.nullable(T.string({ max = 128, not_match = "[\\x00-\\x1f]" })),
+    level                 = T.nullable(T.string({ max = 32, match = "^" .. LEVEL_RE .. "$" })),
+    framerate             = T.nullable(T.number_query({ min = 0 })),
+    maxFramerate          = T.nullable(T.number_query({ min = 0 })),
+    copyTimestamps        = T.nullable(T.bool_query()),
+    startTimeTicks        = T.nullable(T.number_query({ integer = true, min = 0 })),
+    width                 = T.nullable(T.number_query({ integer = true, min = 0, max = 100000 })),
+    height                = T.nullable(T.number_query({ integer = true, min = 0, max = 100000 })),
+    videoBitRate          = T.nullable(T.number_query({ integer = true, min = 0 })),
+    subtitleStreamIndex   = T.nullable(T.number_query({ integer = true })),
+    subtitleMethod        = T.nullable(T.string({ max = 16,
+      enum = { Encode=true, Embed=true, External=true, Hls=true, Drop=true } })),
+    maxRefFrames          = T.nullable(T.number_query({ integer = true, min = 0 })),
+    maxVideoBitDepth      = T.nullable(T.number_query({ integer = true, min = 0 })),
+    requireAvc            = T.nullable(T.bool_query()),
+    deInterlace           = T.nullable(T.bool_query()),
+    requireNonAnamorphic  = T.nullable(T.bool_query()),
+    transcodingMaxAudioChannels = T.nullable(T.number_query({ integer = true, min = 0 })),
+    cpuCoreLimit          = T.nullable(T.number_query({ integer = true, min = 0 })),
+    liveStreamId          = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+    enableMpegtsM2TsMode  = T.nullable(T.bool_query()),
+    videoCodec            = T.nullable(T.string({ max = 40, match = "^" .. CONTAINER_RE .. "$" })),
+    subtitleCodec         = T.nullable(T.string({ max = 40, match = "^" .. CONTAINER_RE .. "$" })),
+    transcodeReasons      = T.nullable(T.string({ max = 512, not_match = "[\\x00-\\x1f]" })),
+    audioStreamIndex      = T.nullable(T.number_query({ integer = true })),
+    videoStreamIndex      = T.nullable(T.number_query({ integer = true })),
+    context               = T.nullable(T.string({ max = 16, enum = { Streaming=true, ["Static"]=true } })),
+    enableAudioVbrEncoding = T.nullable(T.bool_query()),
+    -- Obsolete but still bound server-side; kept accepted rather than denied.
+    deviceProfileId       = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+  }
+  if is_video then
+    q.maxWidth  = T.nullable(T.number_query({ integer = true, min = 0, max = 100000 }))
+    q.maxHeight = T.nullable(T.number_query({ integer = true, min = 0, max = 100000 }))
+  end
+  return T.object(q)
+end
+
+-- QueueItem (MediaBrowser.Model.Session) - PlaybackProgressInfo/StopInfo's
+-- NowPlayingQueue element.
+local jf_queue_item = T.object({
+  Id             = T.nullable(jf_id()),
+  PlaylistItemId = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+})
+
+-- PlaystateController's ReportPlaybackStart/Progress/Stopped
+-- (PlaybackStartInfo : PlaybackProgressInfo, and the separate but
+-- structurally-overlapping PlaybackStopInfo). All three real client calls
+-- (playbackmanager.js's reportPlayback()) send `Object.assign({}, state.
+-- PlayState)` plus a couple of call-specific fields - the *same* PlayState
+-- blob every time, regardless of which of the three C# DTOs actually
+-- declares which property. Confirmed by reading state.PlayState's own
+-- assignments (playbackmanager.js ~line 2170-2200): it carries several
+-- fields with NO C# model equivalent at all (ShuffleMode, MaxStreamingBitrate,
+-- PlaybackRate, SecondarySubtitleStreamIndex, BufferedRanges) - harmless
+-- server-side since System.Text.Json silently ignores unrecognized
+-- properties by default, but a guaranteed false positive on every single
+-- playback-progress report if this schema didn't also accept them (this
+-- would have been the single most damaging gap in the whole file - these
+-- three endpoints fire continuously during normal playback).
+-- opts.event_name / opts.stop_only add the two fields that are genuinely
+-- call-specific (EventName is progressEventName, only ever passed to
+-- reportPlaybackProgress; Failed/NextMediaType only make sense on stop).
+local function jf_playback_report_fields(opts)
+  opts = opts or {}
+  local f = {
+    -- Real MediaBrowser.Model.Session.PlaybackProgressInfo/StopInfo fields.
+    ItemId               = T.nullable(jf_id()),
+    -- .Item (BaseItemDto) - T.any(); the bundled web client never actually
+    -- populates it on these calls (only ItemId is set - see reportPlayback()
+    -- in playbackmanager.js), but accepted defensively for any other real
+    -- client that might.
+    Item                 = T.any(),
+    SessionId            = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+    MediaSourceId         = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+    AudioStreamIndex      = T.nullable(T.number({ integer = true })),
+    SubtitleStreamIndex   = T.nullable(T.number({ integer = true })),
+    CanSeek               = T.nullable(T.boolean()),
+    IsPaused              = T.nullable(T.boolean()),
+    IsMuted               = T.nullable(T.boolean()),
+    PositionTicks         = T.nullable(T.number({ integer = true, min = 0 })),
+    PlaybackStartTimeTicks = T.nullable(T.number({ integer = true, min = 0 })),
+    VolumeLevel           = T.nullable(T.number({ integer = true, min = 0, max = 100 })),
+    Brightness            = T.nullable(T.number({ integer = true })),
+    AspectRatio           = T.nullable(T.string({ max = 32, not_match = "[\\x00-\\x1f]" })),
+    PlayMethod            = T.nullable(T.string({ max = 16, enum = { Transcode=true, DirectStream=true, DirectPlay=true } })),
+    LiveStreamId          = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+    PlaySessionId         = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+    RepeatMode            = T.nullable(T.string({ max = 16, enum = { RepeatNone=true, RepeatAll=true, RepeatOne=true } })),
+    PlaybackOrder         = T.nullable(T.string({ max = 16, enum = { Default=true, Shuffle=true } })),
+    NowPlayingQueue       = T.nullable(T.array(jf_queue_item, { max = 8192 })),
+    PlaylistItemId        = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+    -- Client-only, no C# model property (see the big comment above).
+    ShuffleMode           = T.nullable(T.string({ max = 16, enum = { Sorted=true, Shuffle=true } })),
+    MaxStreamingBitrate   = T.nullable(T.number({ integer = true, min = 0 })),
+    PlaybackRate          = T.nullable(T.number({ min = 0 })),
+    SecondarySubtitleStreamIndex = T.nullable(T.number({ integer = true })),
+    BufferedRanges        = T.nullable(T.array(T.object({
+      start = T.nullable(T.number({ min = 0 })),
+      ["end"] = T.nullable(T.number({ min = 0 })),
+    }), { max = 256 })),
+  }
+  if opts.event_name then
+    f.EventName = T.nullable(T.string({ max = 64, not_match = "[\\x00-\\x1f]" }))
+  end
+  if opts.stop_only then
+    f.Failed         = T.nullable(T.boolean())
+    f.NextMediaType   = T.nullable(T.string({ max = 32, not_match = "[\\x00-\\x1f]" }))
+  end
+  return f
+end
+
 -- Session/device/playlist-entry/timer IDs: opaque server-generated tokens,
 -- not necessarily GUID-shaped (SessionController/PlaylistsController/
 -- LiveTvController all bind these as plain `string`, not `Guid`).
@@ -260,6 +564,594 @@ local jf_library_options = T.object({
 })
 
 -- ---------------------------------------------------------------------------
+-- ServerConfiguration (ConfigurationController's GET/POST /System/Configuration)
+-- and its nested types. All fields nullable/optional: UpdateConfiguration binds
+-- a plain POCO with C#-side defaults, not a partial-patch DTO with [Required]
+-- members, so a client may omit anything and the server fills its own default.
+-- ---------------------------------------------------------------------------
+
+-- RepositoryInfo (MediaBrowser.Model.Updates) - also the top-level array body
+-- of PackageController's POST /Repositories.
+local jf_repository_info = T.object({
+  Name    = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+  Url     = T.nullable(T.string({ max = 2048, not_match = "[\\x00-\\x1f]" })),
+  Enabled = T.nullable(T.boolean()),
+})
+
+-- MetadataOptions (MediaBrowser.Model.Configuration)
+local jf_metadata_options = T.object({
+  ItemType                 = T.nullable(T.string({ max = 64, not_match = "[\\x00-\\x1f]" })),
+  DisabledMetadataSavers   = jf_provider_list(),
+  LocalMetadataReaderOrder = jf_provider_list(),
+  DisabledMetadataFetchers = jf_provider_list(),
+  MetadataFetcherOrder     = jf_provider_list(),
+  DisabledImageFetchers    = jf_provider_list(),
+  ImageFetcherOrder        = jf_provider_list(),
+})
+
+-- PathSubstitution (MediaBrowser.Model.Configuration)
+local jf_path_substitution = T.object({
+  From = T.nullable(T.string({ max = 4096, not_match = "[\\x00-\\x1f]" })),
+  To   = T.nullable(T.string({ max = 4096, not_match = "[\\x00-\\x1f]" })),
+})
+
+-- NameValuePair (MediaBrowser.Model.Dto)
+local jf_name_value_pair = T.object({
+  Name  = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+  Value = T.nullable(T.string({ max = 2048, not_match = "[\\x00-\\x1f]" })),
+})
+
+-- CastReceiverApplication (MediaBrowser.Model.System) - Id/Name are `required`
+-- string members in C#, but System.Text.Json's `required` only enforces
+-- presence at deserialize time for the top-level UpdateConfiguration bind,
+-- which we're not replicating key-by-key here; keep both required to match
+-- the C# contract as closely as this DSL allows.
+local jf_cast_receiver_application = T.object({
+  Id   = T.string({ max = 256, not_match = "[\\x00-\\x1f]" }),
+  Name = T.string({ max = 256, not_match = "[\\x00-\\x1f]" }),
+}, { required = { Id = true, Name = true } })
+
+-- TrickplayOptions (MediaBrowser.Model.Configuration) - TrickplayScanBehavior
+-- and ProcessPriorityClass are both bound through the global
+-- JsonStringEnumConverter (JsonDefaults.cs), so string enum names, not ints.
+local jf_trickplay_options = T.object({
+  EnableHwAcceleration        = T.nullable(T.boolean()),
+  EnableHwEncoding            = T.nullable(T.boolean()),
+  EnableKeyFrameOnlyExtraction = T.nullable(T.boolean()),
+  ScanBehavior                = T.nullable(T.string({ max = 16,
+    enum = { Blocking=true, NonBlocking=true } })),
+  ProcessPriority             = T.nullable(T.string({ max = 16,
+    enum = { Normal=true, Idle=true, High=true, RealTime=true, BelowNormal=true, AboveNormal=true } })),
+  Interval          = T.nullable(T.number({ integer = true, min = 0 })),
+  WidthResolutions  = T.nullable(T.array(T.number({ integer = true, min = 1, max = 100000 }), { max = 16 })),
+  TileWidth         = T.nullable(T.number({ integer = true, min = 1, max = 100 })),
+  TileHeight        = T.nullable(T.number({ integer = true, min = 1, max = 100 })),
+  Qscale            = T.nullable(T.number({ integer = true, min = 0, max = 100 })),
+  JpegQuality       = T.nullable(T.number({ integer = true, min = 0, max = 100 })),
+  ProcessThreads    = T.nullable(T.number({ integer = true, min = 1, max = 256 })),
+})
+
+local jf_server_configuration = T.object({
+  -- BaseApplicationConfiguration
+  LogFileRetentionDays     = T.nullable(T.number({ integer = true, min = 0, max = 3650 })),
+  IsStartupWizardCompleted = T.nullable(T.boolean()),
+  CachePath                = T.nullable(T.string({ max = 4096, not_match = "[\\x00-\\x1f]" })),
+  PreviousVersionStr       = T.nullable(T.string({ max = 32, not_match = "[\\x00-\\x1f]" })),
+  -- ServerConfiguration
+  EnableMetrics                       = T.nullable(T.boolean()),
+  EnableNormalizedItemByNameIds       = T.nullable(T.boolean()),
+  IsPortAuthorized                    = T.nullable(T.boolean()),
+  QuickConnectAvailable               = T.nullable(T.boolean()),
+  EnableCaseSensitiveItemIds          = T.nullable(T.boolean()),
+  DisableLiveTvChannelUserDataName    = T.nullable(T.boolean()),
+  MetadataPath              = T.nullable(T.string({ max = 4096, not_match = "[\\x00-\\x1f]" })),
+  PreferredMetadataLanguage = T.nullable(T.string({ max = 16, not_match = "[\\x00-\\x1f]" })),
+  MetadataCountryCode       = T.nullable(T.string({ max = 8, not_match = "[\\x00-\\x1f]" })),
+  SortReplaceCharacters     = T.nullable(T.array(T.string({ max = 8 }), { max = 64 })),
+  SortRemoveCharacters      = T.nullable(T.array(T.string({ max = 8 }), { max = 64 })),
+  SortRemoveWords           = T.nullable(T.array(T.string({ max = 64 }), { max = 256 })),
+  MinResumePct              = T.nullable(T.number({ integer = true, min = 0, max = 100 })),
+  MaxResumePct              = T.nullable(T.number({ integer = true, min = 0, max = 100 })),
+  MinResumeDurationSeconds  = T.nullable(T.number({ integer = true, min = 0 })),
+  MinAudiobookResume        = T.nullable(T.number({ integer = true, min = 0 })),
+  MaxAudiobookResume        = T.nullable(T.number({ integer = true, min = 0 })),
+  InactiveSessionThreshold  = T.nullable(T.number({ integer = true, min = 0 })),
+  LibraryMonitorDelay       = T.nullable(T.number({ integer = true, min = 0 })),
+  LibraryUpdateDuration     = T.nullable(T.number({ integer = true, min = 0 })),
+  CacheSize                 = T.nullable(T.number({ integer = true, min = 0 })),
+  ImageSavingConvention     = T.nullable(T.string({ max = 16, enum = { Legacy=true, Compatible=true } })),
+  MetadataOptions           = T.nullable(T.array(jf_metadata_options, { max = 64 })),
+  SkipDeserializationForBasicTypes = T.nullable(T.boolean()),
+  ServerName                = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+  UICulture                 = T.nullable(T.string({ max = 32, not_match = "[\\x00-\\x1f]" })),
+  SaveMetadataHidden        = T.nullable(T.boolean()),
+  ContentTypes              = T.nullable(T.array(jf_name_value_pair, { max = 128 })),
+  RemoteClientBitrateLimit  = T.nullable(T.number({ integer = true, min = 0 })),
+  EnableFolderView                  = T.nullable(T.boolean()),
+  EnableGroupingMoviesIntoCollections = T.nullable(T.boolean()),
+  EnableGroupingShowsIntoCollections = T.nullable(T.boolean()),
+  DisplaySpecialsWithinSeasons      = T.nullable(T.boolean()),
+  CodecsUsed                = T.nullable(T.array(T.string({ max = 32 }), { max = 128 })),
+  PluginRepositories        = T.nullable(T.array(jf_repository_info, { max = 64 })),
+  EnableExternalContentInSuggestions = T.nullable(T.boolean()),
+  ImageExtractionTimeoutMs  = T.nullable(T.number({ integer = true, min = 0 })),
+  PathSubstitutions         = T.nullable(T.array(jf_path_substitution, { max = 128 })),
+  EnableSlowResponseWarning = T.nullable(T.boolean()),
+  SlowResponseThresholdMs   = T.nullable(T.number({ integer = true, min = 0 })),
+  CorsHosts                 = T.nullable(T.array(T.string({ max = 512 }), { max = 64 })),
+  ActivityLogRetentionDays  = T.nullable(T.number({ integer = true, min = 0, max = 36500 })),
+  LibraryScanFanoutConcurrency        = T.nullable(T.number({ integer = true, min = 0 })),
+  LibraryMetadataRefreshConcurrency   = T.nullable(T.number({ integer = true, min = 0 })),
+  AllowClientLogUpload       = T.nullable(T.boolean()),
+  DummyChapterDuration       = T.nullable(T.number({ integer = true })),
+  ChapterImageResolution     = T.nullable(T.string({ max = 16,
+    enum = { MatchSource=true, P144=true, P240=true, P360=true, P480=true, P720=true, P1080=true, P1440=true, P2160=true } })),
+  ParallelImageEncodingLimit = T.nullable(T.number({ integer = true, min = 0 })),
+  CastReceiverApplications   = T.nullable(T.array(jf_cast_receiver_application, { max = 64 })),
+  TrickplayOptions           = T.nullable(jf_trickplay_options),
+  EnableLegacyAuthorization  = T.nullable(T.boolean()),
+})
+
+-- ---------------------------------------------------------------------------
+-- UserController DTOs (UserDto/UserConfiguration/UserPolicy and friends).
+-- ---------------------------------------------------------------------------
+
+-- UserConfiguration (MediaBrowser.Model.Configuration) - all fields optional,
+-- none [Required]; a client may PATCH-by-omission (see "users configuration").
+local jf_user_configuration = T.object({
+  AudioLanguagePreference    = T.nullable(T.string({ max = 32, not_match = "[\\x00-\\x1f]" })),
+  PlayDefaultAudioTrack      = T.nullable(T.boolean()),
+  SubtitleLanguagePreference = T.nullable(T.string({ max = 32, not_match = "[\\x00-\\x1f]" })),
+  DisplayMissingEpisodes     = T.nullable(T.boolean()),
+  GroupedFolders             = T.nullable(T.array(jf_id(), { max = 4096 })),
+  SubtitleMode               = T.nullable(T.string({ max = 16,
+    enum = { Default=true, Always=true, OnlyForced=true, None=true, Smart=true } })),
+  DisplayCollectionsView     = T.nullable(T.boolean()),
+  EnableLocalPassword        = T.nullable(T.boolean()),
+  OrderedViews               = T.nullable(T.array(jf_id(), { max = 4096 })),
+  LatestItemsExcludes        = T.nullable(T.array(jf_id(), { max = 4096 })),
+  MyMediaExcludes            = T.nullable(T.array(jf_id(), { max = 4096 })),
+  HidePlayedInLatest         = T.nullable(T.boolean()),
+  RememberAudioSelections    = T.nullable(T.boolean()),
+  RememberSubtitleSelections = T.nullable(T.boolean()),
+  EnableNextEpisodeAutoPlay  = T.nullable(T.boolean()),
+  CastReceiverId             = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+})
+
+-- AccessSchedule (Jellyfin.Database.Implementations.Entities) - Id/UserId are
+-- server-assigned (private setters); a client-supplied UserPolicy still
+-- round-trips them as plain ints/guids in the JSON, so accept but don't
+-- require them.
+local jf_access_schedule = T.object({
+  Id        = T.nullable(T.number({ integer = true })),
+  UserId    = T.nullable(jf_id()),
+  DayOfWeek = T.nullable(T.string({ max = 16,
+    enum = { Sunday=true, Monday=true, Tuesday=true, Wednesday=true, Thursday=true,
+             Friday=true, Saturday=true, Everyday=true, Weekday=true, Weekend=true } })),
+  StartHour = T.nullable(T.number({ min = 0, max = 24 })),
+  EndHour   = T.nullable(T.number({ min = 0, max = 24 })),
+})
+
+local UNRATED_ITEM_ENUM = { Movie=true, Trailer=true, Series=true, Music=true, Book=true,
+  LiveTvChannel=true, LiveTvProgram=true, ChannelContent=true, Other=true }
+
+-- UserPolicy (MediaBrowser.Model.Users) - all fields optional.
+local jf_user_policy = T.object({
+  IsAdministrator                   = T.nullable(T.boolean()),
+  IsHidden                          = T.nullable(T.boolean()),
+  EnableCollectionManagement        = T.nullable(T.boolean()),
+  EnableSubtitleManagement          = T.nullable(T.boolean()),
+  EnableLyricManagement             = T.nullable(T.boolean()),
+  IsDisabled                        = T.nullable(T.boolean()),
+  MaxParentalRating                 = T.nullable(T.number({ integer = true })),
+  MaxParentalSubRating              = T.nullable(T.number({ integer = true })),
+  BlockedTags                       = T.nullable(T.array(T.string({ max = 256 }), { max = 1024 })),
+  AllowedTags                       = T.nullable(T.array(T.string({ max = 256 }), { max = 1024 })),
+  EnableUserPreferenceAccess        = T.nullable(T.boolean()),
+  AccessSchedules                   = T.nullable(T.array(jf_access_schedule, { max = 64 })),
+  BlockUnratedItems                 = T.nullable(T.array(T.string({ max = 16, enum = UNRATED_ITEM_ENUM }), { max = 16 })),
+  EnableRemoteControlOfOtherUsers   = T.nullable(T.boolean()),
+  EnableSharedDeviceControl         = T.nullable(T.boolean()),
+  EnableRemoteAccess                = T.nullable(T.boolean()),
+  EnableLiveTvManagement            = T.nullable(T.boolean()),
+  EnableLiveTvAccess                = T.nullable(T.boolean()),
+  EnableMediaPlayback               = T.nullable(T.boolean()),
+  EnableAudioPlaybackTranscoding    = T.nullable(T.boolean()),
+  EnableVideoPlaybackTranscoding    = T.nullable(T.boolean()),
+  EnablePlaybackRemuxing            = T.nullable(T.boolean()),
+  ForceRemoteSourceTranscoding      = T.nullable(T.boolean()),
+  EnableContentDeletion             = T.nullable(T.boolean()),
+  EnableContentDeletionFromFolders  = T.nullable(T.array(T.string({ max = 4096 }), { max = 4096 })),
+  EnableContentDownloading          = T.nullable(T.boolean()),
+  EnableSyncTranscoding             = T.nullable(T.boolean()),
+  EnableMediaConversion             = T.nullable(T.boolean()),
+  EnabledDevices                    = T.nullable(T.array(T.string({ max = 256 }), { max = 4096 })),
+  EnableAllDevices                  = T.nullable(T.boolean()),
+  EnabledChannels                   = T.nullable(T.array(jf_id(), { max = 4096 })),
+  EnableAllChannels                 = T.nullable(T.boolean()),
+  EnabledFolders                    = T.nullable(T.array(jf_id(), { max = 4096 })),
+  EnableAllFolders                  = T.nullable(T.boolean()),
+  InvalidLoginAttemptCount          = T.nullable(T.number({ integer = true, min = 0 })),
+  LoginAttemptsBeforeLockout        = T.nullable(T.number({ integer = true })),
+  MaxActiveSessions                 = T.nullable(T.number({ integer = true, min = 0 })),
+  EnablePublicSharing               = T.nullable(T.boolean()),
+  BlockedMediaFolders               = T.nullable(T.array(jf_id(), { max = 4096 })),
+  BlockedChannels                   = T.nullable(T.array(jf_id(), { max = 4096 })),
+  RemoteClientBitrateLimit          = T.nullable(T.number({ integer = true, min = 0 })),
+  AuthenticationProviderId          = T.nullable(T.string({ max = 512, not_match = "[\\x00-\\x1f]" })),
+  PasswordResetProviderId           = T.nullable(T.string({ max = 512, not_match = "[\\x00-\\x1f]" })),
+  SyncPlayAccess                    = T.nullable(T.string({ max = 24,
+    enum = { CreateAndJoinGroups=true, JoinGroups=true, None=true } })),
+})
+
+-- UpdateUserPassword (Jellyfin.Api.Models.UserDtos) - shared by "users
+-- password" (current-form, ?userId= query) and "users password legacy"
+-- ({userId} path segment).
+local function jf_update_user_password()
+  return T.object({
+    CurrentPassword = T.nullable(T.string({ max = 512, not_match = "[\\x00-\\x1f]" })),
+    CurrentPw       = T.nullable(T.string({ max = 512, not_match = "[\\x00-\\x1f]" })),
+    NewPw           = T.nullable(T.string({ max = 512, not_match = "[\\x00-\\x1f]" })),
+    ResetPassword   = T.nullable(T.boolean()),
+  })
+end
+
+-- UserDto (MediaBrowser.Model.Dto) - the "users list" POST/UpdateUser and
+-- "users by id" POST/UpdateUserLegacy body. Only .Name and .Configuration are
+-- actually read server-side (.Policy is ignored here - it has its own
+-- dedicated "users policy" endpoint) but the whole DTO is still what a real
+-- client serializes and sends, so it's all validated.
+local jf_user_dto = T.object({
+  Name                    = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+  ServerId                = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+  ServerName              = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+  Id                      = T.nullable(jf_id()),
+  PrimaryImageTag         = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+  HasPassword             = T.nullable(T.boolean()),
+  HasConfiguredPassword   = T.nullable(T.boolean()),
+  HasConfiguredEasyPassword = T.nullable(T.boolean()),
+  EnableAutoLogin         = T.nullable(T.boolean()),
+  LastLoginDate           = T.nullable(T.string({ max = 64, not_match = "[\\x00-\\x1f]" })),
+  LastActivityDate        = T.nullable(T.string({ max = 64, not_match = "[\\x00-\\x1f]" })),
+  Configuration           = T.nullable(jf_user_configuration),
+  Policy                  = T.nullable(jf_user_policy),
+  PrimaryImageAspectRatio = T.nullable(T.number()),
+})
+
+-- ---------------------------------------------------------------------------
+-- LiveTvController DTOs - TimerInfoDto/SeriesTimerInfoDto (DVR timer CRUD).
+-- ---------------------------------------------------------------------------
+
+local DAY_OF_WEEK_ENUM = { Sunday=true, Monday=true, Tuesday=true, Wednesday=true,
+  Thursday=true, Friday=true, Saturday=true }
+
+-- BaseTimerInfoDto (MediaBrowser.Model.LiveTv) fields shared by
+-- TimerInfoDto/SeriesTimerInfoDto. .ProgramInfo (TimerInfoDto only) is a
+-- BaseItemDto - same "genuinely huge, self-referential" exemption as
+-- elsewhere in this file, so it's added separately by jf_timer_info_dto
+-- rather than folded in here.
+local function jf_base_timer_fields()
+  return {
+    Id                       = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+    Type                     = T.nullable(T.string({ max = 32, not_match = "[\\x00-\\x1f]" })),
+    ServerId                 = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+    ExternalId               = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+    ChannelId                = T.nullable(jf_id()),
+    ExternalChannelId        = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+    ChannelName              = T.nullable(T.string({ max = 512, not_match = "[\\x00-\\x1f]" })),
+    ChannelPrimaryImageTag   = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+    ProgramId                = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+    ExternalProgramId        = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+    Name                     = T.nullable(T.string({ max = 1024, not_match = "[\\x00-\\x1f]" })),
+    Overview                 = T.nullable(T.string({ max = 65536, not_match = "[\\x00-\\x1f]" })),
+    StartDate                = T.nullable(T.string({ max = 64, not_match = "[\\x00-\\x1f]" })),
+    EndDate                  = T.nullable(T.string({ max = 64, not_match = "[\\x00-\\x1f]" })),
+    ServiceName              = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+    Priority                 = T.nullable(T.number({ integer = true })),
+    PrePaddingSeconds        = T.nullable(T.number({ integer = true, min = 0 })),
+    PostPaddingSeconds       = T.nullable(T.number({ integer = true, min = 0 })),
+    IsPrePaddingRequired     = T.nullable(T.boolean()),
+    ParentBackdropItemId     = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+    ParentBackdropImageTags  = T.nullable(T.array(T.string({ max = 256 }), { max = 32 })),
+    IsPostPaddingRequired    = T.nullable(T.boolean()),
+    KeepUntil                = T.nullable(T.string({ max = 24,
+      enum = { UntilDeleted=true, UntilSpaceNeeded=true, UntilWatched=true, UntilDate=true } })),
+  }
+end
+
+local function jf_timer_info_dto()
+  local f = jf_base_timer_fields()
+  f.Status                = T.nullable(T.string({ max = 24,
+    enum = { New=true, InProgress=true, Completed=true, Cancelled=true,
+             ConflictedOk=true, ConflictedNotOk=true, Error=true } }))
+  f.SeriesTimerId          = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" }))
+  f.ExternalSeriesTimerId  = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" }))
+  f.RunTimeTicks           = T.nullable(T.number({ integer = true, min = 0 }))
+  -- .ProgramInfo: BaseItemDto - T.any() (see jf_base_item_dto's own comment
+  -- further down for why; this function runs before that one is defined,
+  -- so it can't reference jf_base_item_dto directly).
+  f.ProgramInfo             = T.any()
+  return T.object(f)
+end
+
+local function jf_series_timer_info_dto()
+  local f = jf_base_timer_fields()
+  f.RecordAnyTime          = T.nullable(T.boolean())
+  f.SkipEpisodesInLibrary  = T.nullable(T.boolean())
+  f.RecordAnyChannel       = T.nullable(T.boolean())
+  f.KeepUpTo               = T.nullable(T.number({ integer = true, min = 0 }))
+  f.RecordNewOnly          = T.nullable(T.boolean())
+  f.Days                   = T.nullable(T.array(T.string({ max = 16, enum = DAY_OF_WEEK_ENUM }), { max = 7 }))
+  f.DayPattern             = T.nullable(T.string({ max = 16, enum = { Daily=true, Weekdays=true, Weekends=true } }))
+  f.ImageTags              = T.nullable(T.dict(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })))
+  f.ParentThumbItemId      = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" }))
+  f.ParentThumbImageTag    = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" }))
+  f.ParentPrimaryImageItemId = T.nullable(jf_id())
+  f.ParentPrimaryImageTag  = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" }))
+  return T.object(f)
+end
+
+-- TunerHostInfo (MediaBrowser.Model.LiveTv) - AddTunerHost's body.
+local jf_tuner_host_info = T.object({
+  Id                             = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+  Url                            = T.nullable(T.string({ max = 2048, not_match = "[\\x00-\\x1f]" })),
+  Type                           = T.nullable(T.string({ max = 64, not_match = "[\\x00-\\x1f]" })),
+  DeviceId                       = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+  FriendlyName                   = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+  ImportFavoritesOnly            = T.nullable(T.boolean()),
+  AllowHWTranscoding             = T.nullable(T.boolean()),
+  AllowFmp4TranscodingContainer  = T.nullable(T.boolean()),
+  AllowStreamSharing             = T.nullable(T.boolean()),
+  FallbackMaxStreamingBitrate    = T.nullable(T.number({ integer = true, min = 0 })),
+  EnableStreamLooping            = T.nullable(T.boolean()),
+  Source                         = T.nullable(T.string({ max = 64, not_match = "[\\x00-\\x1f]" })),
+  TunerCount                     = T.nullable(T.number({ integer = true, min = 0 })),
+  UserAgent                      = T.nullable(T.string({ max = 512, not_match = "[\\x00-\\x1f]" })),
+  IgnoreDts                      = T.nullable(T.boolean()),
+  ReadAtNativeFramerate          = T.nullable(T.boolean()),
+})
+
+-- ---------------------------------------------------------------------------
+-- BaseItemDto (MediaBrowser.Model.Dto) - ItemUpdateController.UpdateItem's
+-- body ("items by id update") and the .Item/.ProgramInfo field embedded in
+-- several other DTOs elsewhere in this file. ~140 of its ~150 fields are
+-- flat scalars or small nested types (typed exactly below, via the small
+-- helper types just after this comment); only MediaSources (MediaSourceInfo[]),
+-- MediaStreams (MediaStream[]) and the self-referential CurrentProgram
+-- (BaseItemDto) are genuinely large/recursive enough that typing them out
+-- would mean re-deriving this same effort for MediaSourceInfo/MediaStream's
+-- own dozens of transcoding-profile fields - those three use T.any() so the
+-- *key* is still declared (no false positive if a real client sends it) but
+-- its contents aren't inspected, which is strictly better than this file's
+-- older "give up on the whole body" fallback for oversized DTOs.
+-- ---------------------------------------------------------------------------
+
+local jf_name_guid_pair = T.object({
+  Name = T.nullable(T.string({ max = 1024, not_match = "[\\x00-\\x1f]" })),
+  Id   = T.nullable(jf_id()),
+})
+
+local jf_base_item_person = T.object({
+  Name             = T.nullable(T.string({ max = 1024, not_match = "[\\x00-\\x1f]" })),
+  Id               = T.nullable(jf_id()),
+  Role             = T.nullable(T.string({ max = 1024, not_match = "[\\x00-\\x1f]" })),
+  Type             = T.nullable(T.string({ max = 24, enum = {
+    Unknown=true, Actor=true, Director=true, Composer=true, Writer=true, GuestStar=true,
+    Producer=true, Conductor=true, Lyricist=true, Arranger=true, Engineer=true, Mixer=true,
+    Remixer=true, Creator=true, Artist=true, AlbumArtist=true, Author=true, Illustrator=true,
+    Penciller=true, Inker=true, Colorist=true, Letterer=true, CoverArtist=true, Editor=true,
+    Translator=true } })),
+  PrimaryImageTag  = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+  ImageBlurHashes  = T.nullable(T.dict(T.dict(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })))),
+})
+
+local jf_external_url = T.object({
+  Name = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+  Url  = T.nullable(T.string({ max = 2048, not_match = "[\\x00-\\x1f]" })),
+})
+
+local jf_media_url = T.object({
+  Url  = T.nullable(T.string({ max = 2048, not_match = "[\\x00-\\x1f]" })),
+  Name = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+})
+
+local jf_chapter_info = T.object({
+  StartPositionTicks = T.nullable(T.number({ integer = true, min = 0 })),
+  Name               = T.nullable(T.string({ max = 1024, not_match = "[\\x00-\\x1f]" })),
+  ImagePath          = T.nullable(T.string({ max = 4096, not_match = "[\\x00-\\x1f]" })),
+  ImageDateModified  = T.nullable(T.string({ max = 64, not_match = "[\\x00-\\x1f]" })),
+  ImageTag           = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+})
+
+local jf_trickplay_info_dto = T.object({
+  Width          = T.nullable(T.number({ integer = true, min = 0 })),
+  Height         = T.nullable(T.number({ integer = true, min = 0 })),
+  TileWidth      = T.nullable(T.number({ integer = true, min = 0 })),
+  TileHeight     = T.nullable(T.number({ integer = true, min = 0 })),
+  ThumbnailCount = T.nullable(T.number({ integer = true, min = 0 })),
+  Interval       = T.nullable(T.number({ integer = true, min = 0 })),
+  Bandwidth      = T.nullable(T.number({ integer = true, min = 0 })),
+})
+
+local jf_base_item_dto
+jf_base_item_dto = T.object({
+  Name                     = T.nullable(T.string({ max = 1024, not_match = "[\\x00-\\x1f]" })),
+  OriginalTitle            = T.nullable(T.string({ max = 1024, not_match = "[\\x00-\\x1f]" })),
+  ServerId                 = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+  Id                       = T.nullable(jf_id()),
+  Etag                     = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+  SourceType               = T.nullable(T.string({ max = 32, not_match = "[\\x00-\\x1f]" })),
+  PlaylistItemId           = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+  DateCreated              = T.nullable(T.string({ max = 64, not_match = "[\\x00-\\x1f]" })),
+  DateLastMediaAdded       = T.nullable(T.string({ max = 64, not_match = "[\\x00-\\x1f]" })),
+  ExtraType                = T.nullable(T.string({ max = 24, enum = {
+    Unknown=true, Clip=true, Trailer=true, BehindTheScenes=true, DeletedScene=true,
+    Interview=true, Scene=true, Sample=true, ThemeSong=true, ThemeVideo=true,
+    Featurette=true, Short=true } })),
+  AirsBeforeSeasonNumber   = T.nullable(T.number({ integer = true })),
+  AirsAfterSeasonNumber    = T.nullable(T.number({ integer = true })),
+  AirsBeforeEpisodeNumber  = T.nullable(T.number({ integer = true })),
+  CanDelete                = T.nullable(T.boolean()),
+  CanDownload              = T.nullable(T.boolean()),
+  HasLyrics                = T.nullable(T.boolean()),
+  HasSubtitles             = T.nullable(T.boolean()),
+  PreferredMetadataLanguage    = T.nullable(T.string({ max = 32, not_match = "[\\x00-\\x1f]" })),
+  PreferredMetadataCountryCode = T.nullable(T.string({ max = 8, not_match = "[\\x00-\\x1f]" })),
+  Container                = T.nullable(T.string({ max = 128, not_match = "[\\x00-\\x1f]" })),
+  SortName                 = T.nullable(T.string({ max = 1024, not_match = "[\\x00-\\x1f]" })),
+  ForcedSortName            = T.nullable(T.string({ max = 1024, not_match = "[\\x00-\\x1f]" })),
+  Video3DFormat            = T.nullable(T.string({ max = 24, enum = {
+    HalfSideBySide=true, FullSideBySide=true, FullTopAndBottom=true, HalfTopAndBottom=true, MVC=true } })),
+  PremiereDate             = T.nullable(T.string({ max = 64, not_match = "[\\x00-\\x1f]" })),
+  ExternalUrls             = T.nullable(T.array(jf_external_url, { max = 64 })),
+  MediaSources             = T.any(),
+  CriticRating             = T.nullable(T.number()),
+  ProductionLocations      = T.nullable(T.array(T.string({ max = 256 }), { max = 64 })),
+  Path                     = T.nullable(T.string({ max = 4096, not_match = "[\\x00-\\x1f]" })),
+  EnableMediaSourceDisplay = T.nullable(T.boolean()),
+  OfficialRating           = T.nullable(T.string({ max = 32, not_match = "[\\x00-\\x1f]" })),
+  CustomRating             = T.nullable(T.string({ max = 32, not_match = "[\\x00-\\x1f]" })),
+  ChannelId                = T.nullable(jf_id()),
+  ChannelName              = T.nullable(T.string({ max = 512, not_match = "[\\x00-\\x1f]" })),
+  Overview                 = T.nullable(T.string({ max = 65536, not_match = "[\\x00-\\x1f]" })),
+  Taglines                 = T.nullable(T.array(T.string({ max = 1024 }), { max = 32 })),
+  Genres                   = T.nullable(T.array(T.string({ max = 256 }), { max = 128 })),
+  CommunityRating          = T.nullable(T.number()),
+  CumulativeRunTimeTicks   = T.nullable(T.number({ integer = true, min = 0 })),
+  RunTimeTicks             = T.nullable(T.number({ integer = true, min = 0 })),
+  PlayAccess               = T.nullable(T.string({ max = 8, enum = { Full=true, ["None"]=true } })),
+  AspectRatio              = T.nullable(T.string({ max = 32, not_match = "[\\x00-\\x1f]" })),
+  ProductionYear           = T.nullable(T.number({ integer = true })),
+  IsPlaceHolder            = T.nullable(T.boolean()),
+  Number                   = T.nullable(T.string({ max = 64, not_match = "[\\x00-\\x1f]" })),
+  ChannelNumber            = T.nullable(T.string({ max = 64, not_match = "[\\x00-\\x1f]" })),
+  IndexNumber              = T.nullable(T.number({ integer = true })),
+  IndexNumberEnd           = T.nullable(T.number({ integer = true })),
+  ParentIndexNumber        = T.nullable(T.number({ integer = true })),
+  RemoteTrailers           = T.nullable(T.array(jf_media_url, { max = 32 })),
+  ProviderIds              = T.nullable(T.dict(T.string({ max = 512, not_match = "[\\x00-\\x1f]" }))),
+  IsHD                     = T.nullable(T.boolean()),
+  IsFolder                 = T.nullable(T.boolean()),
+  ParentId                 = T.nullable(jf_id()),
+  Type                     = T.nullable(T.string({ max = 32, enum = BASE_ITEM_KIND_ENUM })),
+  People                   = T.nullable(T.array(jf_base_item_person, { max = 512 })),
+  Studios                  = T.nullable(T.array(jf_name_guid_pair, { max = 64 })),
+  GenreItems               = T.nullable(T.array(jf_name_guid_pair, { max = 128 })),
+  ParentLogoItemId         = T.nullable(jf_id()),
+  ParentBackdropItemId     = T.nullable(jf_id()),
+  ParentBackdropImageTags  = T.nullable(T.array(T.string({ max = 256 }), { max = 32 })),
+  LocalTrailerCount        = T.nullable(T.number({ integer = true, min = 0 })),
+  -- .UserData: UserItemDataDto - small, reuse the shape already defined for
+  -- "useritems userdata set" elsewhere in this file if present; otherwise
+  -- accept generically (a metadata-editor save round-trips this read-only).
+  UserData                 = T.any(),
+  RecursiveItemCount       = T.nullable(T.number({ integer = true, min = 0 })),
+  ChildCount               = T.nullable(T.number({ integer = true, min = 0 })),
+  SeriesName               = T.nullable(T.string({ max = 1024, not_match = "[\\x00-\\x1f]" })),
+  SeriesId                 = T.nullable(jf_id()),
+  SeasonId                 = T.nullable(jf_id()),
+  SpecialFeatureCount      = T.nullable(T.number({ integer = true, min = 0 })),
+  DisplayPreferencesId     = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+  Status                   = T.nullable(T.string({ max = 16,
+    enum = { Continuing=true, Ended=true, Unreleased=true } })),
+  AirTime                  = T.nullable(T.string({ max = 64, not_match = "[\\x00-\\x1f]" })),
+  AirDays                  = T.nullable(T.array(T.string({ max = 16, enum = DAY_OF_WEEK_ENUM }), { max = 7 })),
+  Tags                     = T.nullable(T.array(T.string({ max = 256 }), { max = 256 })),
+  PrimaryImageAspectRatio  = T.nullable(T.number()),
+  Artists                  = T.nullable(T.array(T.string({ max = 1024 }), { max = 128 })),
+  ArtistItems              = T.nullable(T.array(jf_name_guid_pair, { max = 128 })),
+  Album                    = T.nullable(T.string({ max = 1024, not_match = "[\\x00-\\x1f]" })),
+  CollectionType           = T.nullable(T.string({ max = 16, enum = {
+    movies=true, tvshows=true, music=true, musicvideos=true,
+    homevideos=true, boxsets=true, books=true, mixed=true } })),
+  DisplayOrder             = T.nullable(T.string({ max = 64, not_match = "[\\x00-\\x1f]" })),
+  AlbumId                  = T.nullable(jf_id()),
+  AlbumPrimaryImageTag     = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+  SeriesPrimaryImageTag    = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+  AlbumArtist              = T.nullable(T.string({ max = 1024, not_match = "[\\x00-\\x1f]" })),
+  AlbumArtists             = T.nullable(T.array(jf_name_guid_pair, { max = 64 })),
+  SeasonName               = T.nullable(T.string({ max = 1024, not_match = "[\\x00-\\x1f]" })),
+  -- MediaStream[] - transcoding-engine-specific (codec/profile/level/color
+  -- metadata/...), same T.any() posture as MediaSources above.
+  MediaStreams             = T.any(),
+  VideoType                = T.nullable(T.string({ max = 16,
+    enum = { VideoFile=true, Iso=true, Dvd=true, BluRay=true } })),
+  PartCount                = T.nullable(T.number({ integer = true, min = 0 })),
+  MediaSourceCount         = T.nullable(T.number({ integer = true, min = 0 })),
+  ImageTags                = T.nullable(T.dict(T.string({ max = 256, not_match = "[\\x00-\\x1f]" }))),
+  BackdropImageTags        = T.nullable(T.array(T.string({ max = 256 }), { max = 32 })),
+  ScreenshotImageTags      = T.nullable(T.array(T.string({ max = 256 }), { max = 32 })),
+  ParentLogoImageTag       = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+  ParentArtItemId          = T.nullable(jf_id()),
+  ParentArtImageTag        = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+  SeriesThumbImageTag      = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+  ImageBlurHashes          = T.nullable(T.dict(T.dict(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })))),
+  SeriesStudio             = T.nullable(T.string({ max = 512, not_match = "[\\x00-\\x1f]" })),
+  ParentThumbItemId        = T.nullable(jf_id()),
+  ParentThumbImageTag      = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+  ParentPrimaryImageItemId = T.nullable(jf_id()),
+  ParentPrimaryImageTag    = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+  Chapters                 = T.nullable(T.array(jf_chapter_info, { max = 4096 })),
+  Trickplay                = T.nullable(T.dict(T.dict(jf_trickplay_info_dto))),
+  LocationType             = T.nullable(T.string({ max = 16,
+    enum = { FileSystem=true, Remote=true, Virtual=true, Offline=true } })),
+  IsoType                  = T.nullable(T.string({ max = 16, not_match = "[\\x00-\\x1f]" })),
+  MediaType                = T.nullable(T.string({ max = 16,
+    enum = { Unknown=true, Video=true, Audio=true, Photo=true, Book=true } })),
+  EndDate                  = T.nullable(T.string({ max = 64, not_match = "[\\x00-\\x1f]" })),
+  LockedFields              = T.nullable(T.array(T.string({ max = 24, enum = {
+    Cast=true, Genres=true, ProductionLocations=true, Studios=true, Tags=true,
+    Name=true, Overview=true, Runtime=true, OfficialRating=true } }), { max = 16 })),
+  TrailerCount             = T.nullable(T.number({ integer = true, min = 0 })),
+  MovieCount               = T.nullable(T.number({ integer = true, min = 0 })),
+  SeriesCount              = T.nullable(T.number({ integer = true, min = 0 })),
+  ProgramCount             = T.nullable(T.number({ integer = true, min = 0 })),
+  EpisodeCount             = T.nullable(T.number({ integer = true, min = 0 })),
+  SongCount                = T.nullable(T.number({ integer = true, min = 0 })),
+  AlbumCount               = T.nullable(T.number({ integer = true, min = 0 })),
+  ArtistCount              = T.nullable(T.number({ integer = true, min = 0 })),
+  MusicVideoCount          = T.nullable(T.number({ integer = true, min = 0 })),
+  LockData                 = T.nullable(T.boolean()),
+  Width                    = T.nullable(T.number({ integer = true, min = 0 })),
+  Height                   = T.nullable(T.number({ integer = true, min = 0 })),
+  CameraMake               = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+  CameraModel              = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+  Software                 = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+  ExposureTime             = T.nullable(T.number()),
+  FocalLength              = T.nullable(T.number()),
+  ImageOrientation         = T.nullable(T.string({ max = 16,
+    enum = { TopLeft=true, TopRight=true, BottomRight=true, BottomLeft=true,
+             LeftTop=true, RightTop=true, RightBottom=true, LeftBottom=true } })),
+  Aperture                 = T.nullable(T.number()),
+  ShutterSpeed             = T.nullable(T.number()),
+  Latitude                 = T.nullable(T.number()),
+  Longitude                = T.nullable(T.number()),
+  Altitude                 = T.nullable(T.number()),
+  IsoSpeedRating           = T.nullable(T.number({ integer = true })),
+  SeriesTimerId            = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+  ProgramId                = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+  ChannelPrimaryImageTag   = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+  StartDate                = T.nullable(T.string({ max = 64, not_match = "[\\x00-\\x1f]" })),
+  CompletionPercentage     = T.nullable(T.number({ min = 0, max = 100 })),
+  IsRepeat                 = T.nullable(T.boolean()),
+  EpisodeTitle             = T.nullable(T.string({ max = 1024, not_match = "[\\x00-\\x1f]" })),
+  ChannelType              = T.nullable(T.string({ max = 8, enum = { TV=true, Radio=true } })),
+  Audio                    = T.nullable(T.string({ max = 16,
+    enum = { Mono=true, Stereo=true, Dolby=true, DolbyDigital=true, Thx=true, Atmos=true } })),
+  IsMovie                  = T.nullable(T.boolean()),
+  IsSports                 = T.nullable(T.boolean()),
+  IsSeries                 = T.nullable(T.boolean()),
+  IsLive                   = T.nullable(T.boolean()),
+  IsNews                   = T.nullable(T.boolean()),
+  IsKids                   = T.nullable(T.boolean()),
+  IsPremiere               = T.nullable(T.boolean()),
+  TimerId                  = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+  NormalizationGain        = T.nullable(T.number()),
+  -- Self-referential (CurrentProgram: BaseItemDto) - T.any(), not recursed.
+  CurrentProgram           = T.any(),
+})
+
+-- ---------------------------------------------------------------------------
 
 return {
   name = "jellyfin",
@@ -364,7 +1256,11 @@ return {
     -------------------------------------------------------------------------
     -- System
     -------------------------------------------------------------------------
-    { name="system config",          methods={"GET","POST"}, path=[[^/System/Configuration$]] },
+    -- GET/POST split into separate entries (first-match-wins) so the json
+    -- schema below only applies to the POST body, not the bodyless GET.
+    { name="system config",          method="GET",  path=[[^/System/Configuration$]], no_body=true },
+    { name="system config update",   method="POST", path=[[^/System/Configuration$]],
+      content_types = { "application/json" }, json = jf_server_configuration },
     -- ConfigurationController.cs: GetNamedConfiguration/UpdateNamedConfiguration
     -- are [HttpGet/Post("Configuration/{key}")] - a truly generic key (any
     -- core or plugin-registered configuration section, not a fixed set).
@@ -373,7 +1269,17 @@ return {
     -- own, or the dedicated "Configuration/Branding" POST route - whose key
     -- is capitalized, case-sensitive-different from the old lowercase-only
     -- "branding" entry - would have been blocked).
-    { name="system config named",    methods={"GET","POST"}, path=[[^/System/Configuration/[A-Za-z][A-Za-z0-9]{0,63}$]] },
+    { name="system config named",    method="GET",  path=[[^/System/Configuration/[A-Za-z][A-Za-z0-9]{0,63}$]], no_body=true },
+    -- UpdateNamedConfiguration binds [FromBody, Required] System.Text.Json.JsonDocument,
+    -- then deserializes it against whatever type _configurationManager.GetConfigurationType(key)
+    -- returns for that specific key - a genuinely key-dependent, dynamically-typed
+    -- body (core config sections like "branding"/"encoding"/"network", or any
+    -- plugin-registered section). Cannot be meaningfully schema-typed without
+    -- enumerating every installed plugin's config class; content-type + size
+    -- limit is the practical ceiling here (same posture as mediawiki's
+    -- dynamic_type_expr fields and this file's jf_provider_list()).
+    { name="system config named update", method="POST", path=[[^/System/Configuration/[A-Za-z][A-Za-z0-9]{0,63}$]],
+      content_types = { "application/json" } },
     { name="system config metadata options default", method="GET", path=[[^/System/Configuration/MetadataOptions/Default$]], no_body=true },
     -- [Obsolete], real handler is a security-hardened no-op server-side.
     { name="system mediaencoder path", method="POST", path=[[^/System/MediaEncoder/Path$]],
@@ -425,7 +1331,17 @@ return {
     { name="env drives",        method="GET",  path=[[^/Environment/Drives$]],                  no_body=true },
     { name="env dircontents",   method="GET",  path=[[^/Environment/DirectoryContents$]],       no_body=true },
     { name="env parentpath",    method="GET",  path=[[^/Environment/ParentPath$]],              no_body=true },
-    { name="env validatepath",  method="POST", path=[[^/Environment/ValidatePath$]] },
+    -- EnvironmentController.ValidatePath(ValidatePathDto): Path is nullable
+    -- string, ValidateWritable defaults false (non-nullable bool - JSON
+    -- omission still binds false), IsFile is a nullable bool (tri-state:
+    -- unset = "check either file or dir exists").
+    { name="env validatepath",  method="POST", path=[[^/Environment/ValidatePath$]],
+      content_type = "application/json",
+      json = T.object({
+        Path             = T.nullable(T.string({ max = 4096, not_match = "[\\x00-\\x1f]" })),
+        ValidateWritable = T.nullable(T.boolean()),
+        IsFile           = T.nullable(T.boolean()),
+      }) },
     -- [Obsolete], always returns an empty array server-side - routed anyway
     -- so an old client gets a clean empty response instead of a WAF block.
     { name="env networkshares", method="GET",  path=[[^/Environment/NetworkShares$]], no_body=true },
@@ -554,7 +1470,9 @@ return {
     -------------------------------------------------------------------------
     -- Repositories / Packages / Plugins / Backup
     -------------------------------------------------------------------------
-    { name="repositories",      methods={"GET","POST"}, path=[[^/Repositories$]] },
+    { name="repositories",      method="GET",  path=[[^/Repositories$]], no_body=true },
+    { name="repositories set",  method="POST", path=[[^/Repositories$]],
+      content_types = { "application/json" }, json = T.array(jf_repository_info, { max = 64 }) },
     { name="packages",          method="GET",           path=[[^/Packages$]],   no_body=true },
     -- PackageController.cs: GetPackageInfo's `name` is looked up against the
     -- live plugin-repository catalog (IInstallationManager.GetAvailablePackages),
@@ -614,14 +1532,37 @@ return {
     -------------------------------------------------------------------------
     -- Users
     -------------------------------------------------------------------------
-    { name="users list",        methods={"GET","POST"}, paths={ [[^/Users$]], [[^/users$]] } },
+    -- GET/POST split (first-match-wins): GetUsers (query filters, no body) vs
+    -- UpdateUser (?userId= query + UserDto body) bind completely different shapes.
+    { name="users list",        method="GET", paths={ [[^/Users$]], [[^/users$]] }, no_body=true,
+      query = T.object({
+        isHidden   = T.nullable(T.bool_query()),
+        isDisabled = T.nullable(T.bool_query()),
+      }) },
+    { name="users list update", method="POST", paths={ [[^/Users$]], [[^/users$]] },
+      content_types = { "application/json" },
+      query = T.object({ userId = T.nullable(jf_id()) }),
+      json  = jf_user_dto },
     { name="users public",      method="GET",  paths={ [[^/Users/Public$]], [[^/users/public$]] }, no_body=true },
     { name="users me",          method="GET",  path=[[^/Users/Me$]],             no_body=true },
-    { name="users new",         method="POST", path=[[^/Users/New$]] },
+    { name="users new",         method="POST", path=[[^/Users/New$]],
+      content_types = { "application/json" },
+      json = T.object({
+        Name     = T.string({ max = 256, not_match = "[\\x00-\\x1f]" }),
+        Password = T.nullable(T.string({ max = 512, not_match = "[\\x00-\\x1f]" })),
+      }, { required = { Name = true } }) },
+    -- AuthenticateUserByName request: both fields are C#-nullable, but a
+    -- real login always sends both (confirmed live via test/jellyfin_login.lua)
+    -- - required here per the "prefer strict" default.
     { name="users auth",        method="POST", paths={
         [[^/Users/AuthenticateByName$]],
         [[^/Users/authenticatebyname$]],
-    }},
+      },
+      content_types = { "application/json" },
+      json = T.object({
+        Username = T.string({ max = 256, not_match = "[\\x00-\\x1f]" }),
+        Pw       = T.string({ max = 512, not_match = "[\\x00-\\x1f]" }),
+      }, { required = { Username = true, Pw = true } }) },
     -- controllers/session/login/index.js reads json.Secret/data.Secret from
     -- this same QuickConnect flow's own request/response traffic (see
     -- "quickconnect connect" below) - PascalCase, not the camelCase the
@@ -637,10 +1578,12 @@ return {
       ),
     },
     {
-      name    = "users password",
-      method  = "POST",
-      path    = [[^/Users/Password$]],
-      query   = T.object({ userId = T.nullable(jf_id()) }),
+      name          = "users password",
+      method        = "POST",
+      path          = [[^/Users/Password$]],
+      content_types = { "application/json" },
+      query         = T.object({ userId = T.nullable(jf_id()) }),
+      json          = jf_update_user_password(),
     },
     {
       name          = "users forgotpassword",
@@ -655,29 +1598,43 @@ return {
       content_types = { "application/json" },
     },
     {
+      -- GET (GetUserById) and DELETE (DeleteUser) carry no body; POST
+      -- (UpdateUserLegacy) binds the same UserDto as "users list update"
+      -- above. Split into separate entries (first-match-wins) so the json
+      -- schema only applies to the POST leg.
       name    = "users by id",
-      methods = { "GET", "POST", "DELETE" },
+      methods = { "GET", "DELETE" },
       path    = "^/Users/" .. ID .. "$",
+      no_body = true,
     },
+    { name="users by id update", method="POST", path="^/Users/" .. ID .. "$",
+      content_types = { "application/json" }, json = jf_user_dto },
     -- UserController.cs: UpdateUserConfigurationLegacy is [HttpPost("{userId}/Configuration")]
     -- only - no GET.
-    { name="users configuration", method="POST", path="^/Users/" .. ID .. "/Configuration$" },
+    { name="users configuration", method="POST", path="^/Users/" .. ID .. "/Configuration$",
+      content_types = { "application/json" }, json = jf_user_configuration },
     -- Current-form UpdateUserConfiguration (?userId= query instead of a path
     -- segment) - previously a real, flagged gap; addressed now as part of
     -- the full controller audit.
     { name="users configuration current", method="POST", path=[[^/Users/Configuration$]],
       content_type = "application/json",
-      query = T.object({ userId = T.nullable(jf_id()) }) },
+      query = T.object({ userId = T.nullable(jf_id()) }),
+      json  = jf_user_configuration },
     -- [Obsolete] legacy userId-in-path authenticate/password/easypassword
     -- forms - AuthenticateUser/UpdateUserPasswordLegacy/UpdateUserEasyPassword
     -- all just delegate to (or, for EasyPassword, unconditionally Forbid()
     -- the same shape as) their current-form siblings above.
     { name="users authenticate legacy", method="POST", path="^/Users/" .. ID .. "/Authenticate$", no_body=true,
       query = T.object({ pw = T.string({ max = 256, not_match = "[\\x00-\\x1f]" }) }, { required = { pw = true } }) },
-    { name="users password legacy", method="POST", path="^/Users/" .. ID .. "/Password$" },
+    -- UpdateUserPassword: all 4 fields C#-nullable (ResetPassword defaults
+    -- false), same shape as "users password" above.
+    { name="users password legacy", method="POST", path="^/Users/" .. ID .. "/Password$",
+      content_types = { "application/json" },
+      json = jf_update_user_password() },
     { name="users easypassword legacy", method="POST", path="^/Users/" .. ID .. "/EasyPassword$",
       content_type = "application/json" },
-    { name="users policy",        method="POST",           path="^/Users/" .. ID .. "/Policy$" },
+    { name="users policy",        method="POST",           path="^/Users/" .. ID .. "/Policy$",
+      content_types = { "application/json" }, json = jf_user_policy },
     { name="users grouping",      method="GET",            path="^/Users/" .. ID .. "/GroupingOptions$", no_body=true },
     {
       name    = "userviews grouping",
@@ -686,7 +1643,10 @@ return {
       no_body = true,
       query   = T.object({ userId = T.nullable(jf_id()) }),
     },
-    { name="users items",         method="GET",            path="^/Users/" .. ID .. "/Items$",           no_body=true },
+    -- [Obsolete] legacy alias for GetItems - identical param set to "items"
+    -- above minus userId (it's the {userId} path segment here instead).
+    { name="users items",         method="GET",            path="^/Users/" .. ID .. "/Items$",           no_body=true,
+      query = T.object(jf_get_items_query(false)) },
     { name="users items latest",  method="GET",            path="^/Users/" .. ID .. "/Items/Latest$",    no_body=true },
     { name="users items resume",  method="GET",            path="^/Users/" .. ID .. "/Items/Resume$",    no_body=true },
     { name="users items by id",   method="GET",            path="^/Users/" .. ID .. "/Items/" .. ID .. "$", no_body=true },
@@ -785,7 +1745,9 @@ return {
       path   = "^/UserPlayedItems/[0-9A-Za-z_.-]+$",
       query  = T.object({ userId = T.nullable(jf_id()) }),
     },
-    { name="favorite items", methods={"POST","DELETE"}, path="^/Users/" .. ID .. "/FavoriteItems/[0-9A-Za-z_.-]+$" },
+    -- MarkFavoriteItemLegacy/UnmarkFavoriteItemLegacy: userId+itemId both
+    -- path segments, no other params - unlike "userfavoriteitems" below.
+    { name="favorite items", methods={"POST","DELETE"}, path="^/Users/" .. ID .. "/FavoriteItems/[0-9A-Za-z_.-]+$", no_body=true },
     -- Current form of favorite items (userId implied by auth token, or
     -- passed as an optional query param instead of a path segment) -
     -- same legacy/current split as userplayeditems above.
@@ -808,13 +1770,23 @@ return {
     -------------------------------------------------------------------------
     -- Items
     -------------------------------------------------------------------------
-    { name="items",              methods={"GET","POST"}, path=[[^/Items$]] },
-    -- GET: fetch. POST: ItemUpdateController.UpdateItem, save from the
-    -- metadata editor (scripts/metadataEditor.js) - body is the full
-    -- BaseItemDto (100+ fields), left unvalidated beyond content-type, same
-    -- as this file's convention for other large nested-object bodies.
-    -- DELETE: scripts/deleteHelper.js's item-delete flow.
-    { name="items by id",        methods={"GET","POST","DELETE"}, path="^/Items/" .. ID .. "$", content_types={"application/json"} },
+    -- ItemsController.GetItems - no POST /Items exists anywhere on the real
+    -- server (confirmed: grepped every controller for HttpPost("Items") with
+    -- no id segment - only HttpPost("Items/{itemId}"), a different route,
+    -- below). The previous methods={"GET","POST"} here was a real gap in the
+    -- other direction: it accepted a POST the real server 404s on, with zero
+    -- schema on either leg.
+    { name="items", method="GET", path=[[^/Items$]], no_body=true,
+      query = T.object(jf_get_items_query(true)) },
+    -- UserLibraryController.GetItem (GET, ?userId=) / LibraryController.
+    -- DeleteItem (DELETE, no params) carry no body; ItemUpdateController.
+    -- UpdateItem (POST) binds the full BaseItemDto, now fully typed via
+    -- jf_base_item_dto() (see its definition above for what's exempted
+    -- and why).
+    { name="items by id", methods={"GET","DELETE"}, path="^/Items/" .. ID .. "$", no_body=true,
+      query = T.object({ userId = T.nullable(jf_id()) }) },
+    { name="items by id update", method="POST", path="^/Items/" .. ID .. "$",
+      content_types={"application/json"}, json = jf_base_item_dto },
     -- LibraryController.DeleteItems: bulk delete, comma-delimited ?ids=.
     { name="items delete bulk",  method="DELETE",        path=[[^/Items$]], no_body=true,
       query = T.object({ ids = T.nullable(T.string({ max = 65536, not_match = "[\\x00-\\x1f]" })) }) },
@@ -832,7 +1804,17 @@ return {
         limit             = T.nullable(T.number_query({ integer = true, min = 0, max = 10000 })),
         fields            = T.nullable(T.string({ max = 2048, not_match = "[\\x00-\\x1f]" })),
       }) },
-    { name="items refresh",      method="POST",          path="^/Items/" .. ID .. "/Refresh$" },
+    -- ItemRefreshController.RefreshItem: query params only, no body.
+    { name="items refresh",      method="POST",          path="^/Items/" .. ID .. "/Refresh$", no_body=true,
+      query = T.object({
+        metadataRefreshMode = T.nullable(T.string({ max = 16,
+          enum = { None=true, ValidationOnly=true, Default=true, FullRefresh=true } })),
+        imageRefreshMode    = T.nullable(T.string({ max = 16,
+          enum = { None=true, ValidationOnly=true, Default=true, FullRefresh=true } })),
+        replaceAllMetadata  = T.nullable(T.bool_query()),
+        replaceAllImages    = T.nullable(T.bool_query()),
+        regenerateTrickplay = T.nullable(T.bool_query()),
+      }) },
     { name="items metadata editor", method="GET",        path="^/Items/" .. ID .. "/MetadataEditor$",      no_body=true },
     { name="items contenttype",  method="POST",          path="^/Items/" .. ID .. "/ContentType$",         no_body=true,
       query = T.object({ contentType = T.nullable(T.string({ max = 128, not_match = "[\\x00-\\x1f]" })) }) },
@@ -967,7 +1949,16 @@ return {
         type     = T.string({ max = 16, enum = IMAGE_TYPE_ENUM }),
         imageUrl = T.nullable(T.string({ max = 4096, not_match = "[\\x00-\\x1f]" })),
       }, { required = { type = true } }) },
-    { name="items playbackinfo", methods={"GET","POST"}, path="^/Items/" .. ID .. "/PlaybackInfo$" },
+    -- MediaInfoController's GetPlaybackInfo (GET) / GetPostedPlaybackInfo
+    -- (POST) - both bind the same [ParameterObsolete] query params (kept for
+    -- backwards compatibility, superseded by the POST body). POST body is
+    -- jf_playback_info_dto() (see its definition above).
+    { name="items playbackinfo", method="GET", path="^/Items/" .. ID .. "/PlaybackInfo$", no_body=true,
+      query = jf_playbackinfo_query() },
+    { name="items playbackinfo post", method="POST", path="^/Items/" .. ID .. "/PlaybackInfo$",
+      content_types = { "application/json" },
+      query = jf_playbackinfo_query(),
+      json  = jf_playback_info_dto() },
     -- Images (ImageController.cs) - full audit against real source, not
     -- just live-reported false positives: replaces the old Thumb/Logo/
     -- Primary/Backdrop-only routes (a real gap - Art/Disc/Box/Screenshot/
@@ -1090,26 +2081,65 @@ return {
     -------------------------------------------------------------------------
     -- Audio
     -------------------------------------------------------------------------
-    { name="audio lyrics",        methods={"GET","POST","DELETE"}, path="^/Audio/" .. ID .. "/Lyrics$" },
+    -- LyricsController: GET/DELETE (GetLyrics/DeleteLyrics) take no params
+    -- at all; POST (UploadLyrics) takes ?fileName= (required) and a raw
+    -- text/plain body (the lyric file itself, not JSON) - split per method
+    -- since the shapes genuinely differ.
+    { name="audio lyrics",        methods={"GET","DELETE"}, path="^/Audio/" .. ID .. "/Lyrics$", no_body=true },
+    { name="audio lyrics upload", method="POST", path="^/Audio/" .. ID .. "/Lyrics$",
+      content_types = { "text/plain" },
+      query = T.object({ fileName = T.string({ max = 256, not_match = "[\\x00-\\x1f]" }) },
+        { required = { fileName = true } }) },
     { name="audio lyrics remote", method="GET",                    path="^/Audio/" .. ID .. "/RemoteSearch/Lyrics$", no_body=true },
     { name="audio lyrics remote download", method="POST", path="^/Audio/" .. ID .. "/RemoteSearch/Lyrics/" .. OPAQUE_ID .. "$", no_body=true },
     { name="providers lyrics get", method="GET", path="^/Providers/Lyrics/" .. OPAQUE_ID .. "$", no_body=true },
-    -- AudioController: direct-play/transcode streaming, mirrors the "videos
-    -- stream"/"videos stream <ext>" routes below. Query params (container,
-    -- audioCodec, bitrate, etc.) are numerous, transcoding-engine-specific,
-    -- and already unvalidated for video's equivalent routes - same here.
-    { name="audio stream",     method="GET", path="^/Audio/" .. ID .. "/stream$" },
-    { name="audio stream ext", method="GET", path="^/Audio/" .. ID .. "/stream\\.[A-Za-z0-9]{1,10}$", no_body=true },
-    -- UniversalAudioController: adaptive-streaming endpoint most mobile/TV
-    -- clients use for audio playback in preference to plain /stream.
-    { name="audio universal",  method="GET", path="^/Audio/" .. ID .. "/universal$" },
+    -- AudioController.GetAudioStream/GetAudioStreamByContainer: full query
+    -- schema via the shared jf_stream_query() helper (see its definition
+    -- near the top of this file for the evidence/rationale).
+    { name="audio stream",     method="GET", path="^/Audio/" .. ID .. "/stream$", no_body=true,
+      query = jf_stream_query(false) },
+    { name="audio stream ext", method="GET", path="^/Audio/" .. ID .. "/stream\\.[A-Za-z0-9]{1,10}$", no_body=true,
+      query = jf_stream_query(false) },
+    -- UniversalAudioController.GetUniversalAudioStream: adaptive-streaming
+    -- endpoint most mobile/TV clients use for audio playback in preference
+    -- to plain /stream - its own distinct (smaller) query param set.
+    { name="audio universal",  method="GET", path="^/Audio/" .. ID .. "/universal$", no_body=true,
+      query = T.object({
+        container                 = T.nullable(T.string({ max = 512, not_match = "[\\x00-\\x1f]" })),
+        mediaSourceId              = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+        deviceId                   = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+        userId                     = T.nullable(jf_id()),
+        audioCodec                 = T.nullable(T.string({ max = 40, match = "^" .. CONTAINER_RE .. "$" })),
+        maxAudioChannels           = T.nullable(T.number_query({ integer = true, min = 0 })),
+        transcodingAudioChannels   = T.nullable(T.number_query({ integer = true, min = 0 })),
+        maxStreamingBitrate        = T.nullable(T.number_query({ integer = true, min = 0 })),
+        audioBitRate               = T.nullable(T.number_query({ integer = true, min = 0 })),
+        startTimeTicks             = T.nullable(T.number_query({ integer = true, min = 0 })),
+        transcodingContainer       = T.nullable(T.string({ max = 40, match = "^" .. CONTAINER_RE .. "$" })),
+        transcodingProtocol        = T.nullable(T.string({ max = 8, enum = { http=true, hls=true } })),
+        maxAudioSampleRate         = T.nullable(T.number_query({ integer = true, min = 0 })),
+        maxAudioBitDepth           = T.nullable(T.number_query({ integer = true, min = 0 })),
+        enableRemoteMedia          = T.nullable(T.bool_query()),
+        enableAudioVbrEncoding     = T.nullable(T.bool_query()),
+        breakOnNonKeyFrames        = T.nullable(T.bool_query()),
+        enableRedirection          = T.nullable(T.bool_query()),
+      }) },
 
     -------------------------------------------------------------------------
     -- Videos / videos (lowercase used for HLS streaming segments)
     -------------------------------------------------------------------------
-    { name="videos",               methods={"GET","POST"}, path=[[^/Videos$]] },
-    -- HlsSegmentController.cs: [HttpDelete("Videos/ActiveEncodings")] only.
-    { name="videos active enc",    method="DELETE",        path=[[^/Videos/ActiveEncodings$]] },
+    -- Bare GET/POST /Videos doesn't exist anywhere on the real server
+    -- (grepped every controller for HttpGet("Videos")/HttpPost("Videos") -
+    -- only VideoAttachmentsController's [Route("Videos")] class-level
+    -- prefix, whose own actions all require further path segments below) -
+    -- this used to accept both with zero schema, a real gap in the
+    -- deny-by-default direction.
+    -- HlsSegmentController.StopEncodingProcess: both query params required.
+    { name="videos active enc",    method="DELETE",        path=[[^/Videos/ActiveEncodings$]], no_body=true,
+      query = T.object({
+        deviceId      = T.string({ max = 256, not_match = "[\\x00-\\x1f]" }),
+        playSessionId = T.string({ max = 256, not_match = "[\\x00-\\x1f]" }),
+      }, { required = { deviceId = true, playSessionId = true } }) },
     -- HlsSegmentController.cs's own capitalized "/Videos/.../hls/{playlistId}/..."
     -- routes - a genuinely different real endpoint pair from the lowercase
     -- "/videos/.../hls1/main/..." ones covered further below (those are
@@ -1119,17 +2149,35 @@ return {
       path = "^/Videos/" .. ID .. "/hls/" .. OPAQUE_ID .. "/stream\\.m3u8$", no_body=true },
     { name="hls segment legacy",  method="GET",
       path = "^/Videos/" .. ID .. "/hls/" .. OPAQUE_ID .. "/" .. OPAQUE_ID .. "\\.[a-zA-Z0-9\\-._,|]{0,40}$", no_body=true },
-    { name="videos subtitles",     method="POST",          path="^/Videos/" .. ID .. "/Subtitles$" },
+    -- SubtitleController.UploadSubtitle: Data is base64-encoded subtitle
+    -- file content, so no fixed length bound like other free-text fields -
+    -- max_body already caps the whole request.
+    { name="videos subtitles",     method="POST",          path="^/Videos/" .. ID .. "/Subtitles$",
+      content_types = { "application/json" },
+      json = T.object({
+        Language          = T.string({ max = 16, not_match = "[\\x00-\\x1f]" }),
+        Format            = T.string({ max = 16, not_match = "[\\x00-\\x1f]" }),
+        IsForced          = T.boolean(),
+        IsHearingImpaired = T.boolean(),
+        Data              = T.string({ max = 8 * 1024 * 1024, not_match = "[\\x00-\\x1f]" }),
+      }, { required = { Language = true, Format = true, IsForced = true, IsHearingImpaired = true, Data = true } }) },
     -- VideosController.cs: /Videos/{itemId}/stream is [HttpGet]+[HttpHead] only -
     -- no POST variant exists anywhere in the real API ("videos stream post" above
     -- this comment used to model one; removed, GET/HEAD is covered below).
-    { name="videos stream get",    method="GET",           path="^/Videos/" .. ID .. "/stream$" },
+    -- VideosController.GetVideoStream: full query schema via the shared
+    -- jf_stream_query(true) helper (video adds maxWidth/maxHeight vs audio).
+    { name="videos stream get",    method="GET",           path="^/Videos/" .. ID .. "/stream$", no_body=true,
+      query = jf_stream_query(true) },
     -- {container} is a free-form route segment server-side (EncodingHelper.
     -- ContainerValidationRegexStr, same pattern as LiveStreamFiles' - not
     -- just mp4/mkv/webm; a real gap, any other supported container (ts,
     -- m4v, avi, mov, ...) would have been blocked.
+    -- GetVideoStreamByContainer: same query set as "videos stream get" -
+    -- {container} is a path segment here, but the query key is harmless to
+    -- also allow (some client library revisions send both).
     { name="videos stream container", method="GET",
-      path = "^/Videos/" .. ID .. "/stream\\.[a-zA-Z0-9\\-._,|]{0,40}$", no_body=true },
+      path = "^/Videos/" .. ID .. "/stream\\.[a-zA-Z0-9\\-._,|]{0,40}$", no_body=true,
+      query = jf_stream_query(true) },
     { name="videos additionalparts", method="GET", path="^/Videos/" .. ID .. "/AdditionalParts$", no_body=true,
       query = T.object({ userId = T.nullable(jf_id()) }) },
     { name="videos alternatesources delete", method="DELETE", path="^/Videos/" .. ID .. "/AlternateSources$", no_body=true },
@@ -1164,7 +2212,9 @@ return {
     -- No web-client caller found for isPerfectMatch on the search route
     -- (subtitleeditor.js's actual call omits it); left unvalidated.
     { name="items subtitle search",   method="GET",  path="^/Items/" .. ID .. "/RemoteSearch/Subtitles/[A-Za-z-]{2,35}$", no_body=true },
-    { name="items subtitle download", method="POST", path="^/Items/" .. ID .. "/RemoteSearch/Subtitles/" .. OPAQUE_ID .. "$" },
+    -- SubtitleController.DownloadRemoteSubtitles: itemId+subtitleId both
+    -- path segments, no query/body params at all.
+    { name="items subtitle download", method="POST", path="^/Items/" .. ID .. "/RemoteSearch/Subtitles/" .. OPAQUE_ID .. "$", no_body=true },
     { name="subtitle remote get", method="GET", path="^/Providers/Subtitles/Subtitles/" .. OPAQUE_ID .. "$", no_body=true },
     -- subtitles.m3u8: HLS playlist form of the subtitle stream, same
     -- route/query shape as the Stream.{format} routes above (index/
@@ -1273,10 +2323,54 @@ return {
     -------------------------------------------------------------------------
     -- Sessions
     -------------------------------------------------------------------------
-    { name="sessions",                 methods={"GET","POST"}, path=[[^/Sessions$]] },
-    { name="sessions capabilities",    method="POST",          path=[[^/Sessions/Capabilities$]] },
-    { name="sessions capabilities full",method="POST",         path=[[^/Sessions/Capabilities/Full$]] },
-    { name="sessions message",         method="POST",          path="^/Sessions/" .. ID .. "/Message$" },
+    -- GetSessions: no POST /Sessions exists anywhere on the real server
+    -- (only [HttpGet("Sessions")]) - the previous methods={"GET","POST"}
+    -- here accepted a fictional POST with zero schema on either leg.
+    { name="sessions", method="GET", path=[[^/Sessions$]], no_body=true,
+      query = T.object({
+        controllableByUserId = T.nullable(jf_id()),
+        deviceId              = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+        activeWithinSeconds   = T.nullable(T.number_query({ integer = true, min = 0 })),
+      }) },
+    -- PostCapabilities: query params only, no body at all.
+    { name="sessions capabilities",    method="POST", path=[[^/Sessions/Capabilities$]], no_body=true,
+      query = T.object({
+        id                           = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+        playableMediaTypes           = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+        supportedCommands            = T.nullable(T.string({ max = 2048, not_match = "[\\x00-\\x1f]" })),
+        supportsMediaControl         = T.nullable(T.bool_query()),
+        supportsPersistentIdentifier = T.nullable(T.bool_query()),
+      }) },
+    -- PostFullCapabilities: ?id= query + ClientCapabilitiesDto body.
+    -- .DeviceProfile is the same MediaBrowser.Model.Dlna.DeviceProfile
+    -- flagged elsewhere in this file (T.any(), see jf_playback_info_dto's
+    -- comment) - every other field is typed.
+    { name="sessions capabilities full",method="POST", path=[[^/Sessions/Capabilities/Full$]],
+      content_types = { "application/json" },
+      query = T.object({ id = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })) }),
+      json = T.object({
+        PlayableMediaTypes           = T.nullable(T.array(T.string({ max = 16,
+          enum = { Unknown=true, Video=true, Audio=true, Photo=true, Book=true } }), { max = 8 })),
+        SupportedCommands            = T.nullable(T.array(T.string({ max = 32, enum = GENERAL_COMMAND_ENUM }), { max = 64 })),
+        SupportsMediaControl         = T.nullable(T.boolean()),
+        SupportsPersistentIdentifier = T.nullable(T.boolean()),
+        DeviceProfile                = T.any(),
+        AppStoreUrl                  = T.nullable(T.string({ max = 2048, not_match = "[\\x00-\\x1f]" })),
+        IconUrl                      = T.nullable(T.string({ max = 2048, not_match = "[\\x00-\\x1f]" })),
+      }) },
+    -- SendMessageCommand: body is MessageCommand {Header, Text, TimeoutMs}.
+    -- sessionId is `[FromRoute] string`, not a Guid (same as every other
+    -- Sessions/{sessionId}/... route in this section) - the previous `ID`
+    -- pattern here was a real gap: any non-Guid-shaped real session id
+    -- (OPAQUE_ID is what every sibling route below already uses) would have
+    -- been blocked.
+    { name="sessions message",         method="POST",          path="^/Sessions/" .. OPAQUE_ID .. "/Message$",
+      content_types = { "application/json" },
+      json = T.object({
+        Header    = T.nullable(T.string({ max = 512, not_match = "[\\x00-\\x1f]" })),
+        Text      = T.string({ max = 4096, not_match = "[\\x00-\\x1f]" }),
+        TimeoutMs = T.nullable(T.number({ integer = true, min = 0 })),
+      }, { required = { Text = true } }) },
     -- Full audit against real source (SessionController.cs), not just
     -- live-reported false positives.
     { name="sessions viewing (session)", method="POST", path="^/Sessions/" .. OPAQUE_ID .. "/Viewing$", no_body=true,
@@ -1297,36 +2391,79 @@ return {
         itemId    = T.string({ max = 512, not_match = "[\\x00-\\x1f]" }),
       }, { required = { itemId = true } }) },
     { name="sessions logout",      method="POST",   path=[[^/Sessions/Logout$]], no_body=true },
-    -- Remote-control commands (SessionController). These go through
-    -- apiClient.sendPlayCommand/sendCommand/sendPlayStateCommand - methods
-    -- of the "jellyfin-apiclient" npm package (external dependency, not
-    -- vendored in app-sources/ - only its own connection-management subset
-    -- is vendored), so the exact wire-format query/body key casing can't be
-    -- confirmed against source. Left unvalidated beyond path/method, same as
-    -- the already-established "sessions playing"/"sessions playing progress"
-    -- routes above, rather than risk blocking real traffic on a guessed casing.
+    -- Remote-control commands (SessionController.cs) - unlike the comment
+    -- that used to sit here claimed, every one of these IS in the vendored
+    -- server source (the "jellyfin-apiclient" npm package affects only what
+    -- values a given client chooses to *send*, not the server-side [FromQuery]/
+    -- [FromBody] param names it binds against, which come from the C#
+    -- controller itself). Query-param casing/shape confirmed directly
+    -- against SessionController.Play/SendPlaystateCommand/SendFullGeneralCommand.
     {
-      name   = "sessions playing (session)",
-      method = "POST",
-      path   = "^/Sessions/" .. OPAQUE_ID .. "/Playing$",
+      -- SessionController.Play: playCommand+itemIds required; comma-
+      -- delimited Guid[] for itemIds (CommaDelimitedCollectionModelBinder).
+      name    = "sessions playing (session)",
+      method  = "POST",
+      path    = "^/Sessions/" .. OPAQUE_ID .. "/Playing$",
+      no_body = true,
+      query   = T.object({
+        playCommand          = T.string({ max = 16, enum = PLAY_COMMAND_ENUM }),
+        itemIds              = T.string({ max = 65536, not_match = "[\\x00-\\x1f]" }),
+        startPositionTicks   = T.nullable(T.number_query({ integer = true, min = 0 })),
+        mediaSourceId        = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+        audioStreamIndex     = T.nullable(T.number_query({ integer = true })),
+        subtitleStreamIndex  = T.nullable(T.number_query({ integer = true })),
+        startIndex           = T.nullable(T.number_query({ integer = true, min = 0 })),
+      }, { required = { playCommand = true, itemIds = true } }),
     },
     {
-      name   = "sessions playing command",
-      method = "POST",
-      path   = "^/Sessions/" .. OPAQUE_ID .. "/Playing/" .. PLAYSTATE_COMMAND .. "$",
+      -- SessionController.SendPlaystateCommand: {command} is the path
+      -- segment (already PLAYSTATE_COMMAND below); both query params optional.
+      name    = "sessions playing command",
+      method  = "POST",
+      path    = "^/Sessions/" .. OPAQUE_ID .. "/Playing/" .. PLAYSTATE_COMMAND .. "$",
+      no_body = true,
+      query   = T.object({
+        seekPositionTicks  = T.nullable(T.number_query({ integer = true, min = 0 })),
+        controllingUserId  = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+      }),
     },
+    -- SessionController.SendFullGeneralCommand: body is GeneralCommand
+    -- {Name, ControllingUserId, Arguments} - Arguments is a free-form
+    -- Dictionary<string,string> (command-specific key/value pairs, e.g.
+    -- DisplayMessage's Header/Text/TimeoutMs, SetVolume's Volume, ...) - not
+    -- a fixed schema, same posture as jf_provider_list()'s dynamic-name
+    -- lists elsewhere in this file.
     {
       name   = "sessions command",
       method = "POST",
       path   = "^/Sessions/" .. OPAQUE_ID .. "/Command$",
+      content_types = { "application/json" },
+      json = T.object({
+        Name              = T.string({ max = 32, enum = GENERAL_COMMAND_ENUM }),
+        ControllingUserId = T.nullable(jf_id()),
+        Arguments         = T.nullable(T.dict(T.string({ max = 4096, not_match = "[\\x00-\\x1f]" }))),
+      }, { required = { Name = true } }),
     },
-    { name="sessions playing",         method="POST",          path=[[^/Sessions/Playing$]] },
-    { name="sessions playing progress",method="POST",          path=[[^/Sessions/Playing/Progress$]] },
+    -- PlaystateController.ReportPlaybackStart/ReportPlaybackProgress: see
+    -- jf_playback_report_fields()'s big comment above for why this accepts
+    -- several fields with no C# model equivalent.
+    { name="sessions playing",         method="POST",          path=[[^/Sessions/Playing$]],
+      content_types = { "application/json" },
+      json = T.object(jf_playback_report_fields()) },
+    { name="sessions playing progress",method="POST",          path=[[^/Sessions/Playing/Progress$]],
+      content_types = { "application/json" },
+      json = T.object(jf_playback_report_fields({ event_name = true })) },
     -- "Stop" (as opposed to "Stopped" below) doesn't exist anywhere in real
     -- PlaystateController.cs - left as-is rather than removed (harmless:
-    -- matches nothing a real client sends, real server would 404 it too).
-    { name="sessions playing stop",    method="POST",          path=[[^/Sessions/Playing/Stop$]] },
-    { name="sessions playing stopped", method="POST",          path=[[^/Sessions/Playing/Stopped$]] },
+    -- matches nothing a real client sends, real server would 404 it too),
+    -- but no_body since nothing would ever legitimately post one here.
+    { name="sessions playing stop",    method="POST",          path=[[^/Sessions/Playing/Stop$]], no_body=true },
+    -- PlaystateController.ReportPlaybackStopped: same PlayState-blob spread
+    -- as the other two (see jf_playback_report_fields() above), plus
+    -- Failed/NextMediaType which only ever appear on this call.
+    { name="sessions playing stopped", method="POST",          path=[[^/Sessions/Playing/Stopped$]],
+      content_types = { "application/json" },
+      json = T.object(jf_playback_report_fields({ stop_only = true })) },
     -- PingPlaybackSession - real gap, found via full audit against source.
     { name="sessions playing ping",    method="POST",          path=[[^/Sessions/Playing/Ping$]], no_body=true,
       query = T.object({ playSessionId = T.string({ max = 256, not_match = "[\\x00-\\x1f]" }) },
@@ -1507,13 +2644,19 @@ return {
     -------------------------------------------------------------------------
     -- Full audit against real source (LiveTvController.cs), not just live-
     -- reported false positives - only 6 of 41 real actions had any coverage
-    -- before this pass. Big/many-optional-filter-field query DTOs and
-    -- bodies follow this file's existing precedent ("livetv timer by id"
-    -- above) of content-type-only validation rather than enumerating every
-    -- filter flag; simple scalar-param endpoints get a real schema.
+    -- before this pass. GetProgramsDto/GetLiveTvPrograms' many-optional-
+    -- filter-field query DTOs still follow this file's content-type-only
+    -- precedent for genuinely huge shapes; TimerInfoDto/SeriesTimerInfoDto
+    -- turned out tractable on a closer look (see jf_timer_info_dto below)
+    -- and are now fully typed instead.
     { name="livetv info",         method="GET",          path=[[^/LiveTv/Info$]],                                   no_body=true },
     { name="livetv guideinfo",    method="GET",          path=[[^/LiveTv/GuideInfo$]],                              no_body=true },
-    { name="livetv tunerhosts",   methods={"POST","DELETE"}, path=[[^/LiveTv/TunerHosts$]] },
+    -- AddTunerHost (POST, TunerHostInfo body) / DeleteTunerHost (DELETE,
+    -- ?id= query) - genuinely different shapes per method, split accordingly.
+    { name="livetv tunerhosts add",    method="POST",   path=[[^/LiveTv/TunerHosts$]],
+      content_types = { "application/json" }, json = jf_tuner_host_info },
+    { name="livetv tunerhosts delete", method="DELETE", path=[[^/LiveTv/TunerHosts$]], no_body=true,
+      query = T.object({ id = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })) }) },
     { name="livetv tuner reset",  method="POST",         path="^/LiveTv/Tuners/" .. OPAQUE_ID .. "/Reset$",         no_body=true },
     { name="livetv listprov sd",  method="GET",          path=[[^/LiveTv/ListingProviders/SchedulesDirect/Countries$]], no_body=true },
     { name="livetv listprov def", method="GET",          path=[[^/LiveTv/ListingProviders/Default$]],              no_body=true },
@@ -1540,22 +2683,36 @@ return {
     { name="livetv discover",     method="GET",          path=[[^/LiveTv/Tuners/Discover$]],                       no_body=true },
     { name="livetv channels",     method="GET",          path=[[^/LiveTv/Channels$]],                              no_body=true },
     { name="livetv channel by id",method="GET",          path="^/LiveTv/Channels/" .. ID .. "$",                   no_body=true },
-    { name="livetv timers",       method="GET",          path=[[^/LiveTv/Timers$]],                                no_body=true },
+    { name="livetv timers",       method="GET",          path=[[^/LiveTv/Timers$]],                                no_body=true,
+      query = T.object({
+        channelId     = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+        seriesTimerId = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+        isActive      = T.nullable(T.bool_query()),
+        isScheduled   = T.nullable(T.bool_query()),
+      }) },
     -- DVR timer CRUD (recordingeditor.js, recordinghelper.js). timerId is a
-    -- `string` route param server-side (opaque, not GUID). TimerInfoDto is
-    -- a large nested object - unvalidated beyond content-type, same
-    -- convention as other big DTOs above.
+    -- `string` route param server-side (opaque, not GUID). GET/DELETE carry
+    -- no body; POST (UpdateTimer/CreateTimer) binds TimerInfoDto - now fully
+    -- typed via jf_timer_info_dto() (see its definition above).
     {
-      name          = "livetv timer by id",
-      methods       = { "GET", "POST", "DELETE" },
+      name    = "livetv timer by id",
+      methods = { "GET", "DELETE" },
+      path    = "^/LiveTv/Timers/" .. OPAQUE_ID .. "$",
+      no_body = true,
+    },
+    {
+      name          = "livetv timer by id update",
+      method        = "POST",
       path          = "^/LiveTv/Timers/" .. OPAQUE_ID .. "$",
       content_types = { "application/json" },
+      json          = jf_timer_info_dto(),
     },
     {
       name          = "livetv timers create",
       method        = "POST",
       path          = [[^/LiveTv/Timers$]],
       content_types = { "application/json" },
+      json          = jf_timer_info_dto(),
     },
     { name="livetv recordings",   method="GET",          path=[[^/LiveTv/Recordings$]],                            no_body=true },
     -- Both [Obsolete], both real handlers just `return new QueryResult<>()`
@@ -1570,20 +2727,33 @@ return {
     { name="livetv rec by id",    methods={"GET","DELETE"}, path="^/LiveTv/Recordings/" .. ID .. "$", no_body=true,
       query = T.object({ userId = T.nullable(jf_id()) }) },
     { name="livetv rec folders",  method="GET",          path=[[^/LiveTv/Recordings/Folders$]],                    no_body=true },
-    { name="livetv series timers",method="GET",          path=[[^/LiveTv/SeriesTimers$]],                          no_body=true },
+    { name="livetv series timers",method="GET",          path=[[^/LiveTv/SeriesTimers$]],                          no_body=true,
+      query = T.object({
+        sortBy    = T.nullable(T.string({ max = 32, not_match = "[\\x00-\\x1f]" })),
+        sortOrder = T.nullable(T.string({ max = 16, enum = { Ascending=true, Descending=true } })),
+      }) },
     -- Series-recording CRUD (seriesrecordingeditor.js, guide.js). Same
-    -- SeriesTimerInfoDto/opaque-timerId reasoning as above.
+    -- opaque-timerId split as "livetv timer by id" above; body is
+    -- SeriesTimerInfoDto via jf_series_timer_info_dto().
     {
-      name          = "livetv seriestimer by id",
-      methods       = { "GET", "POST", "DELETE" },
+      name    = "livetv seriestimer by id",
+      methods = { "GET", "DELETE" },
+      path    = "^/LiveTv/SeriesTimers/" .. OPAQUE_ID .. "$",
+      no_body = true,
+    },
+    {
+      name          = "livetv seriestimer by id update",
+      method        = "POST",
       path          = "^/LiveTv/SeriesTimers/" .. OPAQUE_ID .. "$",
       content_types = { "application/json" },
+      json          = jf_series_timer_info_dto(),
     },
     {
       name          = "livetv seriestimers create",
       method        = "POST",
       path          = [[^/LiveTv/SeriesTimers$]],
       content_types = { "application/json" },
+      json          = jf_series_timer_info_dto(),
     },
     { name="livetv prog rec",     method="GET",          path=[[^/LiveTv/Programs/Recommended$]],                  no_body=true },
     { name="livetv programs",     method="GET",          path=[[^/LiveTv/Programs$]],                              no_body=true },
@@ -1600,18 +2770,81 @@ return {
     -------------------------------------------------------------------------
     -- Live Streams
     -------------------------------------------------------------------------
-    { name="livestreams mediainfo", method="POST", path=[[^/LiveStreams/MediaInfo$]] },
-    -- Required to start playback of any tuner-based live channel
-    -- (playbackmanager.js:567). Confirmed real query keys are PascalCase
-    -- (ItemId, PlaySessionId, MaxStreamingBitrate, ...) plus a JSON body -
-    -- same large-transcoding-surface treatment as video/audio stream routes.
-    { name="livestreams open",  method="POST", path=[[^/LiveStreams/Open$]] },
-    { name="livestreams close", method="POST", path=[[^/LiveStreams/Close$]] },
+    -- No "LiveStreams/MediaInfo" route exists anywhere on the real server
+    -- (only Open/Close below, grepped the whole Controllers/ tree) - this
+    -- used to accept it with zero schema, a fictional-endpoint gap in the
+    -- deny-by-default direction (same bug pattern as "items"/"videos" above).
+    --
+    -- OpenLiveStreamDto (OpenLiveStream, required to start playback of any
+    -- tuner-based live channel): query keys confirmed PascalCase from the
+    -- real web client (playbackmanager.js:536-567's getLiveStream(), the one
+    -- caller in the vendored source - a raw apiClient.ajax() call, not the
+    -- generated SDK, so it bypasses the SDK's usual camelCase convention).
+    -- ASP.NET's [FromQuery] binding is case-insensitive server-side, so both
+    -- the C# signature's own camelCase names and the web client's PascalCase
+    -- are accepted here to cover any other real client (mobile/TV apps use
+    -- the generated SDK, which follows the OpenAPI camelCase spec) without
+    -- guessing which one a given client picks. .DeviceProfile in the body
+    -- is the same huge MediaBrowser.Model.Dlna.DeviceProfile flagged
+    -- elsewhere (see jf_stream_query's comment) - not exhaustively typed;
+    -- .OpenToken is.
+    { name="livestreams open",  method="POST", path=[[^/LiveStreams/Open$]],
+      content_types = { "application/json" },
+      query = T.object({
+        openToken      = T.nullable(T.string({ max = 1024, not_match = "[\\x00-\\x1f]" })),
+        userId         = T.nullable(jf_id()),          UserId         = T.nullable(jf_id()),
+        playSessionId  = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+        PlaySessionId  = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+        maxStreamingBitrate = T.nullable(T.number_query({ integer = true, min = 0 })),
+        MaxStreamingBitrate = T.nullable(T.number_query({ integer = true, min = 0 })),
+        startTimeTicks = T.nullable(T.number_query({ integer = true, min = 0 })),
+        StartTimeTicks = T.nullable(T.number_query({ integer = true, min = 0 })),
+        audioStreamIndex = T.nullable(T.number_query({ integer = true })),
+        AudioStreamIndex = T.nullable(T.number_query({ integer = true })),
+        subtitleStreamIndex = T.nullable(T.number_query({ integer = true })),
+        SubtitleStreamIndex = T.nullable(T.number_query({ integer = true })),
+        maxAudioChannels = T.nullable(T.number_query({ integer = true, min = 0 })),
+        itemId         = T.nullable(jf_id()),           ItemId         = T.nullable(jf_id()),
+        enableDirectPlay   = T.nullable(T.bool_query()),
+        enableDirectStream = T.nullable(T.bool_query()), EnableDirectStream = T.nullable(T.bool_query()),
+        alwaysBurnInSubtitleWhenTranscoding = T.nullable(T.bool_query()),
+      }),
+      -- OpenLiveStreamDto body - .DeviceProfile is T.any() (same posture as
+      -- jf_playback_info_dto's), every other field typed.
+      json = T.object({
+        OpenToken            = T.nullable(T.string({ max = 1024, not_match = "[\\x00-\\x1f]" })),
+        UserId               = T.nullable(jf_id()),
+        PlaySessionId        = T.nullable(T.string({ max = 256, not_match = "[\\x00-\\x1f]" })),
+        MaxStreamingBitrate  = T.nullable(T.number({ integer = true, min = 0 })),
+        StartTimeTicks       = T.nullable(T.number({ integer = true, min = 0 })),
+        AudioStreamIndex     = T.nullable(T.number({ integer = true })),
+        SubtitleStreamIndex  = T.nullable(T.number({ integer = true })),
+        MaxAudioChannels     = T.nullable(T.number({ integer = true, min = 0 })),
+        ItemId               = T.nullable(jf_id()),
+        EnableDirectPlay     = T.nullable(T.boolean()),
+        EnableDirectStream   = T.nullable(T.boolean()),
+        AlwaysBurnInSubtitleWhenTranscoding = T.nullable(T.boolean()),
+        DeviceProfile        = T.any(),
+        DirectPlayProtocols  = T.nullable(T.array(T.string({ max = 8,
+          enum = { File=true, Http=true, Rtmp=true, Rtsp=true, Udp=true, Rtp=true, Ftp=true } }), { max = 8 })),
+      }) },
+    { name="livestreams close", method="POST", path=[[^/LiveStreams/Close$]], no_body=true,
+      query = T.object({ liveStreamId = T.string({ max = 256, not_match = "[\\x00-\\x1f]" }) },
+        { required = { liveStreamId = true } }) },
 
     -------------------------------------------------------------------------
     -- Collections, Movies, Playlists
     -------------------------------------------------------------------------
-    { name="collections",         method="POST",         path=[[^/Collections$]] },
+    -- CreateCollection: query keys confirmed PascalCase via collectionEditor.js
+    -- (Name/IsLocked/Ids - ParentId not sent by the web client but is a real
+    -- optional server param, kept accepted).
+    { name="collections",         method="POST",         path=[[^/Collections$]], no_body=true,
+      query = T.object({
+        Name     = T.nullable(T.string({ max = 1024, not_match = "[\\x00-\\x1f]" })),
+        Ids      = T.nullable(T.string({ max = 8192, not_match = "[\\x00-\\x1f]" })),
+        ParentId = T.nullable(jf_id()),
+        IsLocked = T.nullable(T.bool_query()),
+      }) },
     -- collectionEditor.js / itemContextMenu.js build these with
     -- { Ids: [...].join(',') } - PascalCase, confirmed via apiClient.getUrl().
     {
@@ -1629,8 +2862,46 @@ return {
     { name="movies rec",          method="GET",          path=[[^/Movies/Recommendations$]], no_body=true },
     -- PlaylistsController.cs: bare /Playlists is [HttpPost] only (create) - GET
     -- only exists at /Playlists/{playlistId}, already the "playlists by id" route.
-    { name="playlists",           method="POST",          path=[[^/Playlists$]] },
-    { name="playlists by id",     methods={"GET","POST"}, path="^/Playlists/" .. ID .. "$" },
+    -- CreatePlaylist: [ParameterObsolete] query (kept for back-compat, comma-
+    -- delimited ids) OR a CreatePlaylistDto body - both accepted, query wins
+    -- if both present. Body confirmed via playlisteditor.ts:96 (generated
+    -- SDK call): Name/IsPublic/Ids(array)/UserId, PascalCase.
+    { name="playlists",           method="POST",          path=[[^/Playlists$]],
+      content_types = { "application/json" },
+      query = T.object({
+        name      = T.nullable(T.string({ max = 1024, not_match = "[\\x00-\\x1f]" })),
+        ids       = T.nullable(T.string({ max = 65536, not_match = "[\\x00-\\x1f]" })),
+        userId    = T.nullable(jf_id()),
+        mediaType = T.nullable(T.string({ max = 16,
+          enum = { Unknown=true, Video=true, Audio=true, Photo=true, Book=true } })),
+      }),
+      json = T.nullable(T.object({
+        Name     = T.nullable(T.string({ max = 1024, not_match = "[\\x00-\\x1f]" })),
+        Ids      = T.nullable(T.array(jf_id(), { max = 8192 })),
+        UserId   = T.nullable(jf_id()),
+        MediaType = T.nullable(T.string({ max = 16,
+          enum = { Unknown=true, Video=true, Audio=true, Photo=true, Book=true } })),
+        Users    = T.nullable(T.array(T.object({
+          UserId  = T.nullable(jf_id()),
+          CanEdit = T.nullable(T.boolean()),
+        }), { max = 64 })),
+        IsPublic = T.nullable(T.boolean()),
+      })) },
+    -- GetPlaylist (GET, no body) / UpdatePlaylist (POST, UpdatePlaylistDto
+    -- body - same shape as CreatePlaylistDto minus UserId/MediaType) -
+    -- split so the json schema only applies to the POST leg.
+    { name="playlists by id",     method="GET",  path="^/Playlists/" .. ID .. "$", no_body=true },
+    { name="playlists by id update", method="POST", path="^/Playlists/" .. ID .. "$",
+      content_types = { "application/json" },
+      json = T.object({
+        Name     = T.nullable(T.string({ max = 1024, not_match = "[\\x00-\\x1f]" })),
+        Ids      = T.nullable(T.array(jf_id(), { max = 8192 })),
+        Users    = T.nullable(T.array(T.object({
+          UserId  = T.nullable(jf_id()),
+          CanEdit = T.nullable(T.boolean()),
+        }), { max = 64 })),
+        IsPublic = T.nullable(T.boolean()),
+      }) },
     { name="playlists items",     method="GET",           path="^/Playlists/" .. ID .. "/Items$",           no_body=true },
     -- playlisteditor.ts:139 calls the generated SDK with { playlistId, ids,
     -- userId } literally - camelCase, SDK-confirmed.
@@ -1664,9 +2935,10 @@ return {
     -- opaque strings server-side (MoveItem's C# signature types them
     -- `string`, not `Guid`); newIndex is path-constrained to digits already.
     {
-      name   = "playlists items move",
-      method = "POST",
-      path   = "^/Playlists/" .. OPAQUE_ID .. "/Items/" .. OPAQUE_ID .. "/Move/[0-9]+$",
+      name    = "playlists items move",
+      method  = "POST",
+      path    = "^/Playlists/" .. OPAQUE_ID .. "/Items/" .. OPAQUE_ID .. "/Move/[0-9]+$",
+      no_body = true,
     },
     { name="playlists users",     method="GET",           path="^/Playlists/" .. ID .. "/Users$",           no_body=true },
     { name="playlists users byid",method="GET",           path="^/Playlists/" .. ID .. "/Users/" .. ID .. "$", no_body=true },
@@ -1753,9 +3025,14 @@ return {
     -------------------------------------------------------------------------
     -- Scheduled Tasks
     -------------------------------------------------------------------------
-    { name="tasks",        method="GET",  path=[[^/ScheduledTasks$]],                                 no_body=true },
+    { name="tasks",        method="GET",  path=[[^/ScheduledTasks$]],                                 no_body=true,
+      query = T.object({
+        isHidden  = T.nullable(T.bool_query()),
+        isEnabled = T.nullable(T.bool_query()),
+      }) },
     { name="tasks by id",  method="GET",  path="^/ScheduledTasks/" .. HEX32 .. "$",                   no_body=true },
-    { name="tasks run",    method="POST", path="^/ScheduledTasks/Running/" .. HEX32 .. "$" },
+    -- StartTask: taskId path segment only, no query/body params at all.
+    { name="tasks run",    method="POST", path="^/ScheduledTasks/Running/" .. HEX32 .. "$", no_body=true },
     { name="tasks stop",   method="DELETE", path="^/ScheduledTasks/Running/" .. HEX32 .. "$", no_body=true },
     { name="tasks triggers", method="POST", path="^/ScheduledTasks/" .. HEX32 .. "/Triggers$",
       content_type = "application/json" },
@@ -1763,7 +3040,9 @@ return {
     -------------------------------------------------------------------------
     -- Quick Connect
     -------------------------------------------------------------------------
-    { name="quickconnect initiate", method="POST", path=[[^/QuickConnect/Initiate$]] },
+    -- InitiateQuickConnect: no params at all, POST or the [Obsolete] GET
+    -- form right below.
+    { name="quickconnect initiate", method="POST", path=[[^/QuickConnect/Initiate$]], no_body=true },
     -- [Obsolete] GET form of Initiate, "still available to avoid breaking
     -- compatibility" per its own doc comment - kept working, not removed.
     { name="quickconnect initiate legacy", method="GET", path=[[^/QuickConnect/Initiate$]], no_body=true },
@@ -1798,7 +3077,12 @@ return {
     -------------------------------------------------------------------------
     -- Client log
     -------------------------------------------------------------------------
-    { name="clientlog", method="POST", path=[[^/ClientLog/Document$]] },
+    -- ClientLogController.LogFile: raw text/plain log upload, no query
+    -- params - MaxDocumentSize (1,000,000 bytes) enforced server-side via
+    -- [RequestSizeLimit], mirrored here as an explicit route-level max_body
+    -- override (tighter than the app-wide 10MB default).
+    { name="clientlog", method="POST", path=[[^/ClientLog/Document$]],
+      content_types = { "text/plain" }, max_body = 1000000 },
 
     -------------------------------------------------------------------------
     -- Misc: Search, TimeSync, legacy UserViews, video attachments

@@ -826,9 +826,17 @@ local function test_route(route)
 
   local ct = route.content_types or route.content_type
   if ct and not route.no_body then
+    -- Pick a "wrong" type that isn't itself one of the route's declared
+    -- accepted types (text/plain is the usual choice, but a handful of real
+    -- routes - e.g. jellyfin's clientlog/lyrics-upload/subtitle-upload -
+    -- genuinely declare text/plain as correct, which used to make this test
+    -- assert its own declared type should be denied).
+    local ct_list = {}
+    for _, v in ipairs(type(ct) == "table" and ct or { ct }) do ct_list[v] = true end
+    local wrong_type = ct_list["text/plain"] and "application/json" or "text/plain"
     local wrong_headers = {}
     for k, v in pairs(base_headers) do wrong_headers[k] = v end
-    wrong_headers["Content-Type"] = "text/plain"
+    wrong_headers["Content-Type"] = wrong_type
     local denied = not run_request({
       method  = method,
       uri     = uri,
@@ -836,9 +844,9 @@ local function test_route(route)
       body    = '{"x":1}',
     })
     if denied then
-      record(name, "wrong content-type text/plain", "PASS")
+      record(name, "wrong content-type " .. wrong_type, "PASS")
     else
-      record(name, "wrong content-type text/plain", "FAIL",
+      record(name, "wrong content-type " .. wrong_type, "FAIL",
              "expected deny, got allow")
     end
   end

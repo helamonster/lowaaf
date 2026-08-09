@@ -779,6 +779,11 @@ return {
     { name = "ciphers unarchive", method = "PUT",  path = [[^/api/ciphers/unarchive$]], content_type = "application/json", json = cipher_ids_body },
     { name = "ciphers import",    method = "POST", path = [[^/api/ciphers/import$]],
       content_type = "application/json",
+      -- App default (5MB) doesn't actually fit a schema-max (5000-cipher)
+      -- import once each cipher item is more than trivially small (found via
+      -- gen.lua's array-boundary test hitting a real body-size deny at
+      -- exactly the declared max, not the array-length check).
+      max_body = 10 * 1024 * 1024,
       json = T.object({
         ciphers = T.array(cipher_body, { max = 5000 }),
         folders = T.array(T.object({
@@ -797,6 +802,8 @@ return {
     { name = "cipher import-organization", method = "POST", path = [[^/api/ciphers/import-organization$]],
       content_type = "application/json",
       query = T.object({ organizationId = T.uuid() }, { required = { organizationId=true } }),
+      -- Same max_body bump as "ciphers import" above, same reason.
+      max_body = 10 * 1024 * 1024,
       json = T.object({
         ciphers     = T.array(cipher_body, { max = 5000 }),
         collections = T.array(full_collection_body, { max = 1000 }),
@@ -1025,6 +1032,9 @@ return {
     -- signatureKeyPair, securityState). T.object rejects unknown keys, so we must include them.
     { name = "rotate-keys", method = "POST", path = [[^/api/accounts/key-management/rotate-user-account-keys$]],
       content_type = "application/json",
+      -- Same max_body bump as "ciphers import" above, same reason - this
+      -- route's accountData.ciphers carries the same 5000-max cipher_body array.
+      max_body = 10 * 1024 * 1024,
       json = T.object({
         -- Hash of the current master key used to authenticate the rotation
         oldMasterKeyAuthenticationHash = sml,
