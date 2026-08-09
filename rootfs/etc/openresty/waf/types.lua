@@ -283,7 +283,7 @@ function T.object(schema, opts)
           if log_mode then errors[#errors + 1] = err
           else return false, err end
         end
-      elseif opts.required and opts.required[key] then
+      elseif opts.required and opts.required[key] and ngx.ctx.waf_enforce_required ~= false then
         local msg = path .. "." .. key .. " is required"
         if log_mode then errors[#errors + 1] = msg
         else return fail(msg) end
@@ -646,6 +646,45 @@ function T.number_query(opts)
     return true
   end
   T._registry[fn] = { type = "number_query", opts = opts }
+  return fn
+end
+
+-- JSON body field typed as serde's untagged NumberOrString: some servers
+-- (e.g. Vaultwarden) deliberately accept either a JSON number or a numeric
+-- string for a given field because real clients are inconsistent about which
+-- they send. Unlike T.number_query (query/form params, always strings) this
+-- is for JSON bodies where a real Lua number is also a legitimate input.
+function T.number_or_string(opts)
+  opts = opts or {}
+  local fn = function(v, path)
+    local verbose = ngx.ctx.waf_verbose or 0
+    local n
+    if type(v) == "number" then
+      n = v
+    elseif type(v) == "string" then
+      n = tonumber(v)
+      if not n then
+        local msg = path .. " must be numeric"
+        if verbose >= 2 then msg = msg .. " (got: " .. val_str(v) .. ")" end
+        return fail(msg)
+      end
+    else
+      local msg = path .. " must be a number or numeric string"
+      if verbose >= 2 then msg = msg .. " (got: " .. val_str(v) .. ")" end
+      return fail(msg)
+    end
+    if opts.integer and n % 1 ~= 0 then
+      return fail(path .. " must be an integer")
+    end
+    if opts.min and n < opts.min then
+      return fail(path .. " too small (min " .. opts.min .. ")")
+    end
+    if opts.max and n > opts.max then
+      return fail(path .. " too large (max " .. opts.max .. ")")
+    end
+    return true
+  end
+  T._registry[fn] = { type = "number_or_string", opts = opts }
   return fn
 end
 

@@ -264,7 +264,21 @@ local asym_keys_schema = { encryptedPrivateKey = enc, publicKey = T.string({ max
 local asym_keys_body   = T.object(asym_keys_schema)
 local keys_data        = T.nullable(T.object(asym_keys_schema, { required = { encryptedPrivateKey=true, publicKey=true } }))
 
-local register_body = T.object({
+-- RegisterData.key (accounts.rs:100) is a required String, aliased as
+-- userSymmetricKey by newer clients. opts.required can only enforce a single
+-- fixed key name, not "one of these two aliases", so that constraint needs an
+-- explicit cross-field check (same with_check pattern as cipher_type_check).
+local function register_key_check(v, path)
+  if type(v) ~= "table" then return true end
+  local has_key   = v.key ~= nil and v.key ~= ngx.null
+  local has_alias = v.userSymmetricKey ~= nil and v.userSymmetricKey ~= ngx.null
+  if not has_key and not has_alias then
+    return false, path .. ": one of 'key' or 'userSymmetricKey' is required"
+  end
+  return true
+end
+
+local register_body = T.with_check(T.object({
   email              = T.email(),
   kdf                = T.number({ integer=true, min=0, max=1 }),
   kdfIterations      = T.number({ integer=true, min=1, max=2000000 }),
@@ -284,7 +298,10 @@ local register_body = T.object({
   acceptEmergencyAccessInviteToken = T.nullable(T.string({ max=4096 })),
   orgInviteToken     = T.nullable(T.string({ max=4096 })),  -- serde primary name
   token              = T.nullable(T.string({ max=4096 })),  -- serde alias
-}, { required = { email=true, kdf=true, kdfIterations=true, masterPasswordHash=true } })
+}, { required = { email=true, kdf=true, kdfIterations=true, masterPasswordHash=true } }), register_key_check, {
+  { value = { email="a@a.com", kdf=0, kdfIterations=1, masterPasswordHash="a" },
+    label = "key and userSymmetricKey both absent" },
+})
 
 -- ---------------------------------------------------------------------------
 -- Shared body for bulk cipher operations: archive, unarchive, bulk-delete
@@ -321,12 +338,14 @@ local send_body = T.object({
   deletionDate   = T.iso8601(),
   disabled       = T.boolean(),
   password       = T.nullable(sml),   -- PBKDF2-derived 44-char base64 key; sml (256) gives headroom
-  maxAccessCount = T.nullable(T.number({ integer=true, min=0, max=1000000 })),
+  -- Rust: Option<NumberOrString> (src/api/core/sends.rs) -- clients inconsistently
+  -- send these as a JSON number or a numeric string.
+  maxAccessCount = T.nullable(T.number_or_string({ integer=true, min=0, max=1000000 })),
   expirationDate = T.nullable(T.iso8601()),
   hideEmail      = nu_bool,
   accessCount    = T.nullable(T.number({ integer=true, min=0, max=1000000 })),
   notes          = nu_enc,
-  fileLength     = T.nullable(T.number({ integer=true, min=0, max=536870912 })),
+  fileLength     = T.nullable(T.number_or_string({ integer=true, min=0, max=536870912 })),
   id             = nu_uuid,
   -- bw CLI v2026+: email notification list and send auth type
   emails         = T.nullable(T.array(T.email(), { max=1000 })),
@@ -368,8 +387,10 @@ local kdf_data = T.object({
   kdfParallelism = nu_kdf_parallelism,
 }, { required = { kdf=true, kdfIterations=true } })
 
--- Folder body: just an encrypted name
-local folder_body = T.object({ name = enc }, { required = { name=true } })
+-- Folder body: encrypted name plus an optional id (src/api/core/folders.rs:
+-- FolderData.id — accepted on both create and update, though the server
+-- ignores it on create and the path param wins on update)
+local folder_body = T.object({ name = enc, id = nu_uuid_or_empty }, { required = { name=true } })
 
 -- Access-control entry shared by collection groups and collection members
 -- (CollectionGroupData / CollectionMembershipData have the same wire shape)
@@ -394,6 +415,28 @@ local full_collection_body = T.object({
 -- (BulkMembershipIds, BulkCollectionIds, etc.)
 local bulk_uuid_ids = T.object({ ids = T.array(T.uuid(), { max=2000 }) }, { required = { ids=true } })
 
+-- Org member custom-role permissions: server-side this is an untyped
+-- HashMap<String, Value> (organizations.rs: InviteData/EditUserData.permissions),
+-- but the real request body is always built from the client's PermissionsApi
+-- class (bitwarden/clients: libs/common/src/admin-console/models/api/permissions.api.ts),
+-- a fixed set of 13 camelCase boolean keys. T.dict(...) would accept any key
+-- name; using the closed key set here instead so an unrecognized key is rejected.
+local permissions_body = T.object({
+  accessEventLogs      = T.nullable(T.boolean()),
+  accessImportExport   = T.nullable(T.boolean()),
+  accessReports        = T.nullable(T.boolean()),
+  createNewCollections = T.nullable(T.boolean()),
+  editAnyCollection    = T.nullable(T.boolean()),
+  deleteAnyCollection  = T.nullable(T.boolean()),
+  manageCiphers        = T.nullable(T.boolean()),
+  manageGroups         = T.nullable(T.boolean()),
+  manageSso            = T.nullable(T.boolean()),
+  managePolicies       = T.nullable(T.boolean()),
+  manageUsers          = T.nullable(T.boolean()),
+  manageResetPassword  = T.nullable(T.boolean()),
+  manageScim           = T.nullable(T.boolean()),
+})
+
 -- Partial cipher update: folderId and favorite only (src/api/core/ciphers.rs: PartialCipherData)
 local cipher_partial_body = T.object({
   name     = T.nullable(enc),
@@ -402,10 +445,12 @@ local cipher_partial_body = T.object({
 }, { required = { favorite=true } })
 
 -- Collection-assignment body: used by /collections, /collections_v2, /collections-admin
--- (CollectionsAdminData — primary field collectionIds, alias CollectionIds)
+-- (CollectionsAdminData — primary field collectionIds, #[serde(alias = "CollectionIds")]
+-- means legacy/mobile clients may send the PascalCase form instead)
 local cipher_collections_body = T.object({
   collectionIds = T.array(T.uuid(), { max=200 }),
-}, { required = { collectionIds=true } })
+  CollectionIds = T.array(T.uuid(), { max=200 }),
+})
 
 -- Settings: equivalent domain groupings
 -- (src/api/core/accounts.rs: EquivalentDomainData)
@@ -495,10 +540,35 @@ local vw_file_token = T.jwt_claims({
 })
 
 -- ---------------------------------------------------------------------------
+-- Org API-key bearer token (OrgApiKeyLoginJwtClaims in auth.rs), used only by
+-- POST /api/public/organization/import (LDAP/directory-connector sync).
+-- Distinct from vw_login_claims: iss suffix is "api.organization", sub is the
+-- org API key's own UUID (not a user), client_id = "organization.<org_uuid>".
+-- Overrides the default "authorization" header validator on that one route.
+-- ---------------------------------------------------------------------------
+local vw_org_api_key_header = T.bearer_jwt({
+  nbf        = T.number({ integer=true }),
+  exp        = T.number({ integer=true }),
+  iss        = vw_iss("api.organization"),
+  sub        = T.uuid(),
+  client_id  = T.string({ max=64, match=[[^organization\.]] .. T.uuid_re .. [[$]] }),
+  client_sub = T.uuid(),
+  scope      = T.array(T.string({ max=32, enum={ ["api.organization"]=true } }), { max=1 }),
+}, {
+  typ = T.string({ enum={ ["JWT"]=true } }),
+  alg = T.string({ enum={ ["RS256"]=true } }),
+})
+
+-- ---------------------------------------------------------------------------
 return {
   name    = "vaultwarden",
   mode = "block",   -- flip to "block" after validating against real traffic
   verbose = 2,
+  -- Global kill-switch for every opts.required check in this app's schemas
+  -- (see types.lua T.object / core.lua). Flip to false as a safety valve if a
+  -- newly-added required field starts producing false positives before you
+  -- can patch the specific field -- leave true otherwise.
+  enforce_required = true,
   -- on_deny fires only in "block" mode.  Requires the ipset to exist:
   --   ipset create waf-blocklist hash:ip timeout 3600
   on_deny = core.ipset_deny_hook("waf-blocklist"),
@@ -544,8 +614,11 @@ return {
       -- Device GUIDs sent by official clients to identify the registered device
       ["device-identifier"]      = T.uuid(),
       ["x-device-identifier"]    = T.uuid(),
-      -- Base64-encoded email address sent by the web vault on some requests
-      ["x-request-email"]        = T.base64({ max=256 }),
+      -- Base64url-encoded (not standard base64) email address sent by the web
+      -- vault on some requests. Decoded server-side with BASE64URL_NOPAD
+      -- (src/api/core/accounts.rs: KnownDevice guard); padding is optional
+      -- ("Bitwarden seems to send padded Base64 strings since 2026.2.1").
+      ["x-request-email"]        = T.string({ max=256, match=[[^[A-Za-z0-9\-_]*=*$]] }),
       ["bitwarden-package-type"] = T.string({ max=32, enum={
         ["Chrome Extension"]         = true,
         ["Firefox Extension"]        = true,
@@ -594,14 +667,14 @@ return {
         client_secret     = nu_sml,
         refresh_token     = T.nullable(T.jwt()),
         -- form-encoded: values arrive as strings, not numbers
-        deviceType        = T.nullable(T.string({ max=2, match=[[^(?:[0-9]|[12][0-9]|30)$]] })),
+        -- DeviceType enum: 0-26 (matches the device-type header validator below)
+        deviceType        = T.nullable(T.string({ max=2, match=[[^(?:[0-9]|1[0-9]|2[0-6])$]] })),
         deviceIdentifier  = T.nullable(T.uuid()),
         deviceName        = nu_sml,
         devicePushToken   = nu_sml,
         twoFactorToken    = T.nullable(T.string({ max=4096 })),  -- remember-me JWT, TOTP, WebAuthn, etc.
         twoFactorProvider = T.nullable(T.string({ max=2, match=[[^(?:[0-9]|10)$]] })),
         twoFactorRemember = T.nullable(T.string({ max=1, match=[[^[01]$]] })),
-        captchaResponse   = nu_sml,
         authRequest       = T.nullable(T.uuid()),
         -- SSO / OIDC fields (grant_type="authorization_code")
         code              = T.nullable(T.string({ max=1024 })),
@@ -681,6 +754,16 @@ return {
     { name = "cipher collections-v2",   methods = { "PUT", "POST" }, path = "^/api/ciphers/" .. U .. "/collections_v2$",     content_type = "application/json", json = cipher_collections_body },
     { name = "cipher collections",      methods = { "PUT", "POST" }, path = "^/api/ciphers/" .. U .. "/collections$",        content_type = "application/json", json = cipher_collections_body },
     { name = "cipher collections-admin",methods = { "PUT", "POST" }, path = "^/api/ciphers/" .. U .. "/collections-admin$",  content_type = "application/json", json = cipher_collections_body },
+    -- Bulk collection assignment across multiple ciphers at once (org vault view)
+    -- (src/api/core/organizations.rs: BulkCollectionsData — all fields required)
+    { name = "ciphers bulk-collections", method = "POST", path = [[^/api/ciphers/bulk-collections$]],
+      content_type = "application/json",
+      json = T.object({
+        organizationId    = T.uuid(),
+        cipherIds         = T.array(T.uuid(), { max=2000 }),
+        collectionIds     = T.array(T.uuid(), { max=200 }),
+        removeCollections = T.boolean(),
+      }, { required = { organizationId=true, cipherIds=true, collectionIds=true, removeCollections=true } }) },
     -- Soft-delete POST alias (clients may use POST or PUT for idempotency)
     { name = "cipher soft-delete-post",      method = "POST",   path = "^/api/ciphers/" .. U .. "/delete$",         no_body = true },
     -- Admin soft-delete (org admin can trash any cipher)
@@ -703,6 +786,21 @@ return {
           name = enc,
         }), { max = 1000 }),
         folderRelationships = T.array(T.object({
+          key   = T.number({ integer=true, min=0, max=4999 }),
+          value = T.number({ integer=true, min=0, max=999 }),
+        }), { max = 5000 }),
+      }) },
+    -- Org-scoped import (distinct from personal-vault "ciphers import" above):
+    -- collections use the full org-collection shape, plus a cipher<->collection
+    -- index-pair relationship list instead of a folder one.
+    -- (src/api/core/organizations.rs: ImportData; org_id via ?organizationId=)
+    { name = "cipher import-organization", method = "POST", path = [[^/api/ciphers/import-organization$]],
+      content_type = "application/json",
+      query = T.object({ organizationId = T.uuid() }, { required = { organizationId=true } }),
+      json = T.object({
+        ciphers     = T.array(cipher_body, { max = 5000 }),
+        collections = T.array(full_collection_body, { max = 1000 }),
+        collectionRelationships = T.array(T.object({
           key   = T.number({ integer=true, min=0, max=4999 }),
           value = T.number({ integer=true, min=0, max=999 }),
         }), { max = 5000 }),
@@ -781,7 +879,11 @@ return {
     { name = "folder create", method = "POST",   path = [[^/api/folders$]],           content_type = "application/json", json = folder_body },
     { name = "folder get",    method = "GET",    path = "^/api/folders/" .. U .. "$", no_body = true },
     { name = "folder update", method = "PUT",    path = "^/api/folders/" .. U .. "$", content_type = "application/json", json = folder_body },
+    -- POST alias for PUT folder update (src/api/core/folders.rs: post_folder delegates to put_folder)
+    { name = "folder update-post", method = "POST", path = "^/api/folders/" .. U .. "$", content_type = "application/json", json = folder_body },
     { name = "folder delete", method = "DELETE", path = "^/api/folders/" .. U .. "$", no_body = true },
+    -- POST alias for DELETE folder delete
+    { name = "folder delete-post", method = "POST", path = "^/api/folders/" .. U .. "/delete$", no_body = true },
 
     -- SENDS -----------------------------------------------------------------
 
@@ -822,6 +924,7 @@ return {
       json = T.object({ avatarColor = T.nullable(T.string({ max=7, match=[[^#[0-9a-fA-F]{6}$]] })) }) },
 
     -- Password & KDF
+    -- Rust: ChangePassData (accounts.rs:502) -- all four fields non-Option.
     { name = "password change", method = "POST", path = [[^/api/accounts/password$]],
       content_type = "application/json",
       json = T.object({
@@ -829,7 +932,10 @@ return {
         newMasterPasswordHash = med,
         masterPasswordHint    = T.nullable(sml),
         key                   = enc,
-      }) },
+      }, { required = { masterPasswordHash=true, newMasterPasswordHash=true, key=true } }) },
+    -- Rust: ChangeKdfData (accounts.rs:601) -- masterPasswordHash/newMasterPasswordHash/
+    -- key/authenticationData/unlockData are all non-Option, as are every field of
+    -- AuthenticationData (accounts.rs:585) and UnlockData (accounts.rs:593).
     { name = "kdf change", method = "POST", path = [[^/api/accounts/kdf$]],
       content_type = "application/json",
       json = T.object({
@@ -840,13 +946,14 @@ return {
           salt = sml,
           kdf  = kdf_data,
           masterPasswordAuthenticationHash = med,
-        }),
+        }, { required = { salt=true, kdf=true, masterPasswordAuthenticationHash=true } }),
         unlockData = T.object({
           salt                    = sml,
           kdf                     = kdf_data,
           masterKeyWrappedUserKey = enc,
-        }),
-      }) },
+        }, { required = { salt=true, kdf=true, masterKeyWrappedUserKey=true } }),
+      }, { required = { masterPasswordHash=true, newMasterPasswordHash=true, key=true,
+                         authenticationData=true, unlockData=true } }) },
     -- Keys
     -- /accounts/key does not exist in Vaultwarden; kept to avoid 404-before-proxy on old clients
     { name = "key update",  method = "POST", path = [[^/api/accounts/key$]],  content_type = "application/json" },
@@ -886,10 +993,15 @@ return {
         newEmail              = T.email(),
         key                   = enc,
         newMasterPasswordHash = med,
-        token                 = T.string({ max=16 }),
+        -- Rust: NumberOrString (ChangeEmailData.token); generated as a 6-digit
+        -- code (crypto::generate_email_token(6)) but clients may send it as
+        -- either a JSON number or a numeric string.
+        token                 = T.number_or_string({ integer=true, min=0, max=999999 }),
       }) },
     -- Set password: used after SSO registration / invite with no prior password
     -- kdf fields are top-level (flattened from KDFData struct)
+    -- Rust: SetPasswordData (accounts.rs:121) -- kdf/kdfIterations (via the
+    -- flattened KDFData), key, and masterPasswordHash are all non-Option.
     { name = "set-password", method = "POST", path = [[^/api/accounts/set-password$]],
       content_type = "application/json",
       json = T.object({
@@ -902,7 +1014,7 @@ return {
         masterPasswordHash = med,
         masterPasswordHint = T.nullable(sml),
         orgIdentifier      = T.nullable(T.string({ max=256 })),
-      }) },
+      }, { required = { kdf=true, kdfIterations=true, key=true, masterPasswordHash=true } }) },
 
     -- ---------------------------------------------------------------------------
     -- Key rotation (heavyweight — re-encrypts all vault data)
@@ -1022,6 +1134,7 @@ return {
     -- All 2fa get-* endpoints require auth verification (PasswordOrOtpData)
     { name = "2fa get-recover",  method = "POST", path = [[^/api/two-factor/get-recover$]],       content_type = "application/json", json = password_or_otp },
     { name = "2fa get-webauthn", method = "POST", path = [[^/api/two-factor/get-webauthn$]],      content_type = "application/json", json = password_or_otp },
+    { name = "2fa get-webauthn-challenge", method = "POST", path = [[^/api/two-factor/get-webauthn-challenge$]], content_type = "application/json", json = password_or_otp },
     { name = "2fa get-duo",      method = "POST", path = [[^/api/two-factor/get-duo$]],           content_type = "application/json", json = password_or_otp },
     { name = "2fa get-totp",     method = "POST", path = [[^/api/two-factor/get-authenticator$]], content_type = "application/json", json = password_or_otp },
     { name = "2fa get-yubikey",  method = "POST", path = [[^/api/two-factor/get-yubikey$]],       content_type = "application/json", json = password_or_otp },
@@ -1040,7 +1153,10 @@ return {
       json = T.object({
         masterPasswordHash = T.nullable(med),
         otp                = T.nullable(T.string({ max=16 })),
-        type               = T.number({ integer=true, min=0, max=255 }),
+        -- Rust: NumberOrString (DisableTwoFactorData.type). TwoFactorType enum
+        -- (db/models/two_factor.rs) user-facing range is 0-8; 1000+/2000 are
+        -- internal challenge/protected-action markers, not client-sent values.
+        type               = T.number_or_string({ integer=true, min=0, max=8 }),
       }) },
     { name = "2fa device-verification-settings", method = "GET", path = [[^/api/two-factor/get-device-verification-settings$]], no_body = true },
     -- TOTP (authenticator app)
@@ -1048,7 +1164,9 @@ return {
       content_type = "application/json",
       json = T.object({
         key                = T.string({ max=256 }),
-        token              = T.string({ max=16 }),
+        -- Rust: NumberOrString (EnableAuthenticatorData.token) -- the 6-digit
+        -- TOTP code from the authenticator app.
+        token              = T.number_or_string({ integer=true, min=0, max=999999 }),
         masterPasswordHash = T.nullable(med),
         otp                = T.nullable(T.string({ max=16 })),
       }) },
@@ -1057,7 +1175,9 @@ return {
       json = T.object({
         key                = T.string({ max=256 }),
         masterPasswordHash = med,
-        type               = T.number({ integer=true, min=0, max=255 }),
+        -- Rust: NumberOrString (DisableAuthenticatorData.type). Same
+        -- TwoFactorType enum as "2fa disable" above -- 0-8, not 0-255.
+        type               = T.number_or_string({ integer=true, min=0, max=8 }),
       }) },
     -- YubiKey (hardware OTP key)
     { name = "2fa yubikey activate", methods = { "POST", "PUT" }, path = [[^/api/two-factor/yubikey$]],
@@ -1129,7 +1249,8 @@ return {
     { name = "webauthn create", methods = { "POST", "PUT" }, path = [[^/api/two-factor/webauthn$]],
       content_type = "application/json",
       json = T.object({
-        id   = T.number({ integer=true, min=1, max=5 }),
+        -- Rust: NumberOrString (EnableWebauthnData.id, 1..5)
+        id   = T.number_or_string({ integer=true, min=1, max=5 }),
         name = T.string({ max=256 }),
         deviceResponse = T.object({
           id     = T.string({ max=512 }),
@@ -1146,7 +1267,8 @@ return {
     { name = "webauthn delete", method = "DELETE", path = [[^/api/two-factor/webauthn$]],
       content_type = "application/json",
       json = T.object({
-        id                 = T.number({ integer=true, min=1, max=5 }),
+        -- Rust: NumberOrString (DeleteU2FData.id)
+        id                 = T.number_or_string({ integer=true, min=1, max=5 }),
         masterPasswordHash = T.nullable(med),
         otp                = T.nullable(T.string({ max=16 })),
       }) },
@@ -1168,6 +1290,12 @@ return {
     { name = "org keys", method = "POST", path = "^/api/organizations/" .. U .. "/keys$",
       content_type = "application/json",
       json = asym_keys_body },
+    -- Org CLI API-key retrieval / rotation (same auth-verification body as the
+    -- personal-account api-key/rotate-api-key routes above)
+    { name = "org api-key",        method = "POST", path = "^/api/organizations/" .. U .. "/api-key$",
+      content_type = "application/json", json = password_or_otp },
+    { name = "org rotate-api-key", method = "POST", path = "^/api/organizations/" .. U .. "/rotate-api-key$",
+      content_type = "application/json", json = password_or_otp },
     -- SSO domain stub: always returns a dummy value
     { name = "org sso-verified", method = "POST", path = [[^/api/organizations/domain/sso/verified$]], no_body = true },
     { name = "org create", method = "POST", path = [[^/api/organizations$]],
@@ -1177,7 +1305,9 @@ return {
         collectionName = enc,
         key            = enc,
         name           = T.string({ max=256 }),
-        planType       = T.nullable(T.number({ integer=true, min=0, max=100 })),
+        -- Rust: NumberOrString (OrgData.plan_type) -- ignored server-side
+        -- (self-hosted always uses the same plan) but still type-checked.
+        planType       = T.nullable(T.number_or_string({ integer=true, min=0, max=100 })),
         keys = keys_data,
       }, { required = { billingEmail=true, collectionName=true, key=true, name=true } }) },
     { name = "collection list",        method = "GET", path = [[^/api/collections$]],                              no_body = true },
@@ -1236,10 +1366,11 @@ return {
     { name = "org user update",  methods = { "PUT", "POST" }, path = "^/api/organizations/" .. U .. "/users/" .. U .. "$",
       content_type = "application/json",
       json = T.object({
-        type        = T.number({ integer=true, min=0, max=4 }),
+        -- Rust: NumberOrString (EditUserData.type)
+        type        = T.number_or_string({ integer=true, min=0, max=4 }),
         collections = T.nullable(T.array(collection_access_entry, { max=500 })),
         groups      = T.nullable(T.array(T.uuid(), { max=500 })),
-        permissions = T.nullable(T.dict(T.nullable(T.boolean()))),
+        permissions = T.nullable(permissions_body),
       }) },
     { name = "org user delete",  method = "DELETE", path = "^/api/organizations/" .. U .. "/users/" .. U .. "$", no_body = true },
     { name = "org users invite",  method = "POST", path = "^/api/organizations/" .. U .. "/users/invite$",
@@ -1247,9 +1378,10 @@ return {
       json = T.object({
         emails      = T.array(T.email(), { max=200 }),
         groups      = T.array(T.uuid(), { max=200 }),
-        type        = T.number({ integer=true, min=0, max=4 }),
+        -- Rust: NumberOrString (InviteData.type)
+        type        = T.number_or_string({ integer=true, min=0, max=4 }),
         collections = T.nullable(T.array(collection_access_entry, { max=500 })),
-        permissions = T.nullable(T.dict(T.nullable(T.boolean()))),
+        permissions = T.nullable(permissions_body),
       }) },
     { name = "org users reinvite-bulk", method = "POST", path = "^/api/organizations/" .. U .. "/users/reinvite$",
       content_type = "application/json", json = bulk_uuid_ids },
@@ -1351,6 +1483,28 @@ return {
     -- Plans stub (self-hosted Vaultwarden returns free-plan data)
     { name = "plans", method = "GET", path = [[^/api/plans$]], no_body = true },
 
+    -- EVENT LOG (audit trail) ------------------------------------------------
+    -- (src/api/core/events.rs) start/end are ISO8601 date strings; continuationToken
+    -- is an opaque pagination cursor, not a UUID.
+    { name = "events org",      method = "GET", path = "^/api/organizations/" .. U .. "/events$", no_body = true,
+      query = T.object({
+        start              = T.iso8601(),
+        ["end"]            = T.iso8601(),
+        continuationToken  = T.nullable(T.string({ max=1024 })),
+      }, { required = { start=true, ["end"]=true } }) },
+    { name = "events cipher",   method = "GET", path = "^/api/ciphers/" .. U .. "/events$", no_body = true,
+      query = T.object({
+        start              = T.iso8601(),
+        ["end"]            = T.iso8601(),
+        continuationToken  = T.nullable(T.string({ max=1024 })),
+      }, { required = { start=true, ["end"]=true } }) },
+    { name = "events org-user", method = "GET", path = "^/api/organizations/" .. U .. "/users/" .. U .. "/events$", no_body = true,
+      query = T.object({
+        start              = T.iso8601(),
+        ["end"]            = T.iso8601(),
+        continuationToken  = T.nullable(T.string({ max=1024 })),
+      }, { required = { start=true, ["end"]=true } }) },
+
     -- EMERGENCY ACCESS ------------------------------------------------------
 
     { name = "emergency trusted", method = "GET", path = [[^/api/emergency-access/trusted$]], no_body = true },
@@ -1359,14 +1513,16 @@ return {
       content_type = "application/json",
       json = T.object({
         email        = T.email(),
-        type         = T.number({ integer=true, min=0, max=1 }),
+        -- Rust: NumberOrString (EmergencyAccessInviteData.type)
+        type         = T.number_or_string({ integer=true, min=0, max=1 }),
         waitTimeDays = T.number({ integer=true, min=1, max=90 }),
       }, { required = { email=true, type=true, waitTimeDays=true } }) },
     { name = "emergency get",     method = "GET",    path = "^/api/emergency-access/" .. U .. "$",                no_body = true },
     { name = "emergency update",  methods = { "PUT", "POST" }, path = "^/api/emergency-access/" .. U .. "$",
       content_type = "application/json",
       json = T.object({
-        type         = T.number({ integer=true, min=0, max=1 }),
+        -- Rust: NumberOrString (EmergencyAccessUpdateData.type)
+        type         = T.number_or_string({ integer=true, min=0, max=1 }),
         waitTimeDays = T.number({ integer=true, min=1, max=90 }),
         keyEncrypted = nu_enc,
       }, { required = { type=true, waitTimeDays=true } }) },
@@ -1391,6 +1547,28 @@ return {
         key                   = enc,
       }) },
     { name = "emergency policies",    method = "GET",  path = "^/api/emergency-access/" .. U .. "/policies$",     no_body = true },
+
+    -- PUBLIC API (LDAP / directory-connector sync) ---------------------------
+    -- Authenticated with a distinct org-API-key bearer JWT (vw_org_api_key_header),
+    -- not the standard user login JWT — overrides the default "authorization"
+    -- header validator for this route only.
+    -- (src/api/core/public.rs: ldap_import / OrgImportData)
+    { name = "public org import", method = "POST", path = [[^/public/organization/import$]],
+      content_type = "application/json",
+      headers = { authorization = vw_org_api_key_header },
+      json = T.object({
+        groups = T.array(T.object({
+          name               = T.string({ max=256 }),
+          externalId         = T.string({ max=256 }),
+          memberExternalIds  = T.array(T.string({ max=256 }), { max=5000 }),
+        }), { max=1000 }),
+        members = T.array(T.object({
+          email      = T.email(),
+          externalId = T.string({ max=256 }),
+          deleted    = T.boolean(),
+        }), { max=5000 }),
+        overwriteExisting = T.boolean(),
+      }, { required = { groups=true, members=true, overwriteExisting=true } }) },
 
     -- SETTINGS --------------------------------------------------------------
 
@@ -1435,6 +1613,22 @@ return {
 
     { name = "notifications hub", method = "GET", path = [[^/notifications/hub$]],
       query = T.object({ access_token = vw_access_token }), no_body = true },
+    -- Unauthenticated WS subscription (Send access views, login-with-device
+    -- approval push). token here is an opaque per-subscription string, not a JWT.
+    { name = "notifications anonymous-hub", method = "GET", path = [[^/notifications/anonymous-hub$]],
+      query = T.object({ token = T.string({ max=256 }) }, { required = { token=true } }), no_body = true },
+
+    -- EVENT COLLECTION (client-side audit logging) ---------------------------
+    -- Separate top-level mount point (/events), not under /api.
+    -- (src/api/core/events.rs: EventCollection — type/date required, ids optional)
+    { name = "events collect", method = "POST", path = [[^/events/collect$]],
+      content_type = "application/json",
+      json = T.array(T.object({
+        type           = T.number({ integer=true, min=0, max=2000 }),
+        date           = T.iso8601(),
+        cipherId       = nu_uuid,
+        organizationId = nu_uuid,
+      }, { required = { type=true, date=true } }), { max=1000 }) },
 
     -- MISCELLANEOUS ---------------------------------------------------------
 
@@ -1476,7 +1670,11 @@ return {
     { name = "admin users org-type",        method = "POST", path = [[^/admin/users/org_type$]],
       content_type = "application/json",
       json = T.object({
-        user_type = T.number({ integer = true, min = 0, max = 255 }),
+        -- Rust: NumberOrString (MembershipTypeData.user_type). Same
+        -- MembershipType enum as "org user update"/"org users invite"
+        -- (db/models/organization.rs: 0-3, plus legacy "Custom"=4) -- 0-4,
+        -- not 0-255.
+        user_type = T.number_or_string({ integer = true, min = 0, max = 4 }),
         user_uuid = T.uuid(),
         org_uuid  = T.uuid(),
       }),

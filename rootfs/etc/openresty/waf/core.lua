@@ -567,6 +567,12 @@ function core.run(app)
   prepare(app)
 
   ngx.ctx.waf_verbose  = app.verbose or 0
+  -- Global kill-switch for every T.object opts.required check across the whole
+  -- app (see types.lua T.object). Defaults to enforced; an app can set
+  -- app.enforce_required = false to relax every required-field check at once
+  -- -- e.g. as a safety valve while burning in a batch of newly-added required
+  -- fields against real traffic, without having to revert each one by hand.
+  ngx.ctx.waf_enforce_required = app.enforce_required ~= false
   -- /tmp/waf-block-mode can be created inside the container (via docker exec)
   -- to force block mode without reloading nginx.  Checked per-request so it
   -- takes effect immediately; used by online-test-full.
